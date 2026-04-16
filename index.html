@@ -320,6 +320,11 @@ function App(){
     try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}
     catch{return DEFAULT_COSTS;}
   });
+  const [localConfig,setLocalConfig]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}
+    catch{return DEFAULT_CONFIG;}
+  });
+  const [newMember,setNewMember]=useState({name:"",email:""});
 
   // Завантаження даних
   useEffect(()=>{
@@ -419,8 +424,6 @@ function App(){
 
   // ── НАЛАШТУВАННЯ ──
   if(view==="settings"){
-    const [localConfig,setLocalConfig]=useState({...config});
-    const [newMember,setNewMember]=useState({name:"",email:""});
     return<div className="app">
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
         <button onClick={()=>setView("list")}className="btn-outline">← Назад</button>

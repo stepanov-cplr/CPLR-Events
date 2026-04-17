@@ -204,6 +204,7 @@ const DEFAULT_COSTS={
   hall:{"Київ":{sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},"Львів":{sh:5000,sf:8000,mh:8500,mf:14000,lh:13000,lf:22000},def:{sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000}},
   cat:{"Київ":{cb:350,cs:450,cp:600,w:34,lb:600,ls:400,frs:700},"Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,frs:600},def:{cb:350,cs:400,cp:500,w:30,lb:450,ls:320,frs:550}},
   tech:{"Київ":{tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},"Львів":{tr:9500,st:9000,ph:2200,vd:2800,bg:90,pr:40},def:{tr:9000,st:8000,ph:2000,vd:2500,bg:90,pr:40}},
+  confFee:5,
   transport:{"Черкаси":{train_min:350,train_max:550,bus_min:300,bus_max:500},"Львів":{train_min:450,train_max:650,bus_min:480,bus_max:750},"Дніпро":{train_min:500,train_max:700,bus_min:500,bus_max:800},"Харків":{train_min:500,train_max:750,bus_min:550,bus_max:900},"Одеса":{train_min:600,train_max:900,bus_min:500,bus_max:900}},
 };
 
@@ -319,6 +320,7 @@ function calcBudget(f,costs){
   if(f.videographer){const a=gc(C,"tech","vd",city);total+=a;lines.push({label:"Відеооператор",amount:a});}
   if(f.badges&&p>0){const a=gc(C,"tech","bg",city)*p;total+=a;lines.push({label:`Бейджі (${p} ос)`,amount:a});}
   if(f.printedPrograms&&p>0){const a=gc(C,"tech","pr",city)*p;total+=a;lines.push({label:`Програми (${p} ос)`,amount:a});}
+  if(f.confService&&total>0){const fee=Math.round(total*(C.confFee||5)/100);total+=fee;lines.push({label:`Конференц-сервіс (${C.confFee||5}%)`,amount:fee});}
   return{total,lines};
 }
 
@@ -491,7 +493,7 @@ function generateDocHTML(ev,budget,blocks){
   .footer{margin-top:40px;padding-top:16px;border-top:1px solid #D0DCE8;font-size:11px;color:#9AAABB;text-align:center}
   </style></head><body>
   <div class="doc-header">
-    <img src="${LOGO_B64}" alt="ЦППР"/>
+    <img src="${LOGO_B64}" alt="ЦППР" style="width:50px;height:50px;object-fit:contain"/>
     <div class="doc-title"><h1>${f.eventName||"Захід ЦППР"}</h1>
     <p>Центр політико-правових реформ — Система заявок на заходи</p>
     <p>Сформовано: ${new Date().toLocaleDateString("uk-UA")}</p></div>
@@ -535,30 +537,116 @@ function DocModal({ev,budget,onClose}){
   const generateDocx=()=>{
     const f=ev.form||{};
     const blocks=getBlocks();
-    let text=`ЦППР — Система заявок на заходи\n${"=".repeat(50)}\n\n`;
+    const yn=v=>v?"Так":"Ні";
+    const fmt=d=>d?new Date(d).toLocaleDateString("uk-UA"):"—";
+    let text=`ЦППР — Система заявок на заходи\n${"=".repeat(50)}\n`;
     text+=`Захід: ${f.eventName||"—"}\nСформовано: ${new Date().toLocaleDateString("uk-UA")}\n\n`;
     if(blocks.includes("main")){
-      text+=`ОСНОВНА ІНФОРМАЦІЯ\n${"-".repeat(30)}\n`;
-      text+=`Назва: ${f.eventName||"—"}\nТип: ${f.eventType==="Інше"?f.eventTypeCustom||"—":f.eventType||"—"}\n`;
-      text+=`Формат: ${f.eventFormat||"—"}\nДата: ${f.eventDate||"—"} — ${f.eventDateEnd||"—"}\n`;
-      text+=`Місто: ${f.city||"—"}\nМісце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\n`;
-      text+=`Донор: ${f.donor||"—"}\nДоступ: ${f.eventAccess||"—"}\n\n`;
+      text+=`ОСНОВНА ІНФОРМАЦІЯ\n${"-".repeat(40)}\n`;
+      text+=`Назва: ${f.eventName||"—"}\n`;
+      text+=`Тип: ${f.eventType==="Інше"?f.eventTypeCustom||"—":f.eventType||"—"}\n`;
+      text+=`Формат: ${f.eventFormat||"—"}\n`;
+      text+=`Дата початку: ${fmt(f.eventDate)}\n`;
+      text+=`Дата закінчення: ${fmt(f.eventDateEnd)}\n`;
+      text+=`Місто: ${f.city||"—"}\n`;
+      text+=`Місце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\n`;
+      text+=`Донор: ${f.donor||"—"}\n`;
+      text+=`Тип доступу: ${f.eventAccess||"—"}\n`;
+      text+=`Тривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\n\n`;
     }
     if(blocks.includes("team")){
-      text+=`ВІДПОВІДАЛЬНІ\n${"-".repeat(30)}\n`;
-      text+=`Експерт: ${f.expertName||"—"}\nКоординатор: ${f.coordinator||"—"}\n`;
-      text+=`Комунікаційний менеджер: ${f.commManager||"—"}\nАсистент: ${f.assistant||"—"}\n\n`;
+      text+=`ВІДПОВІДАЛЬНІ\n${"-".repeat(40)}\n`;
+      text+=`Експерт ЦППР: ${f.expertName||"—"}\n`;
+      text+=`Координатор: ${f.coordinator||"—"}\n`;
+      text+=`Комунікаційний менеджер: ${f.commManager||"—"}\n`;
+      text+=`Асистент: ${f.assistant||"—"}\n\n`;
+    }
+    if(blocks.includes("participants")){
+      text+=`УЧАСНИКИ\n${"-".repeat(40)}\n`;
+      text+=`Кількість: ${f.participants||"—"}\n`;
+      text+=`Тип розсадки: ${f.seating||"—"}\n`;
+      text+=`Склад аудиторії: ${f.audienceDesc||"—"}\n`;
+      text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
+      text+=`Потреба у проживанні: ${f.accommodation||0} ос.\n`;
+      text+=`Відшкодування проїзду: ${f.travel||0} ос.\n\n`;
+    }
+    if(blocks.includes("tech")){
+      text+=`ТЕХНІЧНЕ ЗАБЕЗПЕЧЕННЯ\n${"-".repeat(40)}\n`;
+      if(f.needHall)text+=`• Оренда залу\n`;
+      if(f.microphone)text+=`• Мікрофони\n`;
+      if(f.projector)text+=`• Проектор і екран\n`;
+      if(f.laptop)text+=`• Ноутбук\n`;
+      if(f.flipchart)text+=`• Фліпчарт\n`;
+      if(f.stream)text+=`• Онлайн-трансляція: ${(f.streamPlatforms||[]).join(", ")||"—"}\n`;
+      if(f.translation)text+=`• Синхронний переклад\n`;
+      if(f.photographer)text+=`• Фотограф${f.photographerHours?` (${f.photographerHours} год)`:""}\n`;
+      if(f.videographer)text+=`• Відеооператор\n`;
+      if(f.recording)text+=`• Запис заходу\n`;
+      text+=`\n`;
+    }
+    if(blocks.includes("catering")){
+      text+=`ХАРЧУВАННЯ\n${"-".repeat(40)}\n`;
+      (f.coffeeItems||[]).forEach((c,i)=>text+=`• Кава-пауза ${i+1}: ${c==="coffee_basic"?"Базовий":c==="coffee_premium"?"Преміум":"Стандартний"}\n`);
+      if(f.water)text+=`• Вода на стіл\n`;
+      if(f.lunch)text+=`• Обід (${f.lunchType==="lunch_std"?"стандарт":"бізнес"})\n`;
+      if(f.buffet)text+=`• Фуршет\n`;
+      text+=`\n`;
+    }
+    if(blocks.includes("print")){
+      text+=`ПОЛІГРАФІЯ\n${"-".repeat(40)}\n`;
+      if(f.badges)text+=`• Бейджі\n`;
+      if(f.printedPrograms)text+=`• Друковані програми\n`;
+      if(f.folders)text+=`• Папки учасника\n`;
+      if(f.notebooks)text+=`• Блокноти і ручки\n`;
+      if(f.nameplates)text+=`• Таблички на стіл\n`;
+      if(f.banner)text+=`• Банер\n`;
+      text+=`\n`;
+    }
+    if(blocks.includes("security")){
+      text+=`БЕЗПЕКА\n${"-".repeat(40)}\n`;
+      if(f.secShelter)text+=`• Наявність укриття на локації\n`;
+      if(f.secUDO)text+=`• Координація з УДО\n`;
+      if(f.secAccreditation)text+=`• Акредитація учасників на вході\n`;
+      if(f.secGenerator)text+=`• Резервне живлення (генератор)\n`;
+      if(f.secInternational)text+=`• Інструктаж для міжнародних учасників\n`;
+      if(f.secNoPhoto)text+=`• Заборона фото/відео\n`;
+      if(f.secNotes)text+=`Додаткові вимоги: ${f.secNotes}\n`;
+      text+=`\n`;
+    }
+    if(blocks.includes("donor")){
+      text+=`КОМУНІКАЦІЇ ТА ДОНОР\n${"-".repeat(40)}\n`;
+      text+=`Залучення ЗМІ: ${yn(f.media)}\n`;
+      text+=`Анонс на сайті ЦППР: ${yn(f.websiteAnnounce)}\n`;
+      text+=`Новина в день заходу: ${yn(f.newsOnEventDay)}\n`;
+      text+=`Прес-реліз: ${yn(f.pressRelease)}\n`;
+      text+=`Донор залучений до організації: ${yn(f.donorInvolved)}\n`;
+      text+=`Донор фінансує частину: ${yn(f.donorFunds)}\n`;
+      text+=`Погодження програми з донором: ${yn(f.donorApproval)}\n`;
+      text+=`Погодження новин/постів: ${yn(f.donorNewsApproval)}\n`;
+      text+=`Надіслати звіт донору: ${yn(f.donorReport)}\n`;
+      if(f.coOrganizers)text+=`Співорганізатори: ${f.coOrganizers}\n`;
+      text+=`\n`;
     }
     if(blocks.includes("budget")&&budget.lines.length>0){
-      text+=`ОРІЄНТОВНИЙ БЮДЖЕТ\n${"-".repeat(30)}\n`;
+      text+=`ОРІЄНТОВНИЙ БЮДЖЕТ\n${"-".repeat(40)}\n`;
       budget.lines.forEach(l=>text+=`${l.label}: ${l.amount.toLocaleString("uk-UA")} грн\n`);
-      text+=`РАЗОМ: ${budget.total.toLocaleString("uk-UA")} грн\n\n`;
+      text+=`${"─".repeat(30)}\nРАЗОМ: ${budget.total.toLocaleString("uk-UA")} грн\n\n`;
     }
+    if(blocks.includes("checklist")&&ev.checklist?.length){
+      text+=`ЧЕКЛИСТ ЗАДАЧ\n${"-".repeat(40)}\n`;
+      const groups=[...new Set(ev.checklist.map(t=>t.g))];
+      groups.forEach(g=>{
+        text+=`\n${g}:\n`;
+        ev.checklist.filter(t=>t.g===g).forEach(t=>text+=`  ${t.done?"[✓]":"[ ]"} ${t.t} (${t.who}, ${t.dl||"—"})\n`);
+      });
+    }
+    if(f.notes)text+=`\nКОМЕНТАРІ\n${"-".repeat(40)}\n${f.notes}\n`;
+    text+=`\n${"=".repeat(50)}\nЦППР — cplr.org.ua`;
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`${f.eventName||"захід"}_ЦППР.txt`;
     a.click();URL.revokeObjectURL(url);
-    showToast("Текстовий документ завантажено");
+    showToast("Документ завантажено");
   };
 
   return<div className="modal-overlay"onClick={onClose}>
@@ -735,19 +823,24 @@ function App(){
 
   // ══ SETTINGS ══
   if(view==="settings"){
-    const stabs=[{id:"general",l:"Підключення"},{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"venues",l:"Локації"}];
-    const EditableList=({items,onSave,title})=>{
+    const stabs=[{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"venues",l:"Локації"},{id:"general",l:"Підключення"}];
+    const EditableList=({items,onSave})=>{
       const [list,setList]=useState([...items]);
       const [newItem,setNewItem]=useState("");
+      const move=(i,dir)=>{const l=[...list];const t=l[i];l[i]=l[i+dir];l[i+dir]=t;setList(l);onSave(l);};
       return<div>
-        <div style={{maxHeight:200,overflowY:"auto",marginBottom:8}}>
-          {list.map((item,i)=><div key={i}style={{display:"flex",gap:6,marginBottom:4,alignItems:"center"}}>
+        <div style={{maxHeight:240,overflowY:"auto",marginBottom:8}}>
+          {list.map((item,i)=><div key={i}style={{display:"flex",gap:5,marginBottom:4,alignItems:"center"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:1}}>
+              <button onClick={()=>i>0&&move(i,-1)}style={{background:"none",border:"none",color:i>0?"var(--text2)":"var(--border)",cursor:i>0?"pointer":"default",fontSize:10,lineHeight:1,padding:"1px 3px",fontFamily:"var(--font)"}}>▲</button>
+              <button onClick={()=>i<list.length-1&&move(i,1)}style={{background:"none",border:"none",color:i<list.length-1?"var(--text2)":"var(--border)",cursor:i<list.length-1?"pointer":"default",fontSize:10,lineHeight:1,padding:"1px 3px",fontFamily:"var(--font)"}}>▼</button>
+            </div>
             <input value={item}onChange={e=>{const l=[...list];l[i]=e.target.value;setList(l);onSave(l);}}style={{flex:1,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
             <button onClick={()=>{const l=list.filter((_,j)=>j!==i);setList(l);onSave(l);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:16}}>✕</button>
           </div>)}
         </div>
         <div style={{display:"flex",gap:6}}>
-          <input value={newItem}onChange={e=>setNewItem(e.target.value)}placeholder={`Додати...`}onKeyDown={e=>{if(e.key==="Enter"&&newItem){const l=[...list,newItem];setList(l);onSave(l);setNewItem("");}}}style={{flex:1,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
+          <input value={newItem}onChange={e=>setNewItem(e.target.value)}placeholder="Додати..."onKeyDown={e=>{if(e.key==="Enter"&&newItem){const l=[...list,newItem];setList(l);onSave(l);setNewItem("");}}}style={{flex:1,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
           <button className="btn-ghost"onClick={()=>{if(newItem){const l=[...list,newItem];setList(l);onSave(l);setNewItem("");}}}style={{fontSize:12}}>+ Додати</button>
         </div>
       </div>;
@@ -862,6 +955,14 @@ function App(){
             </div>
           </div>
         ))}
+        <div style={{marginTop:12,padding:"12px",background:"var(--bg-card)",borderRadius:"var(--radius)",border:"1px solid var(--border)"}}>
+          <div style={{fontSize:11,color:"var(--text2)",marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Конференц-сервіс</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:12,color:"var(--text)"}}>Надбавка за конференц-сервіс (%)</div>
+            <input type="number"value={costs.confFee||5}onChange={e=>{const nc=JSON.parse(JSON.stringify(costs));nc.confFee=parseInt(e.target.value)||5;saveCosts(nc);setCosts(nc);}}style={{width:70,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:6,fontSize:13,fontFamily:"var(--font)"}}/>
+            <div style={{fontSize:11,color:"var(--text3)"}}>% від загального бюджету</div>
+          </div>
+        </div>
       </div>}
 
       {settingsTab==="venues"&&<div className="settings-section">
@@ -943,7 +1044,7 @@ function App(){
         <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={accessTypesList}/>
           {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
-        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);if(!f.eventDateEnd)uf("eventDateEnd",v);}}/></F>
+        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);uf("eventDateEnd",v);}}/></F>
         <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
         <F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 4"min="1"max="24"/></F>
@@ -1040,14 +1141,8 @@ function App(){
       </div>
 
       <ST icon="🤝">Конференц-сервіс</ST>
-      <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу (IQ Conference)"/>
-      {f.confService&&<div className="contractor-section">
-        <div style={{fontWeight:600,fontSize:13,marginBottom:8}}>Інформація для підрядника</div>
-        <div style={{fontSize:12,color:"var(--text)",lineHeight:1.9}}>
-          {[["📅 Дата",f.eventDate||"—"],["📍 Місце",f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"],["👥 Учасників",f.participants||"—"],["⏱ Тривалість",`${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}`],["🪑 Розсадка",f.seating||"—"],["☕ Кава-паузи",(f.coffeeItems||[]).length||"0"],f.translation&&["🌐 Переклад","так"],f.stream&&["📡 Трансляція",(f.streamPlatforms||[]).join(", ")||"так"],f.badges&&["🏷 Бейджі",`${f.participants||"—"} шт`],f.nameplates&&["🪧 Таблички","так"]].filter(Boolean).map(([k,v])=><div key={k}><span style={{color:"var(--text2)"}}>{k}:</span> <b>{v}</b></div>)}
-        </div>
-        <button className="copy-btn"style={{marginTop:10}}onClick={()=>copyText(`Захід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\nУчасників: ${f.participants||"—"}\nТривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\nРозсадка: ${f.seating||"—"}\nКава-паузи: ${(f.coffeeItems||[]).length||0}\nПереклад: ${f.translation?"так":"ні"}\nТрансляція: ${f.stream?"так":"ні"}\nБейджі: ${f.badges?`${f.participants} шт`:"ні"}`)}>Копіювати для підрядника</button>
-      </div>}
+      <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу"/>
+
 
       <ST icon="📢">Комунікації та донор</ST>
       <div className="grid2"style={{marginBottom:8}}>

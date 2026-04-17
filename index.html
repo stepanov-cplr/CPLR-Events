@@ -10,7 +10,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;color:#111;min-height:100vh}
-.app{max-width:860px;margin:0 auto;padding:24px 16px 60px}
+.app{max-width:900px;margin:0 auto;padding:24px 16px 60px}
 select,input[type=text],input[type=date],input[type=number],textarea{
   width:100%;padding:8px 10px;border:1px solid #d0cfc8;border-radius:8px;
   background:#fff;color:#111;font-size:14px;font-family:inherit;outline:none}
@@ -21,71 +21,60 @@ button{font-family:inherit;cursor:pointer}
 a{color:#185FA5}
 .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500;white-space:nowrap}
 .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:16px}
-.section-title{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.07em;
-  margin:20px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px}
+.section-title{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.07em;margin:20px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px}
 .field-label{font-size:12px;color:#555;margin-bottom:4px;font-weight:500}
 .field{margin-bottom:13px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
 .cb-row{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:3px 0}
-.tab{padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;
-  color:#888;cursor:pointer;font-size:13px;font-weight:400;white-space:nowrap;transition:all .15s}
+.tab{padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:13px;font-weight:400;white-space:nowrap;transition:all .15s}
 .tab.active{border-bottom-color:#185FA5;color:#185FA5;font-weight:500}
 .tabs{display:flex;border-bottom:1px solid #e8e7e0;margin-bottom:20px;overflow-x:auto;gap:0}
 .btn-primary{padding:8px 18px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500}
 .btn-outline{padding:6px 14px;background:transparent;border:1px solid #d0cfc8;border-radius:7px;font-size:12px;color:#555}
 .btn-outline:hover{border-color:#185FA5;color:#185FA5}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:#222;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;
-  z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.btn-danger{padding:5px 12px;background:transparent;border:1px solid #f0c0c0;border-radius:6px;font-size:12px;color:#A32D2D}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #ccc;
-  border-top-color:#185FA5;border-radius:50%;animation:spin .6s linear infinite}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:#185FA5;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.checklist-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;
-  border-bottom:1px solid #f0efe8;cursor:pointer}
-.checklist-item:hover{opacity:.8}
-.chk-box{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;
-  background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.checklist-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #f0efe8;cursor:pointer}
+.checklist-item.overdue{background:#fff8f8;border-left:3px solid #E24B4A;padding-left:8px;margin-left:-8px}
+.chk-box{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .chk-box.done{border-color:#0F6E56;background:#E1F5EE}
 .metric{background:#f5f5f3;border-radius:8px;padding:13px 15px}
 .budget-row{display:flex;justify-content:space-between;padding:9px 12px;font-size:13px}
 .budget-row:not(:last-child){border-bottom:1px solid #f0efe8}
-.budget-total{display:flex;justify-content:space-between;padding:11px 12px;
-  background:#E6F1FB;font-weight:500;border-top:1px solid #c5d8f0}
-.setup-banner{background:#FFF8E7;border:1px solid #F0C040;border-radius:10px;
-  padding:14px 16px;margin-bottom:20px;font-size:13px}
-.copy-btn{padding:4px 10px;border:1px solid #185FA5;border-radius:6px;
-  background:transparent;color:#185FA5;font-size:11px;cursor:pointer}
-.copy-btn:active{background:#E6F1FB}
+.budget-total{display:flex;justify-content:space-between;padding:11px 12px;background:#E6F1FB;font-weight:500;border-top:1px solid #c5d8f0}
+.setup-banner{background:#FFF8E7;border:1px solid #F0C040;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px}
+.copy-btn{padding:4px 10px;border:1px solid #185FA5;border-radius:6px;background:transparent;color:#185FA5;font-size:11px;cursor:pointer}
 .task-card{border:1px solid #e8e7e0;border-radius:10px;margin-bottom:10px;overflow:hidden}
-.task-card-head{display:flex;justify-content:space-between;align-items:center;
-  padding:10px 13px;background:#f9f9f7;border-bottom:1px solid #e8e7e0}
+.task-card-head{display:flex;justify-content:space-between;align-items:center;padding:10px 13px;background:#f9f9f7;border-bottom:1px solid #e8e7e0}
 .task-card-body{padding:10px 13px}
 .task-line{font-size:12px;padding:3px 0;border-bottom:1px solid #f5f5f2;display:flex;gap:6px;align-items:baseline}
 .task-line:last-child{border-bottom:none}
 .warning{background:#FFF3CD;border:1px solid #F0C040;border-radius:8px;padding:10px 13px;font-size:12px;color:#7A4F00;margin-top:12px}
 .info{background:#E6F1FB;border:1px solid #B5D4F4;border-radius:8px;padding:10px 13px;font-size:12px;color:#0C447C;margin-top:8px}
 .settings-section{background:#fff;border:1px solid #e8e7e0;border-radius:10px;padding:14px;margin-bottom:16px}
+.multi-check{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.multi-check-item{display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #d0cfc8;border-radius:6px;cursor:pointer;font-size:13px;background:#fff;transition:all .15s}
+.multi-check-item.selected{border-color:#185FA5;background:#E6F1FB;color:#185FA5}
+.overdue-label{font-size:10px;color:#E24B4A;font-weight:600;margin-left:4px}
+.coffee-pair{background:#f9f9f7;border:1px solid #e8e7e0;border-radius:8px;padding:10px;margin-bottom:8px}
+.venue-info{background:#E6F1FB;border-radius:6px;padding:8px 10px;font-size:12px;color:#0C447C;margin-top:4px}
+.security-section{background:#FFF8E7;border:1px solid #F0C040;border-radius:10px;padding:14px;margin-bottom:4px}
+.contractor-section{background:#f0f8f0;border:1px solid #9FE1CB;border-radius:10px;padding:14px;margin-top:8px}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <div class="toast" id="toast"></div>
 <script type="text/babel">
-const {useState,useEffect,useCallback,useRef}=React;
+const {useState,useEffect,useRef}=React;
 
-// ══════════════════════════════════════════════════════
-// КОНФІГУРАЦІЯ — замініть ці значення після налаштування
-// ══════════════════════════════════════════════════════
-const DEFAULT_CONFIG={
-  sheetsApiUrl:"", // URL Google Apps Script Web App (після деплою)
-  sheetId:"",      // ID Google Sheets таблиці
-};
+const DEFAULT_CONFIG={sheetsApiUrl:""};
 
-// ══════════════════════════════════════════════════════
-// ДОВІДНИКИ
-// ══════════════════════════════════════════════════════
 const DEFAULT_TEAM=[
   {name:"Банчук Олександр",email:"banchuk@pravo.org.ua"},
   {name:"Виноградова Ольга",email:"vynohradova@pravo.org.ua"},
@@ -111,134 +100,178 @@ const DEFAULT_TEAM=[
   {name:"Школьний Євген",email:"shkolniy@pravo.org.ua"},
 ];
 
-const EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція",
-  "Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч",
-  "Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
-const SEATING=["Будь-який","Коло","Півколо","Амфітеатр","Інше"];
-const DONORS=["GIZ","IDEA","DRI","Відродження","Ukr2EU","Інший","Без донора"];
-const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
-const STREAM_PLATFORMS=["YouTube","Facebook","Zoom","YouTube + Facebook"];
+const DEFAULT_VENUES={
+  "Київ":["Готель Національний","Hilton Kyiv","Radisson Blu","Укрінформ (УКМЦ)","KyivHall","Зелений зал ЦППР","Фіолетовий зал ЦППР"],
+  "Львів":["Готель Кобрин","Львівська політехніка","Інше"],
+  "Дніпро":["Готель Дніпро","Інше"],
+  "Одеса":["Інше"],
+  "Харків":["Інше"],
+  "Луцьк":["Інше"],
+  "Запоріжжя":["Інше"],
+};
 
 const DEFAULT_COSTS={
   hall:{
-    "Київ": {sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},
-    "Львів":{sh:5000,sf:8000, mh:8500, mf:14000,lh:13000,lf:22000},
-    def:    {sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000},
+    "Київ":{sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},
+    "Львів":{sh:5000,sf:8000,mh:8500,mf:14000,lh:13000,lf:22000},
+    def:{sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000},
   },
   cat:{
-    "Київ": {cb:350,cs:450,cp:600,w:34,lb:600,ls:400,buf:700},
-    "Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,buf:600},
-    def:    {cb:350,cs:400,cp:500,w:30,lb:450,ls:320,buf:550},
+    "Київ":{cb:350,cs:450,cp:600,w:34,lb:600,ls:400,buf:700,frs:700},
+    "Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,buf:600,frs:600},
+    def:{cb:350,cs:400,cp:500,w:30,lb:450,ls:320,buf:550,frs:550},
   },
   tech:{
-    "Київ": {tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},
-    "Львів":{tr:9500, st:9000, ph:2200,vd:2800,bg:90,pr:40},
-    def:    {tr:9000, st:8000, ph:2000,vd:2500,bg:90,pr:40},
+    "Київ":{tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},
+    "Львів":{tr:9500,st:9000,ph:2200,vd:2800,bg:90,pr:40},
+    def:{tr:9000,st:8000,ph:2000,vd:2500,bg:90,pr:40},
   },
 };
 
-// ══════════════════════════════════════════════════════
-// УТИЛІТИ
-// ══════════════════════════════════════════════════════
+const DEFAULT_TASKS=[
+  {g:"Підготовка (за 21 день)",d:21,t:"Сформувати документ «опис заходу»",role:"expert"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Додати захід у календар ЦППР",role:"coord"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Сформувати попередній список учасників і доповідачів",role:"expert"},
+  {g:"Підготовка (за 20 днів)",d:20,t:"Розробити Google-анкету для реєстрації",role:"coord",cond:"registrationForm"},
+  {g:"Погодження (за 18 днів)",d:18,t:"Погодити програму з керівником проєкту",role:"expert"},
+  {g:"Погодження (за 15 днів)",d:15,t:"Погодити «опис заходу» з донором",role:"expert",cond:"hasDonor"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати погоджену програму команді",role:"expert"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Розробити заставку для соцмереж",role:"comm"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Запросити доповідачів і підтвердити участь",role:"expert"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Анонс події на ресурсах ЦППР",role:"comm",cond:"websiteAnnounce"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати анонс в Укрінформ",role:"comm",cond:"media"},
+  {g:"Підрядники (за 14 днів)",d:14,t:"Замовити кейтеринг (кава-паузи)",role:"dmitro",cond:"hasCoffee"},
+  {g:"Підрядники (за 14 днів)",d:14,t:"Замовити синхронний переклад",role:"dmitro",cond:"translation"},
+  {g:"Підрядники (за 14 днів)",d:14,t:"Замовити технічне обслуговування (IQ Conference)",role:"dmitro",cond:"confService"},
+  {g:"Підрядники (за 14 днів)",d:14,t:"Замовити фотографа",role:"comm",cond:"photographer"},
+  {g:"Підрядники (за 14 днів)",d:14,t:"Замовити відеооператора",role:"comm",cond:"videographer"},
+  {g:"За 10 днів",d:10,t:"Погодити програму з донором",role:"expert",cond:"hasDonor"},
+  {g:"За 8 днів",d:8,t:"Розіслати запрошення учасникам",role:"coord"},
+  {g:"За 8 днів",d:8,t:"Підготувати презентацію і надіслати комунікаційникам",role:"expert"},
+  {g:"За 8 днів",d:8,t:"Сформувати список учасників з проживанням/проїздом",role:"expert"},
+  {g:"За 7 днів",d:7,t:"Підготувати і поширити прес-анонс",role:"comm",cond:"media"},
+  {g:"За 7 днів",d:7,t:"Запросити ЗМІ",role:"comm",cond:"media"},
+  {g:"За 5 днів",d:5,t:"Сформувати і розіслати остаточну програму",role:"expert"},
+  {g:"За 5 днів",d:5,t:"Погодити пости і новини з донором",role:"comm",cond:"donorApproval"},
+  {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",role:"coord"},
+  {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",role:"expert"},
+  {g:"За 3 дні",d:3,t:"Підготувати список табличок на столи",role:"coord",cond:"nameplates"},
+  {g:"За 3 дні",d:3,t:"Сформувати остаточний список реєстрації",role:"coord"},
+  {g:"За 2 дні",d:2,t:"Надіслати нагадування учасникам із програмою",role:"coord"},
+  {g:"За 2 дні",d:2,t:"Надіслати список реєстрації до IQ Conference",role:"coord",cond:"confService"},
+  {g:"День заходу",d:0,t:"Організувати реєстрацію учасників",role:"coord"},
+  {g:"День заходу",d:0,t:"Встановити банер",role:"coord",cond:"banner"},
+  {g:"День заходу",d:0,t:"Розмістити таблички з ПІБ учасників",role:"coord",cond:"nameplates"},
+  {g:"День заходу",d:0,t:"Фотографування заходу",role:"comm",cond:"photographer"},
+  {g:"День заходу",d:0,t:"Забезпечити онлайн-трансляцію",role:"dmitro",cond:"stream"},
+  {g:"День заходу",d:0,t:"Опублікувати новину в день заходу",role:"comm"},
+  {g:"Після заходу",d:-1,t:"Надіслати фото, подяки і матеріали учасникам",role:"coord"},
+  {g:"Після заходу",d:-1,t:"Опублікувати пост-реліз на ресурсах ЦППР",role:"comm"},
+  {g:"Після заходу",d:-1,t:"Надіслати звіт донору",role:"coord",cond:"hasDonor"},
+  {g:"Після заходу",d:-7,t:"Сформувати теку з документами заходу",role:"coord"},
+  {g:"Після заходу",d:-7,t:"Отримати оригінали документів від підрядників",role:"dmitro"},
+  {g:"Після заходу",d:-12,t:"Підготувати лист-підсумок",role:"coord"},
+];
+
+const EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція","Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч","Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
+const SEATING=["Будь-який","Коло","Півколо","Амфітеатр","Інше"];
+const DONORS=["GIZ","IDEA","DRI","Відродження","Ukr2EU","Інший","Без донора"];
+const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
+const COFFEE_LEVELS=[{v:"coffee_basic",l:"Базовий (~350 грн/ос)"},{v:"coffee_std",l:"Стандартний (~450 грн/ос)"},{v:"coffee_premium",l:"Преміум (~600 грн/ос)"}];
+const STREAM_PLATFORMS=["YouTube","Facebook","Zoom","Teams"];
+const ACCESS_TYPES=["Вільний для всіх","Лише для тих, хто має посилання","Для запрошених","Лише для підтверджених учасників"];
+const EVENT_FORMATS=["Офлайн","Онлайн","Гібрид"];
+const DURATION_TYPES=["2-3 години","Пів дня","Повний день","Кілька днів"];
+
+const SL={draft:"Чернетка",review:"На розгляді",approved:"Затверджено — активний",cancelled:"Скасовано",done:"Архів (проведено)"};
+const SC={draft:"#888",review:"#BA7517",approved:"#185FA5",cancelled:"#A32D2D",done:"#0F6E56"};
+const SB={draft:"#f5f5f3",review:"#FAEEDA",approved:"#E6F1FB",cancelled:"#FCEBEB",done:"#E1F5EE"};
+
 function gc(costs,cat,key,city){
   const m=costs[cat]||DEFAULT_COSTS[cat];
-  return ((m[city])||m.def||{})[key]||0;
+  return((m[city])||m.def||{})[key]||0;
 }
 
 function calcBudget(f,costs){
   const C=costs||DEFAULT_COSTS;
   const city=f.city||"Київ";
   const p=parseInt(f.participants)||0;
+  const isOnline=f.eventFormat==="Онлайн";
   let total=0;const lines=[];
-  if(f.needHall){
-    const fd=f.fullDay!==false;
+  if(f.needHall&&!isOnline){
+    const fd=f.duration==="Повний день"||f.duration==="Кілька днів";
     const pp=p<=50?(fd?"sf":"sh"):p<=100?(fd?"mf":"mh"):(fd?"lf":"lh");
     const a=gc(C,"hall",pp,city);
-    if(a){total+=a;lines.push({label:`Оренда залу (${fd?"повний":"пів"} день)`,amount:a});}
+    if(a){total+=a;lines.push({label:`Оренда залу (${f.duration||"повний день"})`,amount:a});}
   }
-  const cc=parseInt(f.coffeeBreaks)||0;
-  if(cc>0&&p>0){
-    const key=f.coffeeLevel==="coffee_basic"?"cb":f.coffeeLevel==="coffee_premium"?"cp":"cs";
-    const a=gc(C,"cat",key,city)*p*cc;
-    total+=a;lines.push({label:`Кава-паузи (${cc}×${p} ос)`,amount:a});
-  }
+  const coffees=f.coffeeItems||[];
+  coffees.forEach((ci,i)=>{
+    if(p>0){
+      const key=ci==="coffee_basic"?"cb":ci==="coffee_premium"?"cp":"cs";
+      const a=gc(C,"cat",key,city)*p;
+      total+=a;lines.push({label:`Кава-пауза ${i+1} (${p} ос)`,amount:a});
+    }
+  });
   if(f.water&&p>0){const a=gc(C,"cat","w",city)*p;total+=a;lines.push({label:`Вода (${p} ос)`,amount:a});}
   if(f.lunch&&p>0){const a=gc(C,"cat",f.lunchType==="lunch_std"?"ls":"lb",city)*p;total+=a;lines.push({label:`Обід (${p} ос)`,amount:a});}
+  if(f.buffet&&p>0){const a=gc(C,"cat","frs",city)*p;total+=a;lines.push({label:`Фуршет (${p} ос)`,amount:a});}
   if(f.translation){const a=gc(C,"tech","tr",city);total+=a;lines.push({label:"Синхронний переклад",amount:a});}
   if(f.stream){const a=gc(C,"tech","st",city);total+=a;lines.push({label:"Онлайн-трансляція",amount:a});}
-  if(f.photographer){const a=gc(C,"tech","ph",city);total+=a;lines.push({label:"Фотограф",amount:a});}
+  if(f.photographer&&p>0){
+    const hrs=parseInt(f.photographerHours)||1;
+    const a=gc(C,"tech","ph",city)*hrs;
+    total+=a;lines.push({label:`Фотограф (${hrs} год)`,amount:a});
+  }
   if(f.videographer){const a=gc(C,"tech","vd",city);total+=a;lines.push({label:"Відеооператор",amount:a});}
   if(f.badges&&p>0){const a=gc(C,"tech","bg",city)*p;total+=a;lines.push({label:`Бейджі (${p} ос)`,amount:a});}
   if(f.printedPrograms&&p>0){const a=gc(C,"tech","pr",city)*p;total+=a;lines.push({label:`Програми (${p} ос)`,amount:a});}
   return{total,lines};
 }
 
-function genChecklist(f){
+function genChecklist(f,taskTemplates,team){
   const ed=f.eventDate?new Date(f.eventDate):null;
+  const today=new Date();today.setHours(0,0,0,0);
   const dd=d=>{
-    if(!ed||d===0)return d===0?"День заходу":null;
-    if(d<0)return`${Math.abs(d)} дн. після`;
+    if(!ed||d===0)return{label:"День заходу",date:ed};
+    if(d<0){const dt=new Date(ed);dt.setDate(dt.getDate()+Math.abs(d));return{label:`${Math.abs(d)} дн. після`,date:dt};}
     const dt=new Date(ed);dt.setDate(dt.getDate()-d);
-    return dt.toLocaleDateString("uk-UA");
+    return{label:dt.toLocaleDateString("uk-UA"),date:dt};
   };
-  const c=f.coordinator||"Координатор";
-  const e=f.expertName||"Експерт";
-  const cm=f.commManager||"Комунікаційник";
-  const dm="Дмитро Український";
-  const raw=[
-    {g:"Підготовка (за 21 день)",d:21,t:"Сформувати документ «опис заходу»",w:e},
-    {g:"Підготовка (за 21 день)",d:21,t:"Додати захід у календар ЦППР",w:c},
-    {g:"Підготовка (за 21 день)",d:21,t:"Сформувати попередній список учасників і доповідачів",w:e},
-    {g:"Підготовка (за 20 днів)",d:20,t:"Розробити Google-анкету для реєстрації",w:c,skip:!f.registrationForm},
-    {g:"Погодження (за 18 днів)",d:18,t:"Погодити програму з керівником проєкту",w:e},
-    {g:"Погодження (за 15 днів)",d:15,t:"Погодити «опис заходу» з донором",w:e,skip:f.donor==="Без донора"||!f.donor},
-    {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати погоджену програму команді",w:e},
-    {g:"Комунікації (за 14 днів)",d:14,t:"Розробити заставку для соцмереж",w:cm},
-    {g:"Комунікації (за 14 днів)",d:14,t:"Запросити доповідачів і підтвердити участь",w:e},
-    {g:"Комунікації (за 14 днів)",d:14,t:"Анонс події на ресурсах ЦППР",w:cm,skip:!f.websiteAnnounce},
-    {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати анонс в Укрінформ",w:cm,skip:!f.media},
-    {g:"Підрядники (за 14 днів)",d:14,t:"Замовити кейтеринг (кава-паузи)",w:dm,skip:!f.coffeeBreaks||f.coffeeBreaks==="0"},
-    {g:"Підрядники (за 14 днів)",d:14,t:"Замовити синхронний переклад",w:dm,skip:!f.translation},
-    {g:"Підрядники (за 14 днів)",d:14,t:"Замовити технічне обслуговування (IQ Conference)",w:dm},
-    {g:"Підрядники (за 14 днів)",d:14,t:"Замовити фотографа",w:cm,skip:!f.photographer},
-    {g:"Підрядники (за 14 днів)",d:14,t:"Замовити відеооператора",w:cm,skip:!f.videographer},
-    {g:"За 10 днів",d:10,t:"Погодити програму з донором",w:e,skip:f.donor==="Без донора"||!f.donor},
-    {g:"За 8 днів",d:8,t:"Розіслати запрошення учасникам",w:c},
-    {g:"За 8 днів",d:8,t:"Підготувати презентацію і надіслати комунікаційникам",w:e},
-    {g:"За 8 днів",d:8,t:"Сформувати список учасників з проживанням/проїздом",w:e},
-    {g:"За 7 днів",d:7,t:"Підготувати і поширити прес-анонс",w:cm,skip:!f.media},
-    {g:"За 7 днів",d:7,t:"Запросити ЗМІ",w:cm,skip:!f.media},
-    {g:"За 5 днів",d:5,t:"Сформувати і розіслати остаточну програму",w:e},
-    {g:"За 5 днів",d:5,t:"Погодити пости і новини з донором",w:cm,skip:f.donor==="Без донора"||!f.donorApproval},
-    {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",w:c},
-    {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",w:e},
-    {g:"За 3 дні",d:3,t:"Підготувати список табличок на столи",w:c,skip:!f.nameplates},
-    {g:"За 3 дні",d:3,t:"Сформувати остаточний список реєстрації",w:c},
-    {g:"За 2 дні",d:2,t:"Надіслати нагадування учасникам із програмою",w:c},
-    {g:"За 2 дні",d:2,t:"Надіслати список реєстрації до IQ Conference",w:c},
-    {g:"День заходу",d:0,t:"Організувати реєстрацію учасників",w:c},
-    {g:"День заходу",d:0,t:"Встановити банер",w:c,skip:!f.banner},
-    {g:"День заходу",d:0,t:"Розмістити таблички з ПІБ учасників",w:c,skip:!f.nameplates},
-    {g:"День заходу",d:0,t:"Фотографування заходу",w:cm,skip:!f.photographer},
-    {g:"День заходу",d:0,t:"Забезпечити онлайн-трансляцію",w:dm,skip:!f.stream},
-    {g:"День заходу",d:0,t:"Опублікувати новину в день заходу",w:cm},
-    {g:"Після заходу",d:-1,t:"Надіслати фото, подяки і матеріали учасникам",w:c},
-    {g:"Після заходу",d:-1,t:"Опублікувати пост-реліз на ресурсах ЦППР",w:cm},
-    {g:"Після заходу",d:-1,t:"Надіслати звіт донору",w:c,skip:f.donor==="Без донора"||!f.donor},
-    {g:"Після заходу",d:-7,t:"Сформувати теку з документами заходу",w:c},
-    {g:"Після заходу",d:-7,t:"Отримати оригінали документів від підрядників",w:dm},
-    {g:"Після заходу",d:-12,t:"Підготувати лист-підсумок",w:c},
-  ];
-  return raw.filter(t=>!t.skip).map(t=>({...t,dl:dd(t.d),done:false}));
+  const resolveWho=(role,f,team)=>{
+    const roles={
+      expert:f.expertName||"Експерт",
+      coord:f.coordinator||"Координатор",
+      comm:f.commManager||"Комунікаційник",
+      dmitro:"Дмитро Український",
+    };
+    return roles[role]||role;
+  };
+  const checkCond=(cond,f)=>{
+    if(!cond)return true;
+    const checks={
+      registrationForm:f.registrationForm,
+      hasDonor:f.donor&&f.donor!=="Без донора",
+      websiteAnnounce:f.websiteAnnounce,
+      media:f.media,
+      hasCoffee:f.coffeeItems&&f.coffeeItems.length>0,
+      translation:f.translation,
+      confService:f.confService,
+      photographer:f.photographer,
+      videographer:f.videographer,
+      donorApproval:f.donorApproval,
+      nameplates:f.nameplates,
+      banner:f.banner,
+      stream:f.stream,
+    };
+    return checks[cond]!==false&&checks[cond]!==undefined?!!checks[cond]:true;
+  };
+  return(taskTemplates||DEFAULT_TASKS).filter(t=>checkCond(t.cond,f)).map(t=>{
+    const dl=dd(t.d);
+    const isOverdue=dl.date&&dl.date<today&&t.d>=0;
+    return{...t,who:resolveWho(t.role,f,team),dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue};
+  });
 }
 
-const SL={draft:"Чернетка",review:"На розгляді",approved:"Затверджено — активний",cancelled:"Скасовано",done:"Архів (проведено)"};
-const SC={draft:"#888",review:"#BA7517",approved:"#185FA5",cancelled:"#A32D2D",done:"#0F6E56"};
-const SB={draft:"#f5f5f3",review:"#FAEEDA",approved:"#E6F1FB",cancelled:"#FCEBEB",done:"#E1F5EE"};
-
-// ══════════════════════════════════════════════════════
-// GOOGLE SHEETS API
-// ══════════════════════════════════════════════════════
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
@@ -254,15 +287,11 @@ async function sheetsRequest(apiUrl,action,data){
   }catch(e){console.error("Sheets error:",e);return null;}
 }
 
-// ══════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════
 function showToast(msg){
   const t=document.getElementById("toast");
   t.textContent=msg;t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"),2500);
 }
-
 function copyText(text){
   navigator.clipboard.writeText(text).then(()=>showToast("Скопійовано!")).catch(()=>{
     const ta=document.createElement("textarea");ta.value=text;
@@ -271,9 +300,6 @@ function copyText(text){
   });
 }
 
-// ══════════════════════════════════════════════════════
-// UI КОМПОНЕНТИ
-// ══════════════════════════════════════════════════════
 function Badge({s}){return<span className="tag"style={{background:SB[s],color:SC[s]}}>{SL[s]}</span>;}
 function Sel({val,set,opts,ph}){
   return<select value={val||""}onChange={e=>set(e.target.value)}>
@@ -287,7 +313,9 @@ function TeamSel({val,set,team,ph}){
     {(team||DEFAULT_TEAM).map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
   </select>;
 }
-function Inp({val,set,ph,type="text"}){return<input type={type}value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}/>;}
+function Inp({val,set,ph,type="text",min,max}){
+  return<input type={type}value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}min={min}max={max}/>;
+}
 function TA({val,set,ph,rows=2}){return<textarea value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}rows={rows}/>;}
 function CB({checked,set,label}){
   return<label className="cb-row"><input type="checkbox"checked={!!checked}onChange={e=>set(e.target.checked)}/>{label}</label>;
@@ -299,11 +327,17 @@ function F({label,req,children,hint}){
     {hint&&<div style={{fontSize:11,color:"#999",marginTop:2}}>{hint}</div>}
   </div>;
 }
-function ST({children}){return<div className="section-title">{children}</div>;}
+function ST({children,color}){
+  return<div className="section-title"style={color?{color}:{}}>{children}</div>;
+}
+function MultiCheck({options,selected,onChange}){
+  const sel=selected||[];
+  const toggle=v=>onChange(sel.includes(v)?sel.filter(x=>x!==v):[...sel,v]);
+  return<div className="multi-check">
+    {options.map(o=><div key={o}className={`multi-check-item${sel.includes(o)?" selected":""}`}onClick={()=>toggle(o)}>{o}</div>)}
+  </div>;
+}
 
-// ══════════════════════════════════════════════════════
-// ГОЛОВНИЙ ЗАСТОСУНОК
-// ══════════════════════════════════════════════════════
 function App(){
   const [view,setView]=useState("list");
   const [evs,setEvs]=useState([]);
@@ -311,25 +345,15 @@ function App(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [tab,setTab]=useState("form");
-  const [config,setConfig]=useState(()=>{
-    try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}
-    catch{return DEFAULT_CONFIG;}
-  });
-  const [team,setTeam]=useState(()=>{
-    try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}
-    catch{return DEFAULT_TEAM;}
-  });
-  const [costs,setCosts]=useState(()=>{
-    try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}
-    catch{return DEFAULT_COSTS;}
-  });
-  const [localConfig,setLocalConfig]=useState(()=>{
-    try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}
-    catch{return DEFAULT_CONFIG;}
-  });
+  const [config,setConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
+  const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
+  const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});
+  const [tasks,setTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_tasks"))||DEFAULT_TASKS;}catch{return DEFAULT_TASKS;}});
+  const [venues,setVenues]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_venues"))||DEFAULT_VENUES;}catch{return DEFAULT_VENUES;}});
+  const [localConfig,setLocalConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
   const [newMember,setNewMember]=useState({name:"",email:""});
+  const [settingsTab,setSettingsTab]=useState("general");
 
-  // Завантаження даних
   useEffect(()=>{
     (async()=>{
       setLoading(true);
@@ -352,23 +376,43 @@ function App(){
   };
 
   const getEv=()=>evs.find(e=>e.id===cid)||null;
-
   const createNew=()=>{
     const id=Date.now().toString();
     const n={id,status:"draft",createdAt:new Date().toISOString(),
-      form:{city:"Київ",eventAccess:"відкритий",fullDay:true,coffeeBreaks:"2",coffeeLevel:"coffee_std"},checklist:[]};
+      form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",
+        coffeeItems:[],streamPlatforms:[],donor:"GIZ"},checklist:[]};
     const u=[n,...evs];setEvs(u);saveEvs(u);
     setCid(id);setTab("form");setView("detail");
   };
-
   const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u);};
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);saveEvs(u);if(cid===id)setView("list");};
-  const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Заявку затверджено, чеклист сформовано");};
-  const toggleCL=(idx)=>{const ev=getEv();const cl=ev.checklist.map((t,i)=>i===idx?{...t,done:!t.done}:t);upd({checklist:cl});};
+  const approve=()=>{
+    const ev=getEv();
+    const cl=genChecklist(ev.form,tasks,team);
+    upd({status:"approved",checklist:cl,approvedAt:new Date().toISOString()});
+    setTab("checklist");showToast("Заявку затверджено, чеклист сформовано");
+  };
+  const toggleCL=(idx)=>{
+    const ev=getEv();
+    const today=new Date();today.setHours(0,0,0,0);
+    const cl=ev.checklist.map((t,i)=>{
+      if(i!==idx)return t;
+      const updated={...t,done:!t.done};
+      if(updated.dlDate){
+        const dl=new Date(updated.dlDate);
+        updated.overdue=!updated.done&&dl<today&&t.d>=0;
+      }
+      return updated;
+    });
+    upd({checklist:cl});
+  };
 
   const saveConfig=(c)=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=(t)=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));};
+  const saveTasks=(t)=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));};
+  const saveVenues=(v)=>{setVenues(v);localStorage.setItem("cppr_venues",JSON.stringify(v));};
+  const saveCosts=(c)=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));};
 
   if(loading)return<div style={{padding:60,textAlign:"center",color:"#888"}}>
     <div className="spinner"style={{width:24,height:24,margin:"0 auto 12px"}}></div>
@@ -377,7 +421,6 @@ function App(){
 
   // ── СПИСОК ──
   if(view==="list"){
-    const byStatus=(s)=>evs.filter(e=>e.status===s);
     return<div className="app">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
@@ -389,19 +432,16 @@ function App(){
           <button className="btn-primary"onClick={createNew}>+ Нова заявка</button>
         </div>
       </div>
-
       {!config.sheetsApiUrl&&<div className="setup-banner">
-        <b>⚠ Google Sheets не підключено</b> — заявки зберігаються лише локально в цьому браузері.
-        Щоб усі в команді бачили одні дані, налаштуйте підключення у <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",padding:0,fontSize:13,textDecoration:"underline"}}>Налаштуваннях</button>.
+        <b>⚠ Google Sheets не підключено</b> — заявки зберігаються лише локально.
+        <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",padding:"0 4px",fontSize:13,textDecoration:"underline"}}>Налаштувати</button>
       </div>}
-
       {evs.length===0&&<div style={{textAlign:"center",padding:"50px 0",color:"#888"}}>
         <div style={{fontSize:32,marginBottom:10}}>📋</div>
         <div style={{fontSize:14}}>Заявок поки немає — натисніть «+ Нова заявка»</div>
       </div>}
-
       {["approved","review","draft","cancelled","done"].map(s=>{
-        const list=byStatus(s);
+        const list=evs.filter(e=>e.status===s);
         if(!list.length)return null;
         return<div key={s}style={{marginBottom:20}}>
           <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{SL[s]} ({list.length})</div>
@@ -410,12 +450,18 @@ function App(){
               onClick={()=>{setCid(ev.id);setTab("form");setView("detail");}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:500,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.form?.eventName||"— Без назви —"}</div>
-                <div style={{fontSize:12,color:"#888",marginTop:2}}>{[ev.form?.eventType,ev.form?.city,ev.form?.eventDate].filter(Boolean).join(" · ")}</div>
+                <div style={{fontSize:12,color:"#888",marginTop:2}}>{[ev.form?.eventFormat,ev.form?.eventType,ev.form?.city,ev.form?.eventDate].filter(Boolean).join(" · ")}</div>
                 {ev.form?.expertName&&<div style={{fontSize:11,color:"#aaa",marginTop:1}}>Експерт: {ev.form.expertName}</div>}
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                 <Badge s={ev.status}/>
-                {ev.checklist?.length>0&&<div style={{fontSize:10,color:"#888"}}>{ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач</div>}
+                {ev.checklist?.length>0&&(()=>{
+                  const overdueCount=ev.checklist.filter(t=>t.overdue&&!t.done).length;
+                  return<div style={{fontSize:10,color:overdueCount>0?"#E24B4A":"#888"}}>
+                    {overdueCount>0&&<span style={{fontWeight:600}}>⚠ {overdueCount} просрочено · </span>}
+                    {ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач
+                  </div>;
+                })()}
                 <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:11,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
               </div>
             </div>
@@ -427,29 +473,39 @@ function App(){
 
   // ── НАЛАШТУВАННЯ ──
   if(view==="settings"){
+    const stabs=[
+      {id:"general",l:"Підключення"},
+      {id:"team",l:"Команда"},
+      {id:"tasks",l:"Задачі"},
+      {id:"costs",l:"Вартості"},
+      {id:"venues",l:"Локації"},
+    ];
     return<div className="app">
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
         <button onClick={()=>setView("list")}className="btn-outline">← Назад</button>
         <div style={{fontSize:18,fontWeight:600}}>Налаштування</div>
       </div>
+      <div className="tabs"style={{marginBottom:20}}>
+        {stabs.map(t=><button key={t.id}className={`tab${settingsTab===t.id?" active":""}`}onClick={()=>setSettingsTab(t.id)}>{t.l}</button>)}
+      </div>
 
-      <div className="settings-section">
+      {settingsTab==="general"&&<div className="settings-section">
         <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Підключення Google Sheets</div>
         <F label="URL Google Apps Script (Web App URL)">
           <Inp val={localConfig.sheetsApiUrl}set={v=>setLocalConfig({...localConfig,sheetsApiUrl:v})}ph="https://script.google.com/macros/s/.../exec"/>
         </F>
         <button className="btn-primary"onClick={()=>{saveConfig(localConfig);showToast("Збережено!");}}>Зберегти</button>
-        <div className="info">Як отримати URL: дивіться інструкцію нижче або у файлі README.</div>
-      </div>
+        <div className="info">Після збереження перезавантажте сторінку щоб підтягнулись дані з таблиці.</div>
+      </div>}
 
-      <div className="settings-section">
+      {settingsTab==="team"&&<div className="settings-section">
         <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Команда ({team.length} осіб)</div>
-        <div style={{maxHeight:280,overflowY:"auto",marginBottom:12}}>
+        <div style={{maxHeight:300,overflowY:"auto",marginBottom:12}}>
           {team.map((m,i)=>(
-            <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #f0efe8",fontSize:13}}>
+            <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f0efe8",fontSize:13}}>
               <div><b>{m.name}</b> <span style={{color:"#888",fontSize:12}}>{m.email}</span></div>
               <button onClick={()=>{const t=[...team];t.splice(i,1);saveTeam(t);setTeam(t);}}
-                style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:12}}>✕</button>
+                style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:13}}>✕</button>
             </div>
           ))}
         </div>
@@ -461,7 +517,93 @@ function App(){
             const t=[...team,newMember];saveTeam(t);setTeam(t);setNewMember({name:"",email:""});showToast("Додано!");
           }}>Додати</button>
         </div>
-      </div>
+      </div>}
+
+      {settingsTab==="tasks"&&<div className="settings-section">
+        <div style={{fontWeight:500,fontSize:14,marginBottom:4}}>Шаблони задач ({tasks.length})</div>
+        <div style={{fontSize:12,color:"#888",marginBottom:12}}>Ролі: expert, coord, comm, dmitro</div>
+        <div style={{maxHeight:400,overflowY:"auto"}}>
+          {tasks.map((t,i)=>(
+            <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 30px",gap:6,marginBottom:8,alignItems:"center",padding:"8px",background:"#f9f9f7",borderRadius:6}}>
+              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts);setTasks(ts);}}
+                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5,width:"100%"}}/>
+              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts);setTasks(ts);}}
+                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5}}placeholder="роль"/>
+              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts);setTasks(ts);}}
+                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5}}/>
+              <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}
+                style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:16}}>✕</button>
+            </div>
+          ))}
+        </div>
+        <button className="btn-outline"style={{marginTop:10}}onClick={()=>{
+          const ts=[...tasks,{g:"Нова група",d:7,t:"Нова задача",role:"coord"}];
+          saveTasks(ts);setTasks(ts);
+        }}>+ Додати задачу</button>
+        <button className="btn-outline"style={{marginTop:10,marginLeft:8,color:"#A32D2D",borderColor:"#f0c0c0"}}onClick={()=>{
+          if(confirm("Скинути до стандартних задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}
+        }}>Скинути до стандартних</button>
+      </div>}
+
+      {settingsTab==="costs"&&<div className="settings-section">
+        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Довідник вартостей</div>
+        {["Київ","Львів","def"].map(city=>(
+          <div key={city}style={{marginBottom:20}}>
+            <div style={{fontWeight:500,fontSize:13,marginBottom:8,color:"#555"}}>{city==="def"?"Інші міста":city}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+              {[
+                {cat:"hall",key:"sf",label:"Зал до 50 (пов. день)"},
+                {cat:"hall",key:"mf",label:"Зал 50-100 (пов. день)"},
+                {cat:"hall",key:"lf",label:"Зал 100+ (пов. день)"},
+                {cat:"cat",key:"cs",label:"Кава-пауза стандарт/ос"},
+                {cat:"cat",key:"cp",label:"Кава-пауза преміум/ос"},
+                {cat:"cat",key:"lb",label:"Обід бізнес/ос"},
+                {cat:"cat",key:"frs",label:"Фуршет/ос"},
+                {cat:"tech",key:"tr",label:"Переклад"},
+                {cat:"tech",key:"st",label:"Трансляція"},
+                {cat:"tech",key:"ph",label:"Фотограф/год"},
+              ].map(({cat,key,label})=>{
+                const val=(costs[cat]?.[city]||DEFAULT_COSTS[cat]?.def||{})[key]||0;
+                return<div key={`${cat}-${key}`}style={{marginBottom:4}}>
+                  <div style={{fontSize:11,color:"#888",marginBottom:2}}>{label}</div>
+                  <input type="number"value={val}onChange={e=>{
+                    const newCosts=JSON.parse(JSON.stringify(costs));
+                    if(!newCosts[cat])newCosts[cat]={};
+                    if(!newCosts[cat][city])newCosts[cat][city]={...(DEFAULT_COSTS[cat]?.def||{})};
+                    newCosts[cat][city][key]=parseInt(e.target.value)||0;
+                    saveCosts(newCosts);setCosts(newCosts);
+                  }}style={{width:"100%",padding:"5px 8px",border:"1px solid #ddd",borderRadius:5,fontSize:13}}/>
+                </div>;
+              })}
+            </div>
+          </div>
+        ))}
+      </div>}
+
+      {settingsTab==="venues"&&<div className="settings-section">
+        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Локації по містах</div>
+        {CITIES.filter(c=>c!=="Інше").map(city=>(
+          <div key={city}style={{marginBottom:16}}>
+            <div style={{fontWeight:500,fontSize:13,marginBottom:6}}>{city}</div>
+            {(venues[city]||[]).map((v,i)=>(
+              <div key={i}style={{display:"flex",gap:6,marginBottom:4,alignItems:"center"}}>
+                <input value={v}onChange={e=>{
+                  const nv={...venues};nv[city]=[...nv[city]];nv[city][i]=e.target.value;
+                  saveVenues(nv);setVenues(nv);
+                }}style={{flex:1,padding:"5px 8px",border:"1px solid #ddd",borderRadius:5,fontSize:13}}/>
+                <button onClick={()=>{
+                  const nv={...venues};nv[city]=nv[city].filter((_,j)=>j!==i);
+                  saveVenues(nv);setVenues(nv);
+                }}style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:16}}>✕</button>
+              </div>
+            ))}
+            <button className="btn-outline"style={{fontSize:11,padding:"3px 8px",marginTop:4}}onClick={()=>{
+              const nv={...venues};nv[city]=[...(nv[city]||[]),""];
+              saveVenues(nv);setVenues(nv);
+            }}>+ Додати локацію</button>
+          </div>
+        ))}
+      </div>}
     </div>;
   }
 
@@ -471,13 +613,16 @@ function App(){
   const budget=calcBudget(f,costs);
   const clDone=ev.checklist?.filter(t=>t.done).length||0;
   const clTotal=ev.checklist?.length||0;
+  const clOverdue=ev.checklist?.filter(t=>t.overdue&&!t.done).length||0;
 
   const tabs=[
     {id:"form",l:"Заявка"},
     {id:"budget",l:`Бюджет (~${Math.round(budget.total/1000)}k грн)`},
-    {id:"checklist",l:`Чеклист${clTotal?` (${clDone}/${clTotal})`:""}` },
+    {id:"checklist",l:`Чеклист${clTotal?` (${clDone}/${clTotal}${clOverdue>0?`, ⚠${clOverdue}`:""})`:""}`},
     {id:"tasks",l:"Розсилка задач"},
   ];
+
+  const cityVenues=venues[f.city]||[];
 
   return<div className="app">
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1px solid #eee"}}>
@@ -509,15 +654,42 @@ function App(){
       <ST>Основна інформація</ST>
       <div className="grid2">
         <F label="Назва заходу"req><Inp val={f.eventName}set={v=>uf("eventName",v)}ph="Назва"/></F>
-        <F label="Тип заходу"><Sel val={f.eventType}set={v=>uf("eventType",v)}opts={EVENT_TYPES}ph="— оберіть —"/></F>
-        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>uf("eventDate",v)}/></F>
-        <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
+        <F label="Тип заходу">
+          <Sel val={f.eventType}set={v=>uf("eventType",v)}opts={EVENT_TYPES}ph="— оберіть —"/>
+          {f.eventType==="Інше"&&<input value={f.eventTypeCustom||""}onChange={e=>uf("eventTypeCustom",e.target.value)}
+            placeholder="Вкажіть тип заходу"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1px solid #d0cfc8",borderRadius:8,fontSize:14}}/>}
+        </F>
+        <F label="Формат заходу"req>
+          <Sel val={f.eventFormat}set={v=>uf("eventFormat",v)}opts={EVENT_FORMATS}/>
+        </F>
+        <F label="Тип доступу">
+          <Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={ACCESS_TYPES}/>
+          {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&
+            <div className="venue-info">📍 Місце проведення буде повідомлено лише підтвердженим учасникам</div>}
+        </F>
+        <F label="Дата початку"req>
+          <Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);if(!f.eventDateEnd)uf("eventDateEnd",v);}}/>
+        </F>
+        <F label="Дата закінчення">
+          <Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/>
+        </F>
+        <F label="Тривалість">
+          <Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/>
+        </F>
+        <F label="Кількість годин">
+          <Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 4"min="1"max="24"/>
+        </F>
         <F label="Місто"><Sel val={f.city}set={v=>uf("city",v)}opts={CITIES}/></F>
-        <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={["відкритий","закритий"]}/></F>
         <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={DONORS}ph="— оберіть —"/></F>
-        <F label="Тривалість"><Sel val={f.fullDay===false?"half":"full"}set={v=>uf("fullDay",v!=="half")}opts={[{v:"full",l:"Повний день"},{v:"half",l:"Пів дня"}]}/></F>
       </div>
-      <F label="Бажане місце / локація"><Inp val={f.venue}set={v=>uf("venue",v)}ph="Готель, зал або побажання"/></F>
+
+      <F label="Місце проведення">
+        {cityVenues.length>0
+          ?<><Sel val={f.venue}set={v=>uf("venue",v)}opts={[...cityVenues,"Інше"]}ph="— оберіть —"/>
+            {f.venue==="Інше"&&<input value={f.venueCustom||""}onChange={e=>uf("venueCustom",e.target.value)}
+              placeholder="Вкажіть місце або побажання"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1px solid #d0cfc8",borderRadius:8,fontSize:14}}/>}</>
+          :<Inp val={f.venueCustom}set={v=>uf("venueCustom",v)}ph="Готель, зал або побажання"/>}
+      </F>
 
       <ST>Учасники</ST>
       <div className="grid2">
@@ -533,27 +705,53 @@ function App(){
 
       <ST>Технічне забезпечення</ST>
       <div className="grid2"style={{marginBottom:10}}>
-        <CB checked={f.needHall}set={v=>uf("needHall",v)}label="Потрібна оренда залу"/>
+        {f.eventFormat!=="Онлайн"&&<CB checked={f.needHall}set={v=>uf("needHall",v)}label="Потрібна оренда залу"/>}
         <CB checked={f.microphone}set={v=>uf("microphone",v)}label="Мікрофони"/>
         <CB checked={f.projector}set={v=>uf("projector",v)}label="Проектор і екран"/>
         <CB checked={f.laptop}set={v=>uf("laptop",v)}label="Ноутбук"/>
         <CB checked={f.flipchart}set={v=>uf("flipchart",v)}label="Фліпчарт"/>
         <CB checked={f.stream}set={v=>uf("stream",v)}label="Онлайн-трансляція"/>
         <CB checked={f.translation}set={v=>uf("translation",v)}label="Синхронний переклад"/>
-        <CB checked={f.photographer}set={v=>uf("photographer",v)}label="Фотограф"/>
-        <CB checked={f.videographer}set={v=>uf("videographer",v)}label="Відеооператор"/>
         <CB checked={f.recording}set={v=>uf("recording",v)}label="Запис заходу"/>
       </div>
-      {f.stream&&<F label="Платформа трансляції"><Sel val={f.streamPlatform}set={v=>uf("streamPlatform",v)}opts={STREAM_PLATFORMS}ph="— оберіть —"/></F>}
+      {f.stream&&<F label="Платформи трансляції">
+        <MultiCheck options={STREAM_PLATFORMS}selected={f.streamPlatforms||[]}onChange={v=>uf("streamPlatforms",v)}/>
+      </F>}
+      <div className="grid2"style={{marginBottom:10}}>
+        <CB checked={f.photographer}set={v=>uf("photographer",v)}label="Фотограф"/>
+        <CB checked={f.videographer}set={v=>uf("videographer",v)}label="Відеооператор"/>
+      </div>
+      {f.photographer&&<F label="Фотограф — кількість годин"hint="Бюджет: 2500 грн × кількість годин">
+        <Inp type="number"val={f.photographerHours}set={v=>uf("photographerHours",v)}ph="3"min="1"max="12"/>
+      </F>}
 
       <ST>Харчування</ST>
-      <div className="grid2">
-        <F label="Кількість кава-пауз"><Sel val={f.coffeeBreaks}set={v=>uf("coffeeBreaks",v)}opts={["0","1","2","3"]}/></F>
-        <F label="Рівень кава-паузи"><Sel val={f.coffeeLevel}set={v=>uf("coffeeLevel",v)}opts={[{v:"coffee_basic",l:"Базовий (~350 грн/ос)"},{v:"coffee_std",l:"Стандарт (~450 грн/ос)"},{v:"coffee_premium",l:"Преміум (~600 грн/ос)"}]}/></F>
-      </div>
+      <F label="Кава-паузи">
+        <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+          {[0,1,2,3].map(n=>(
+            <button key={n}onClick={()=>{
+              const cur=f.coffeeItems||[];
+              if(n===0)uf("coffeeItems",[]);
+              else if(n>cur.length)uf("coffeeItems",[...cur,...Array(n-cur.length).fill("coffee_std")]);
+              else uf("coffeeItems",cur.slice(0,n));
+            }}style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${(f.coffeeItems||[]).length===n?"#185FA5":"#ddd"}`,
+              background:(f.coffeeItems||[]).length===n?"#E6F1FB":"transparent",
+              color:(f.coffeeItems||[]).length===n?"#185FA5":"#555",fontSize:13,cursor:"pointer"}}>
+              {n===0?"Немає":`${n}`}
+            </button>
+          ))}
+        </div>
+        {(f.coffeeItems||[]).map((level,i)=>(
+          <div key={i}className="coffee-pair">
+            <div style={{fontSize:12,color:"#888",marginBottom:4}}>Кава-пауза {i+1}</div>
+            <Sel val={level}set={v=>{const ci=[...(f.coffeeItems||[])];ci[i]=v;uf("coffeeItems",ci);}}opts={COFFEE_LEVELS}/>
+          </div>
+        ))}
+      </F>
       <div className="grid2"style={{marginBottom:10}}>
         <CB checked={f.water}set={v=>uf("water",v)}label="Вода на стіл"/>
         <CB checked={f.lunch}set={v=>uf("lunch",v)}label="Обід"/>
+        <CB checked={f.buffet}set={v=>uf("buffet",v)}label="Фуршет"/>
       </div>
       {f.lunch&&<F label="Тип обіду"><Sel val={f.lunchType}set={v=>uf("lunchType",v)}opts={[{v:"lunch_biz",l:"Бізнес-обід (~600 грн/ос)"},{v:"lunch_std",l:"Стандарт (~400 грн/ос)"}]}/></F>}
 
@@ -567,12 +765,60 @@ function App(){
         <CB checked={f.banner}set={v=>uf("banner",v)}label="Банер"/>
       </div>
 
-      <ST>Комунікації</ST>
+      <ST color="#B45309">🔒 Безпека</ST>
+      <div className="security-section">
+        <div className="grid2"style={{marginBottom:10}}>
+          <CB checked={f.secShelter}set={v=>uf("secShelter",v)}label="Наявність укриття на локації"/>
+          <CB checked={f.secUDO}set={v=>uf("secUDO",v)}label="Координація з УДО"/>
+          <CB checked={f.secAccreditation}set={v=>uf("secAccreditation",v)}label="Акредитація учасників на вході"/>
+          <CB checked={f.secGenerator}set={v=>uf("secGenerator",v)}label="Резервне живлення (генератор)"/>
+          <CB checked={f.secInternational}set={v=>uf("secInternational",v)}label="Інструктаж для міжнародних учасників"/>
+          <CB checked={f.secNoPhoto}set={v=>uf("secNoPhoto",v)}label="Заборона фото/відео"/>
+        </div>
+        <F label="Додаткові безпекові вимоги">
+          <TA val={f.secNotes}set={v=>uf("secNotes",v)}ph="Особливі вимоги, план евакуації тощо"/>
+        </F>
+      </div>
+
+      <ST>Конференц-сервіс</ST>
+      <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу (IQ Conference)"/>
+      {f.confService&&<div className="contractor-section"style={{marginTop:10}}>
+        <div style={{fontWeight:500,fontSize:13,marginBottom:8}}>Інформація для підрядника</div>
+        <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
+          <div>📅 Дата: <b>{f.eventDate||"—"}</b></div>
+          <div>📍 Місце: <b>{f.venue||f.venueCustom||"—"}</b></div>
+          <div>👥 Учасників: <b>{f.participants||"—"}</b></div>
+          <div>⏱ Тривалість: <b>{f.duration||"—"}{f.durationHours?` (${f.durationHours} год)`:""}</b></div>
+          <div>🪑 Розсадка: <b>{f.seating||"—"}</b></div>
+          <div>☕ Кава-паузи: <b>{(f.coffeeItems||[]).length||"0"}</b></div>
+          {f.translation&&<div>🌐 Синхронний переклад: <b>так</b></div>}
+          {f.stream&&<div>📡 Трансляція: <b>{(f.streamPlatforms||[]).join(", ")||"так"}</b></div>}
+          {f.badges&&<div>🏷 Бейджі: <b>{f.participants||"—"} шт</b></div>}
+          {f.nameplates&&<div>🪧 Таблички на стіл: <b>так</b></div>}
+        </div>
+        <button className="copy-btn"style={{marginTop:10}}onClick={()=>copyText(
+          `Захід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісце: ${f.venue||f.venueCustom||"—"}\nУчасників: ${f.participants||"—"}\nТривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\nРозсадка: ${f.seating||"—"}\nКава-паузи: ${(f.coffeeItems||[]).length||0}\nПереклад: ${f.translation?"так":"ні"}\nТрансляція: ${f.stream?(f.streamPlatforms||[]).join(", ")||"так":"ні"}\nБейджі: ${f.badges?`${f.participants||"—"} шт`:"ні"}\nТаблички: ${f.nameplates?"так":"ні"}`
+        )}>Копіювати для підрядника</button>
+      </div>}
+
+      <ST>Комунікації та донор</ST>
       <div className="grid2"style={{marginBottom:10}}>
         <CB checked={f.media}set={v=>uf("media",v)}label="Залучення ЗМІ"/>
         <CB checked={f.registrationForm}set={v=>uf("registrationForm",v)}label="Google-форма реєстрації"/>
         <CB checked={f.websiteAnnounce}set={v=>uf("websiteAnnounce",v)}label="Анонс на сайті ЦППР"/>
-        <CB checked={f.donorApproval}set={v=>uf("donorApproval",v)}label="Погодження з донором"/>
+        <CB checked={f.newsOnEventDay}set={v=>uf("newsOnEventDay",v)}label="Новина в день заходу"/>
+        <CB checked={f.pressRelease}set={v=>uf("pressRelease",v)}label="Прес-реліз (для ЗМІ)"/>
+        <CB checked={f.publishResearch}set={v=>uf("publishResearch",v)}label="Опублікувати дослідження до заходу"/>
+      </div>
+      <div style={{background:"#f9f9f7",border:"1px solid #e8e7e0",borderRadius:8,padding:12,marginBottom:10}}>
+        <div style={{fontSize:12,fontWeight:500,color:"#555",marginBottom:8}}>Взаємодія з донором</div>
+        <div className="grid2">
+          <CB checked={f.donorInvolved}set={v=>uf("donorInvolved",v)}label="Донор залучений до організації"/>
+          <CB checked={f.donorFunds}set={v=>uf("donorFunds",v)}label="Донор фінансує частину заходу"/>
+          <CB checked={f.donorApproval}set={v=>uf("donorApproval",v)}label="Погодження програми з донором"/>
+          <CB checked={f.donorNewsApproval}set={v=>uf("donorNewsApproval",v)}label="Погодження новин/постів з донором"/>
+          <CB checked={f.donorReport}set={v=>uf("donorReport",v)}label="Надіслати інформацію донору після заходу"/>
+        </div>
       </div>
       <F label="Співорганізатори"><Inp val={f.coOrganizers}set={v=>uf("coOrganizers",v)}ph="Назви, контакти"/></F>
 
@@ -583,7 +829,7 @@ function App(){
         <F label="Комунікаційний менеджер"><TeamSel val={f.commManager}set={v=>uf("commManager",v)}team={team}/></F>
         <F label="Асистент"><TeamSel val={f.assistant}set={v=>uf("assistant",v)}team={team}/></F>
       </div>
-      <F label="Коментарі / особливі вимоги"><TA val={f.notes}set={v=>uf("notes",v)}ph="Безпекові вимоги, УДО, укриття, інше…"rows={3}/></F>
+      <F label="Коментарі"><TA val={f.notes}set={v=>uf("notes",v)}ph="Додаткова інформація…"rows={3}/></F>
     </div>}
 
     {tab==="budget"&&<div>
@@ -598,7 +844,7 @@ function App(){
         </div>)}
       </div>
       {budget.lines.length===0
-        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Заповніть форму, щоб побачити бюджет.</div>
+        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Заповніть форму щоб побачити бюджет.</div>
         :<div style={{border:"1px solid #e8e7e0",borderRadius:10,overflow:"hidden"}}>
           {budget.lines.map((l,i)=>(
             <div key={i}className="budget-row"style={{background:i%2?"#fafaf8":"#fff"}}>
@@ -610,14 +856,16 @@ function App(){
             <span style={{color:"#185FA5"}}>Разом</span>
             <span style={{color:"#185FA5",fontSize:15}}>{budget.total.toLocaleString("uk-UA")} грн</span>
           </div>
-        </div>
-      }
-      <div className="warning"style={{marginTop:14}}>Бюджет розраховано за нормативами довідника. Для уточнення вартостей конкретних локацій додайте їх у коментарях до заявки.</div>
+        </div>}
+      <div className="warning"style={{marginTop:14}}>Бюджет розраховано за нормативами довідника. Вартості конкретних локацій можна оновити в Налаштуваннях → Вартості.</div>
     </div>}
 
     {tab==="checklist"&&<div>
+      {clOverdue>0&&<div style={{background:"#fff5f5",border:"1px solid #f0c0c0",borderRadius:8,padding:"10px 13px",marginBottom:14,fontSize:13,color:"#A32D2D"}}>
+        ⚠ <b>{clOverdue} задач</b> мали бути виконані до сьогодні
+      </div>}
       {!ev.checklist?.length
-        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Натисніть «Затвердити + чеклист», щоб автоматично сформувати список задач.</div>
+        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Натисніть «Затвердити + чеклист», щоб сформувати список задач.</div>
         :(() => {
           const groups=[...new Set(ev.checklist.map(t=>t.g))];
           return groups.map(g=>(
@@ -625,11 +873,14 @@ function App(){
               <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>{g}</div>
               {ev.checklist.filter(t=>t.g===g).map(t=>{
                 const idx=ev.checklist.indexOf(t);
-                return<div key={idx}className="checklist-item"onClick={()=>toggleCL(idx)}style={{opacity:t.done?.5:1}}>
+                const isOverdue=t.overdue&&!t.done;
+                return<div key={idx}className={`checklist-item${isOverdue?" overdue":""}`}onClick={()=>toggleCL(idx)}style={{opacity:t.done?.5:1}}>
                   <div className={`chk-box${t.done?" done":""}`}>{t.done&&<span style={{fontSize:10,color:"#0F6E56",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none"}}>{t.t}</div>
-                    <div style={{fontSize:11,color:"#aaa",marginTop:1}}>{t.w} · {t.dl||"—"}</div>
+                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOverdue?"#A32D2D":"inherit"}}>
+                      {t.t}{isOverdue&&<span className="overdue-label">ПРОСТРОЧЕНО</span>}
+                    </div>
+                    <div style={{fontSize:11,color:isOverdue?"#E24B4A":"#aaa",marginTop:1}}>{t.who} · {t.dl||"—"}</div>
                   </div>
                 </div>;
               })}
@@ -641,45 +892,40 @@ function App(){
 
     {tab==="tasks"&&<div>
       <div style={{fontSize:13,color:"#666",marginBottom:14}}>
-        Натисніть «Копіювати» — текст листа скопіюється в буфер. Відкрийте Gmail, вставте і надішліть.
+        Натисніть «Копіювати» — текст листа скопіюється в буфер. Відкрийте Gmail і вставте.
       </div>
-
       <div style={{background:"#f5f5f3",borderRadius:10,padding:13,marginBottom:14}}>
         <div style={{fontWeight:500,fontSize:13,marginBottom:8}}>Google Calendar — подія заходу</div>
         {f.eventDate
-          ?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nДонор: ${f.donor||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}\nКоординатор: ${f.coordinator||""}`)}&location=${encodeURIComponent(f.venue||f.city||"")}`}
+          ?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nФормат: ${f.eventFormat||""}\nДонор: ${f.donor||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}`)}&location=${encodeURIComponent(f.venue||f.venueCustom||f.city||"")}`}
             target="_blank"rel="noopener noreferrer"style={{fontSize:13}}>
             Відкрити в Google Calendar →
           </a>
-          :<div style={{fontSize:12,color:"#aaa"}}>Вкажіть дату у формі.</div>
-        }
+          :<div style={{fontSize:12,color:"#aaa"}}>Вкажіть дату у формі.</div>}
       </div>
-
       {!ev.checklist?.length
         ?<div style={{fontSize:13,color:"#888"}}>Спочатку затвердіть заявку.</div>
         :(() => {
-          const assignees=[...new Set(ev.checklist.map(t=>t.w))];
+          const assignees=[...new Set(ev.checklist.map(t=>t.who))];
           return assignees.map(who=>{
-            const tasks=ev.checklist.filter(t=>t.w===who);
+            const wtasks=ev.checklist.filter(t=>t.who===who);
             const member=(team||DEFAULT_TEAM).find(m=>m.name===who);
             const email=member?.email||"";
             const subj=`Задачі до заходу: ${f.eventName||"захід"} (${f.eventDate||""})`;
-            const body=`Вітаємо, ${who}!\n\nЗахід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісто: ${f.city||"—"}\n\nВаші задачі:\n\n${tasks.map(t=>`• ${t.t}\n  Дедлайн: ${t.dl||"—"}`).join("\n\n")}\n\nЗ повагою,\nКоманда ЦППР`;
+            const body=`Вітаємо, ${who}!\n\nЗахід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісто: ${f.city||"—"}\n\nВаші задачі:\n\n${wtasks.map(t=>`• ${t.t}\n  Дедлайн: ${t.dl||"—"}`).join("\n\n")}\n\nЗ повагою,\nКоманда ЦППР`;
             return<div key={who}className="task-card">
               <div className="task-card-head">
                 <div>
                   <span style={{fontWeight:500,fontSize:13}}>{who}</span>
                   {email&&<span style={{fontSize:11,color:"#888",marginLeft:6}}>{email}</span>}
                 </div>
-                <button className="copy-btn"onClick={()=>copyText(`Кому: ${email}\nТема: ${subj}\n\n${body}`)}>
-                  Копіювати лист
-                </button>
+                <button className="copy-btn"onClick={()=>copyText(`Кому: ${email}\nТема: ${subj}\n\n${body}`)}>Копіювати лист</button>
               </div>
               <div className="task-card-body">
-                {tasks.map((t,i)=>(
+                {wtasks.map((t,i)=>(
                   <div key={i}className="task-line">
-                    <span style={{color:"#185FA5",flexShrink:0}}>•</span>
-                    <span>{t.t}</span>
+                    <span style={{color:t.overdue&&!t.done?"#E24B4A":"#185FA5",flexShrink:0}}>•</span>
+                    <span style={{color:t.overdue&&!t.done?"#A32D2D":"inherit"}}>{t.t}</span>
                     <span style={{color:"#aaa",whiteSpace:"nowrap",marginLeft:"auto"}}>({t.dl||"—"})</span>
                   </div>
                 ))}

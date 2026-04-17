@@ -3,199 +3,301 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Заявки на заходи ЦППР</title>
+<title>ЦППР — Система заявок на заходи</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
+:root{
+  --blue:#1C75BC;--blue-dark:#252868;--blue-hover:#0056A0;
+  --blue-light:#E8F3FB;--blue-mid:#B8D9F0;
+  --bg:#F0F4F8;--bg-white:#FFFFFF;--bg-card:#F5F8FC;
+  --border:#D0DCE8;--border2:#1C75BC;
+  --text:#1A2535;--text2:#6B7A90;--text3:#9AAABB;
+  --green:#00916E;--green-light:#E6F5F1;
+  --red:#DC2626;--red-light:#FEF2F2;
+  --amber:#D97706;--amber-light:#FFFBEB;
+  --shadow:0 1px 3px rgba(28,117,188,.12),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 12px rgba(28,117,188,.15);
+  --radius:8px;--radius-lg:12px;
+  --font:'Nunito',system-ui,sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f3;color:#111;min-height:100vh}
-.app{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.app-header{background:var(--bg-white);border-bottom:3px solid var(--blue);box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+.header-inner{max-width:960px;margin:0 auto;padding:0 20px;height:56px;display:flex;align-items:center;gap:0}
+.header-logo{width:40px;height:40px;object-fit:contain;flex-shrink:0}
+.header-brand{display:flex;flex-direction:column;margin-left:10px}
+.header-brand-name{font-size:14px;font-weight:700;color:var(--blue);line-height:1.2;letter-spacing:.01em}
+.header-brand-sub{font-size:10px;color:var(--text2);line-height:1.2}
+.header-divider{width:1px;height:28px;background:var(--blue);margin:0 16px;opacity:.3}
+.header-title{font-size:13px;color:var(--text2);font-weight:500}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.header-version{font-size:10px;color:var(--text3)}
+
+.app{max-width:960px;margin:0 auto;padding:24px 20px 60px}
+
+/* FORMS */
 select,input[type=text],input[type=date],input[type=number],textarea{
-  width:100%;padding:8px 10px;border:1px solid #d0cfc8;border-radius:8px;
-  background:#fff;color:#111;font-size:14px;font-family:inherit;outline:none}
-select:focus,input:focus,textarea:focus{border-color:#185FA5;box-shadow:0 0 0 2px rgba(24,95,165,0.15)}
+  width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:var(--bg-white);color:var(--text);font-size:13px;font-family:var(--font);outline:none;
+  transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(28,117,188,.12)}
 textarea{resize:vertical}
-input[type=checkbox]{width:16px;height:16px;accent-color:#185FA5;cursor:pointer;flex-shrink:0}
-button{font-family:inherit;cursor:pointer}
-a{color:#185FA5}
-.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500;white-space:nowrap}
-.card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:16px}
-.section-title{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.07em;margin:20px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px}
-.field-label{font-size:12px;color:#555;margin-bottom:4px;font-weight:500}
-.field{margin-bottom:13px}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+button{font-family:var(--font);cursor:pointer}
+
+/* BUTTONS */
+.btn-primary{padding:8px 18px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);
+  font-size:13px;font-weight:600;transition:background .15s,transform .1s;box-shadow:var(--shadow)}
+.btn-primary:hover{background:var(--blue-hover)}
+.btn-primary:active{transform:scale(.98)}
+.btn-outline{padding:7px 14px;background:transparent;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:12px;color:var(--text2);font-weight:500;transition:all .15s}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-ghost{padding:5px 10px;background:transparent;border:1.5px solid var(--blue);border-radius:var(--radius);
+  font-size:11px;color:var(--blue);font-weight:600;transition:all .15s}
+.btn-ghost:hover{background:var(--blue-light)}
+.btn-danger{padding:5px 10px;background:transparent;border:1.5px solid #fca5a5;border-radius:var(--radius);font-size:11px;color:var(--red)}
+
+/* CARDS */
+.card{background:var(--bg-white);border:1.5px solid var(--border);border-radius:var(--radius-lg);
+  padding:16px;box-shadow:var(--shadow)}
+.card:hover{border-color:var(--blue-mid);box-shadow:var(--shadow-md)}
+
+/* TAGS / BADGES */
+.tag{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;gap:4px}
+
+/* SECTION TITLE */
+.section-title{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;
+  letter-spacing:.1em;margin:22px 0 10px;display:flex;align-items:center;gap:6px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* FIELD */
+.field{margin-bottom:12px}
+.field-label{font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+.field-hint{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* GRID */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
-.cb-row{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:3px 0}
-.tab{padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:13px;font-weight:400;white-space:nowrap;transition:all .15s}
-.tab.active{border-bottom-color:#185FA5;color:#185FA5;font-weight:500}
-.tabs{display:flex;border-bottom:1px solid #e8e7e0;margin-bottom:20px;overflow-x:auto;gap:0}
-.btn-primary{padding:8px 18px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500}
-.btn-outline{padding:6px 14px;background:transparent;border:1px solid #d0cfc8;border-radius:7px;font-size:12px;color:#555}
-.btn-outline:hover{border-color:#185FA5;color:#185FA5}
-.btn-danger{padding:5px 12px;background:transparent;border:1px solid #f0c0c0;border-radius:6px;font-size:12px;color:#A32D2D}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.show{opacity:1}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:#185FA5;border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.checklist-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #f0efe8;cursor:pointer}
-.checklist-item.overdue{background:#fff8f8;border-left:3px solid #E24B4A;padding-left:8px;margin-left:-8px}
-.chk-box{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
-.chk-box.done{border-color:#0F6E56;background:#E1F5EE}
-.metric{background:#f5f5f3;border-radius:8px;padding:13px 15px}
-.budget-row{display:flex;justify-content:space-between;padding:9px 12px;font-size:13px}
-.budget-row:not(:last-child){border-bottom:1px solid #f0efe8}
-.budget-total{display:flex;justify-content:space-between;padding:11px 12px;background:#E6F1FB;font-weight:500;border-top:1px solid #c5d8f0}
-.setup-banner{background:#FFF8E7;border:1px solid #F0C040;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px}
-.copy-btn{padding:4px 10px;border:1px solid #185FA5;border-radius:6px;background:transparent;color:#185FA5;font-size:11px;cursor:pointer}
-.task-card{border:1px solid #e8e7e0;border-radius:10px;margin-bottom:10px;overflow:hidden}
-.task-card-head{display:flex;justify-content:space-between;align-items:center;padding:10px 13px;background:#f9f9f7;border-bottom:1px solid #e8e7e0}
-.task-card-body{padding:10px 13px}
-.task-line{font-size:12px;padding:3px 0;border-bottom:1px solid #f5f5f2;display:flex;gap:6px;align-items:baseline}
+
+/* CHECKBOX ROW */
+.cb-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0;
+  color:var(--text);transition:color .15s}
+.cb-row:hover{color:var(--blue)}
+
+/* TABS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto;gap:0}
+.tab{padding:9px 16px;background:none;border:none;border-bottom:2px solid transparent;
+  margin-bottom:-2px;color:var(--text2);cursor:pointer;font-size:13px;font-weight:500;
+  white-space:nowrap;transition:all .15s;font-family:var(--font)}
+.tab.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:700}
+
+/* STATUS BUTTONS */
+.status-btn{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;border:1.5px solid}
+
+/* CHECKLIST */
+.checklist-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg-card);cursor:pointer;transition:opacity .15s}
+.checklist-item.overdue{background:#fff8f8;border-left:3px solid var(--red);padding-left:8px;margin-left:-8px;border-radius:0 var(--radius) var(--radius) 0}
+.chk-box{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);background:var(--bg-white);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.chk-box.done{border-color:var(--green);background:var(--green-light)}
+
+/* METRIC CARDS */
+.metric{background:var(--bg-card);border-radius:var(--radius);padding:14px 16px;border:1px solid var(--border)}
+.metric-label{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.metric-value{font-size:20px;font-weight:700;color:var(--text)}
+
+/* BUDGET */
+.budget-row{display:flex;justify-content:space-between;padding:9px 14px;font-size:13px;border-bottom:1px solid var(--bg-card)}
+.budget-total{display:flex;justify-content:space-between;padding:12px 14px;background:var(--blue-light);font-weight:700;border-top:2px solid var(--blue-mid)}
+
+/* ALERTS */
+.alert-warn{background:var(--amber-light);border:1px solid #FDE68A;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#92400E}
+.alert-info{background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#1E40AF}
+.alert-danger{background:var(--red-light);border:1px solid #FECACA;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#991B1B}
+.alert-success{background:var(--green-light);border:1px solid #A7F3D0;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#065F46}
+
+/* MISC */
+.multi-check{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.multi-check-item{display:flex;align-items:center;gap:5px;padding:5px 11px;border:1.5px solid var(--border);
+  border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;background:var(--bg-white);transition:all .15s}
+.multi-check-item.selected{border-color:var(--blue);background:var(--blue-light);color:var(--blue)}
+.coffee-pair{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:8px}
+.security-section{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--radius-lg);padding:14px;margin-bottom:4px}
+.contractor-section{background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:var(--radius-lg);padding:14px;margin-top:8px}
+.copy-btn{padding:4px 10px;border:1.5px solid var(--blue);border-radius:var(--radius);background:transparent;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.task-card{border:1.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:10px;overflow:hidden;background:var(--bg-white)}
+.task-card-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-card);border-bottom:1px solid var(--border)}
+.task-card-body{padding:10px 14px}
+.task-line{font-size:12px;padding:4px 0;border-bottom:1px solid var(--bg-card);display:flex;gap:6px;align-items:baseline}
 .task-line:last-child{border-bottom:none}
-.warning{background:#FFF3CD;border:1px solid #F0C040;border-radius:8px;padding:10px 13px;font-size:12px;color:#7A4F00;margin-top:12px}
-.info{background:#E6F1FB;border:1px solid #B5D4F4;border-radius:8px;padding:10px 13px;font-size:12px;color:#0C447C;margin-top:8px}
-.settings-section{background:#fff;border:1px solid #e8e7e0;border-radius:10px;padding:14px;margin-bottom:16px}
-.multi-check{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.multi-check-item{display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #d0cfc8;border-radius:6px;cursor:pointer;font-size:13px;background:#fff;transition:all .15s}
-.multi-check-item.selected{border-color:#185FA5;background:#E6F1FB;color:#185FA5}
-.overdue-label{font-size:10px;color:#E24B4A;font-weight:600;margin-left:4px}
-.coffee-pair{background:#f9f9f7;border:1px solid #e8e7e0;border-radius:8px;padding:10px;margin-bottom:8px}
-.venue-info{background:#E6F1FB;border-radius:6px;padding:8px 10px;font-size:12px;color:#0C447C;margin-top:4px}
-.security-section{background:#FFF8E7;border:1px solid #F0C040;border-radius:10px;padding:14px;margin-bottom:4px}
-.contractor-section{background:#f0f8f0;border:1px solid #9FE1CB;border-radius:10px;padding:14px;margin-top:8px}
+.setup-banner{background:var(--amber-light);border:1.5px solid #FDE68A;border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px;font-size:13px}
+.settings-section{background:var(--bg-white);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
+.donor-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--blue-light);
+  color:var(--blue);border-radius:20px;font-size:11px;font-weight:600}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;
+  padding:10px 20px;border-radius:var(--radius);font-size:13px;z-index:9999;opacity:0;
+  transition:opacity .3s;pointer-events:none;font-family:var(--font);font-weight:500}
+.toast.show{opacity:1}
+
+/* DOC MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,37,53,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg-white);border-radius:var(--radius-lg);padding:24px;max-width:500px;width:100%;box-shadow:var(--shadow-md)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text)}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <div class="toast" id="toast"></div>
 <script type="text/babel">
-const {useState,useEffect,useRef}=React;
+const {useState,useEffect,useRef,useCallback}=React;
 
+const LOGO_B64="data:image/png;base64,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";
+
+
+// ══ DEFAULTS ══════════════════════════════════════════
 const DEFAULT_CONFIG={sheetsApiUrl:""};
-
 const DEFAULT_TEAM=[
-  {name:"Банчук Олександр",email:"banchuk@pravo.org.ua"},
-  {name:"Виноградова Ольга",email:"vynohradova@pravo.org.ua"},
-  {name:"Головата Наталія",email:"talinamak@gmail.com"},
-  {name:"Дерець Вікторія",email:"derets@pravo.org.ua"},
-  {name:"Захарченко Мар'яна",email:"maryana@pravo.org.ua"},
-  {name:"Кириченко Юлія",email:"juliakyr@gmail.com"},
-  {name:"Коліушко Ігор Борисович",email:"koliushko@pravo.org.ua"},
-  {name:"Коломієць Аліна",email:"kolomiiets@pravo.org.ua"},
-  {name:"Куйбіда Роман",email:"kuybida@pravo.org.ua"},
-  {name:"Мельник Вікторія",email:"melnyk@pravo.org.ua"},
-  {name:"Новак Вікторія",email:"novak@pravo.org.ua"},
-  {name:"Новосел Наталія",email:"novosel@pravo.org.ua"},
-  {name:"Рибитва Юлія",email:"rybytva@pravo.org.ua"},
-  {name:"Смалюк Роман",email:"smaliuk@pravo.org.ua"},
-  {name:"Степанов Микола",email:"stepanov@pravo.org.ua"},
-  {name:"Тибінка Христина",email:"tybinka@pravo.org.ua"},
-  {name:"Тимощук Віктор",email:"vtymoschuk@gmail.com"},
-  {name:"Дроздов Денис",email:"denys.v.drozdov@gmail.com"},
-  {name:"Дмитро Український",email:"dmitro@pravo.org.ua"},
-  {name:"Хавронюк Микола Іванович",email:"khavronuk@pravo.org.ua"},
-  {name:"Чиркін Антон",email:"antonchirkin14@gmail.com"},
-  {name:"Школьний Євген",email:"shkolniy@pravo.org.ua"},
+  {name:"Банчук Олександр",email:"banchuk@pravo.org.ua",role:"expert"},
+  {name:"Виноградова Ольга",email:"vynohradova@pravo.org.ua",role:"comm"},
+  {name:"Головата Наталія",email:"talinamak@gmail.com",role:"expert"},
+  {name:"Дерець Вікторія",email:"derets@pravo.org.ua",role:"expert"},
+  {name:"Захарченко Мар'яна",email:"maryana@pravo.org.ua",role:"other"},
+  {name:"Кириченко Юлія",email:"juliakyr@gmail.com",role:"expert"},
+  {name:"Коліушко Ігор Борисович",email:"koliushko@pravo.org.ua",role:"expert"},
+  {name:"Коломієць Аліна",email:"kolomiiets@pravo.org.ua",role:"comm"},
+  {name:"Куйбіда Роман",email:"kuybida@pravo.org.ua",role:"expert"},
+  {name:"Мельник Вікторія",email:"melnyk@pravo.org.ua",role:"comm"},
+  {name:"Новак Вікторія",email:"novak@pravo.org.ua",role:"comm"},
+  {name:"Новосел Наталія",email:"novosel@pravo.org.ua",role:"expert"},
+  {name:"Рибитва Юлія",email:"rybytva@pravo.org.ua",role:"comm"},
+  {name:"Смалюк Роман",email:"smaliuk@pravo.org.ua",role:"expert"},
+  {name:"Степанов Микола",email:"stepanov@pravo.org.ua",role:"other"},
+  {name:"Тибінка Христина",email:"tybinka@pravo.org.ua",role:"expert"},
+  {name:"Тимощук Віктор",email:"vtymoschuk@gmail.com",role:"expert"},
+  {name:"Дроздов Денис",email:"denys.v.drozdov@gmail.com",role:"expert"},
+  {name:"Дмитро Український",email:"dmitro@pravo.org.ua",role:"other"},
+  {name:"Хавронюк Микола Іванович",email:"khavronuk@pravo.org.ua",role:"expert"},
+  {name:"Чиркін Антон",email:"antonchirkin14@gmail.com",role:"expert"},
+  {name:"Школьний Євген",email:"shkolniy@pravo.org.ua",role:"expert"},
 ];
-
-const DEFAULT_VENUES={
-  "Київ":["Готель Національний","Hilton Kyiv","Radisson Blu","Укрінформ (УКМЦ)","KyivHall","Зелений зал ЦППР","Фіолетовий зал ЦППР"],
-  "Львів":["Готель Кобрин","Львівська політехніка","Інше"],
-  "Дніпро":["Готель Дніпро","Інше"],
-  "Одеса":["Інше"],
-  "Харків":["Інше"],
-  "Луцьк":["Інше"],
-  "Запоріжжя":["Інше"],
-};
+const DEFAULT_EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція","Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч","Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
+const DEFAULT_ACCESS_TYPES=["Вільний для всіх","Лише для тих, хто має посилання","Для запрошених","Лише для підтверджених учасників"];
+const DEFAULT_DONORS=["GIZ","IDEA","DRI","Відродження","Ukr2EU","Інший","Без донора"];
+const DEFAULT_VENUES={"Київ":["Готель Національний","Hilton Kyiv","Radisson Blu","Укрінформ (УКМЦ)","KyivHall","Зелений зал ЦППР","Фіолетовий зал ЦППР"],"Львів":["Готель Кобрин","Львівська політехніка"],"Дніпро":[],"Одеса":[],"Харків":[],"Луцьк":[],"Запоріжжя":[]};
+const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
+const SEATING=["Будь-який","Коло","Півколо","Амфітеатр","Інше"];
+const EVENT_FORMATS=["Офлайн","Онлайн","Гібрид"];
+const DURATION_TYPES=["2-3 години","Пів дня","Повний день","Кілька днів"];
+const COFFEE_LEVELS=[{v:"coffee_basic",l:"Базовий"},{v:"coffee_std",l:"Стандартний"},{v:"coffee_premium",l:"Преміум"}];
+const STREAM_PLATFORMS=["YouTube","Facebook","Zoom","Teams"];
 
 const DEFAULT_COSTS={
-  hall:{
-    "Київ":{sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},
-    "Львів":{sh:5000,sf:8000,mh:8500,mf:14000,lh:13000,lf:22000},
-    def:{sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000},
-  },
-  cat:{
-    "Київ":{cb:350,cs:450,cp:600,w:34,lb:600,ls:400,buf:700,frs:700},
-    "Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,buf:600,frs:600},
-    def:{cb:350,cs:400,cp:500,w:30,lb:450,ls:320,buf:550,frs:550},
-  },
-  tech:{
-    "Київ":{tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},
-    "Львів":{tr:9500,st:9000,ph:2200,vd:2800,bg:90,pr:40},
-    def:{tr:9000,st:8000,ph:2000,vd:2500,bg:90,pr:40},
-  },
+  hall:{"Київ":{sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},"Львів":{sh:5000,sf:8000,mh:8500,mf:14000,lh:13000,lf:22000},def:{sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000}},
+  cat:{"Київ":{cb:350,cs:450,cp:600,w:34,lb:600,ls:400,frs:700},"Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,frs:600},def:{cb:350,cs:400,cp:500,w:30,lb:450,ls:320,frs:550}},
+  tech:{"Київ":{tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},"Львів":{tr:9500,st:9000,ph:2200,vd:2800,bg:90,pr:40},def:{tr:9000,st:8000,ph:2000,vd:2500,bg:90,pr:40}},
+  transport:{"Черкаси":{train_min:350,train_max:550,bus_min:300,bus_max:500},"Львів":{train_min:450,train_max:650,bus_min:480,bus_max:750},"Дніпро":{train_min:500,train_max:700,bus_min:500,bus_max:800},"Харків":{train_min:500,train_max:750,bus_min:550,bus_max:900},"Одеса":{train_min:600,train_max:900,bus_min:500,bus_max:900}},
 };
 
+// 74 tasks from Excel
 const DEFAULT_TASKS=[
-  {g:"Підготовка (за 21 день)",d:21,t:"Сформувати документ «опис заходу»",role:"expert"},
-  {g:"Підготовка (за 21 день)",d:21,t:"Додати захід у календар ЦППР",role:"coord"},
-  {g:"Підготовка (за 21 день)",d:21,t:"Сформувати попередній список учасників і доповідачів",role:"expert"},
-  {g:"Підготовка (за 20 днів)",d:20,t:"Розробити Google-анкету для реєстрації",role:"coord",cond:"registrationForm"},
-  {g:"Погодження (за 18 днів)",d:18,t:"Погодити програму з керівником проєкту",role:"expert"},
-  {g:"Погодження (за 15 днів)",d:15,t:"Погодити «опис заходу» з донором",role:"expert",cond:"hasDonor"},
-  {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати погоджену програму команді",role:"expert"},
-  {g:"Комунікації (за 14 днів)",d:14,t:"Розробити заставку для соцмереж",role:"comm"},
-  {g:"Комунікації (за 14 днів)",d:14,t:"Запросити доповідачів і підтвердити участь",role:"expert"},
-  {g:"Комунікації (за 14 днів)",d:14,t:"Анонс події на ресурсах ЦППР",role:"comm",cond:"websiteAnnounce"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Формування документу «опис заходу»",role:"expert"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Надіслати контакти донора комунікаційницям",role:"expert",cond:"hasDonor"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Додавання заходу в календар ЦППР",role:"coord"},
+  {g:"Підготовка (за 21 день)",d:21,t:"Формування попереднього списку учасників та доповідачів",role:"expert"},
+  {g:"Підготовка (за 20 днів)",d:20,t:"Розробка Google-анкети для реєстрації (за потреби)",role:"coord",cond:"registrationForm"},
+  {g:"Погодження (за 18 днів)",d:18,t:"Погодження програми заходу з керівником проєкту",role:"expert"},
+  {g:"Погодження (за 15 днів)",d:15,t:"Погодження «опису заходу» з донором",role:"expert",cond:"hasDonor"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Надсилання погодженої програми команді",role:"expert"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Розробка заставки заходу та матеріалів для візуалізації",role:"comm"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Запрошення доповідачів. Підтвердження участі",role:"expert"},
   {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати анонс в Укрінформ",role:"comm",cond:"media"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Анонс події на ресурсах ЦППР",role:"comm",cond:"websiteAnnounce"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити кейтеринг (кава-паузи)",role:"dmitro",cond:"hasCoffee"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити синхронний переклад",role:"dmitro",cond:"translation"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити технічне обслуговування (IQ Conference)",role:"dmitro",cond:"confService"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити фотографа",role:"comm",cond:"photographer"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити відеооператора",role:"comm",cond:"videographer"},
-  {g:"За 10 днів",d:10,t:"Погодити програму з донором",role:"expert",cond:"hasDonor"},
-  {g:"За 8 днів",d:8,t:"Розіслати запрошення учасникам",role:"coord"},
-  {g:"За 8 днів",d:8,t:"Підготувати презентацію і надіслати комунікаційникам",role:"expert"},
-  {g:"За 8 днів",d:8,t:"Сформувати список учасників з проживанням/проїздом",role:"expert"},
-  {g:"За 7 днів",d:7,t:"Підготувати і поширити прес-анонс",role:"comm",cond:"media"},
-  {g:"За 7 днів",d:7,t:"Запросити ЗМІ",role:"comm",cond:"media"},
-  {g:"За 5 днів",d:5,t:"Сформувати і розіслати остаточну програму",role:"expert"},
-  {g:"За 5 днів",d:5,t:"Погодити пости і новини з донором",role:"comm",cond:"donorApproval"},
+  {g:"За 10 днів",d:10,t:"Погодження з донором програми заходу",role:"expert",cond:"hasDonor"},
+  {g:"За 8 днів",d:8,t:"Запрошення учасників. Розсилка листів з посиланням на реєстрацію",role:"coord"},
+  {g:"За 8 днів",d:8,t:"Підготовка презентації, надсилання комунікаційникам",role:"expert"},
+  {g:"За 8 днів",d:8,t:"Формування остаточного списку учасників з проживанням/проїздом",role:"expert"},
+  {g:"За 7 днів",d:7,t:"Формування остаточного списку доповідачів",role:"expert"},
+  {g:"За 7 днів",d:7,t:"Підготовка прес-анонсу",role:"comm",cond:"media"},
+  {g:"За 7 днів",d:7,t:"Поширення прес-анонсу",role:"comm",cond:"media"},
+  {g:"За 6 днів",d:6,t:"Запрошення ЗМІ",role:"comm",cond:"media"},
+  {g:"За 6 днів",d:6,t:"Формування остаточного пакету роздаткових матеріалів (>20 стор.)",role:"expert"},
+  {g:"За 5 днів",d:5,t:"Формування остаточної програми заходу",role:"expert"},
+  {g:"За 5 днів",d:5,t:"Розсилка програми учасникам",role:"coord"},
+  {g:"За 5 днів",d:5,t:"Погодження з донором новин, постів тощо",role:"comm",cond:"donorApproval"},
+  {g:"За 5 днів",d:5,t:"Опублікувати дослідження на ресурсах до заходу",role:"comm",cond:"publishResearch"},
+  {g:"За 5 днів",d:5,t:"Друк роздаткових матеріалів (>20 стор.)",role:"dmitro"},
   {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",role:"coord"},
   {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",role:"expert"},
-  {g:"За 3 дні",d:3,t:"Підготувати список табличок на столи",role:"coord",cond:"nameplates"},
-  {g:"За 3 дні",d:3,t:"Сформувати остаточний список реєстрації",role:"coord"},
-  {g:"За 2 дні",d:2,t:"Надіслати нагадування учасникам із програмою",role:"coord"},
-  {g:"За 2 дні",d:2,t:"Надіслати список реєстрації до IQ Conference",role:"coord",cond:"confService"},
+  {g:"За 3 дні",d:3,t:"Формування і відправка готових видань",role:"coord",cond:"publishResearch"},
+  {g:"За 3 дні",d:3,t:"Формування остаточного пакету роздаткових матеріалів (<20 стор.)",role:"expert"},
+  {g:"За 3 дні",d:3,t:"Отримати цитату для новини від донора",role:"comm",cond:"hasDonor"},
+  {g:"За 2 дні",d:2,t:"Надати цитату комунікаційницям для новини ДО заходу",role:"expert"},
+  {g:"За 2 дні",d:2,t:"Друк роздаткових матеріалів (<20 стор.)",role:"dmitro"},
+  {g:"За 2 дні",d:2,t:"Нагадати учасникам про захід та надіслати інформацію",role:"coord"},
+  {g:"За 2 дні",d:2,t:"Формування списку табличок на столи, надіслати Українському",role:"coord",cond:"nameplates"},
+  {g:"За 2 дні",d:2,t:"Формування остаточного списку реєстрації учасників",role:"coord"},
+  {g:"За 2 дні",d:2,t:"Формування електронного списку реєстрації",role:"coord"},
+  {g:"За 1 день",d:1,t:"Погодження пресрелізу для класичних ЗМІ",role:"comm",cond:"pressRelease"},
+  {g:"За 1 день",d:1,t:"Надати цитату комунікаційницям для новини",role:"expert"},
+  {g:"За 1 день",d:1,t:"Надіслати електронний список реєстрації до IQ Conference",role:"coord",cond:"confService"},
+  {g:"За 1 день",d:1,t:"Забезпечення модерації заходу",role:"expert"},
+  {g:"День заходу",d:0,t:"Забезпечити приміщення",role:"dmitro",cond:"needHall"},
+  {g:"День заходу",d:0,t:"Забезпечити проживання",role:"dmitro",cond:"hasAccommodation"},
+  {g:"День заходу",d:0,t:"Забезпечити харчування",role:"dmitro",cond:"hasCoffee"},
+  {g:"День заходу",d:0,t:"Забезпечити проїзд",role:"dmitro",cond:"hasTravel"},
+  {g:"День заходу",d:0,t:"Забезпечити переклад",role:"dmitro",cond:"translation"},
+  {g:"День заходу",d:0,t:"Забезпечити обладнання",role:"dmitro"},
+  {g:"День заходу",d:0,t:"Фліпчарт",role:"dmitro",cond:"flipchart"},
+  {g:"День заходу",d:0,t:"Обладнання для перекладу",role:"dmitro",cond:"translation"},
+  {g:"День заходу",d:0,t:"Папки учасника",role:"coord",cond:"folders"},
+  {g:"День заходу",d:0,t:"Блокноти і ручки",role:"coord",cond:"notebooks"},
+  {g:"День заходу",d:0,t:"Бейджі",role:"coord",cond:"badges"},
+  {g:"День заходу",d:0,t:"Забезпечення професійного фотографа",role:"comm",cond:"photographer"},
+  {g:"День заходу",d:0,t:"Забезпечити доставку та розклад роздаткових матеріалів",role:"coord"},
   {g:"День заходу",d:0,t:"Організувати реєстрацію учасників",role:"coord"},
-  {g:"День заходу",d:0,t:"Встановити банер",role:"coord",cond:"banner"},
-  {g:"День заходу",d:0,t:"Розмістити таблички з ПІБ учасників",role:"coord",cond:"nameplates"},
+  {g:"День заходу",d:0,t:"Доставити та встановити банер",role:"coord",cond:"banner"},
+  {g:"День заходу",d:0,t:"Організувати розміщення табличок з ПІБ учасників",role:"coord",cond:"nameplates"},
+  {g:"День заходу",d:0,t:"Організувати розміщення води зі склянками",role:"coord"},
   {g:"День заходу",d:0,t:"Фотографування заходу",role:"comm",cond:"photographer"},
   {g:"День заходу",d:0,t:"Забезпечити онлайн-трансляцію",role:"dmitro",cond:"stream"},
-  {g:"День заходу",d:0,t:"Опублікувати новину в день заходу",role:"comm"},
-  {g:"Після заходу",d:-1,t:"Надіслати фото, подяки і матеріали учасникам",role:"coord"},
-  {g:"Після заходу",d:-1,t:"Опублікувати пост-реліз на ресурсах ЦППР",role:"comm"},
-  {g:"Після заходу",d:-1,t:"Надіслати звіт донору",role:"coord",cond:"hasDonor"},
-  {g:"Після заходу",d:-7,t:"Сформувати теку з документами заходу",role:"coord"},
-  {g:"Після заходу",d:-7,t:"Отримати оригінали документів від підрядників",role:"dmitro"},
-  {g:"Після заходу",d:-12,t:"Підготувати лист-підсумок",role:"coord"},
+  {g:"День заходу",d:0,t:"Опублікувати новину в день заходу",role:"comm",cond:"newsOnEventDay"},
+  {g:"День заходу",d:0,t:"Повідомлення на ресурсах ЦППР",role:"comm"},
+  {g:"Після заходу",d:-1,t:"Надсилання фото спікерам, подяк, матеріалів заходу",role:"coord"},
+  {g:"Після заходу",d:-1,t:"Підготовка та розсилка пост-релізу, в т.ч. донору",role:"comm"},
+  {g:"Після заходу",d:-1,t:"Розміщення інформації про захід на ресурсах ЦППР",role:"comm"},
+  {g:"Після заходу",d:-1,t:"Надіслати інформацію для донора після заходу",role:"coord",cond:"donorReport"},
+  {g:"Після заходу",d:-2,t:"Підготовка та розсилка матеріалів заходу, листів-подяки",role:"coord"},
+  {g:"Після заходу",d:-5,t:"Моніторинг ЗМІ",role:"comm",cond:"media"},
+  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами заходу",role:"coord"},
+  {g:"Документи (після заходу)",d:-7,t:"Отримання оригіналів документів від контрагентів",role:"dmitro"},
+  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами — фінансові",role:"other"},
+  {g:"Аналіз (після заходу)",d:-10,t:"Організація аналізу результатів заходу",role:"expert"},
+  {g:"Аналіз (після заходу)",d:-12,t:"Лист-підсумок (аналіз відгуків, резюме, проблеми-успіхи)",role:"coord"},
 ];
 
-const EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція","Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч","Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
-const SEATING=["Будь-який","Коло","Півколо","Амфітеатр","Інше"];
-const DONORS=["GIZ","IDEA","DRI","Відродження","Ukr2EU","Інший","Без донора"];
-const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
-const COFFEE_LEVELS=[{v:"coffee_basic",l:"Базовий (~350 грн/ос)"},{v:"coffee_std",l:"Стандартний (~450 грн/ос)"},{v:"coffee_premium",l:"Преміум (~600 грн/ос)"}];
-const STREAM_PLATFORMS=["YouTube","Facebook","Zoom","Teams"];
-const ACCESS_TYPES=["Вільний для всіх","Лише для тих, хто має посилання","Для запрошених","Лише для підтверджених учасників"];
-const EVENT_FORMATS=["Офлайн","Онлайн","Гібрид"];
-const DURATION_TYPES=["2-3 години","Пів дня","Повний день","Кілька днів"];
+const SL={draft:"Чернетка",review:"На розгляді",approved:"Затверджено",cancelled:"Скасовано",done:"Архів"};
+const SC={draft:"#6B7A90",review:"#D97706",approved:"#1C75BC",cancelled:"#DC2626",done:"#00916E"};
+const SB={draft:"#F0F4F8",review:"#FFFBEB",approved:"#E8F3FB",cancelled:"#FEF2F2",done:"#E6F5F1"};
 
-const SL={draft:"Чернетка",review:"На розгляді",approved:"Затверджено — активний",cancelled:"Скасовано",done:"Архів (проведено)"};
-const SC={draft:"#888",review:"#BA7517",approved:"#185FA5",cancelled:"#A32D2D",done:"#0F6E56"};
-const SB={draft:"#f5f5f3",review:"#FAEEDA",approved:"#E6F1FB",cancelled:"#FCEBEB",done:"#E1F5EE"};
-
-function gc(costs,cat,key,city){
-  const m=costs[cat]||DEFAULT_COSTS[cat];
-  return((m[city])||m.def||{})[key]||0;
-}
+// ══ UTILS ══════════════════════════════════════════════
+function gc(costs,cat,key,city){const m=costs[cat]||DEFAULT_COSTS[cat];return((m[city])||m.def||{})[key]||0;}
 
 function calcBudget(f,costs){
-  const C=costs||DEFAULT_COSTS;
-  const city=f.city||"Київ";
-  const p=parseInt(f.participants)||0;
+  const C=costs||DEFAULT_COSTS;const city=f.city||"Київ";const p=parseInt(f.participants)||0;
   const isOnline=f.eventFormat==="Онлайн";
   let total=0;const lines=[];
   if(f.needHall&&!isOnline){
@@ -204,24 +306,16 @@ function calcBudget(f,costs){
     const a=gc(C,"hall",pp,city);
     if(a){total+=a;lines.push({label:`Оренда залу (${f.duration||"повний день"})`,amount:a});}
   }
-  const coffees=f.coffeeItems||[];
-  coffees.forEach((ci,i)=>{
-    if(p>0){
-      const key=ci==="coffee_basic"?"cb":ci==="coffee_premium"?"cp":"cs";
-      const a=gc(C,"cat",key,city)*p;
-      total+=a;lines.push({label:`Кава-пауза ${i+1} (${p} ос)`,amount:a});
-    }
+  (f.coffeeItems||[]).forEach((ci,i)=>{
+    if(p>0){const key=ci==="coffee_basic"?"cb":ci==="coffee_premium"?"cp":"cs";
+      const a=gc(C,"cat",key,city)*p;total+=a;lines.push({label:`Кава-пауза ${i+1} (${p} ос)`,amount:a});}
   });
   if(f.water&&p>0){const a=gc(C,"cat","w",city)*p;total+=a;lines.push({label:`Вода (${p} ос)`,amount:a});}
   if(f.lunch&&p>0){const a=gc(C,"cat",f.lunchType==="lunch_std"?"ls":"lb",city)*p;total+=a;lines.push({label:`Обід (${p} ос)`,amount:a});}
   if(f.buffet&&p>0){const a=gc(C,"cat","frs",city)*p;total+=a;lines.push({label:`Фуршет (${p} ос)`,amount:a});}
   if(f.translation){const a=gc(C,"tech","tr",city);total+=a;lines.push({label:"Синхронний переклад",amount:a});}
   if(f.stream){const a=gc(C,"tech","st",city);total+=a;lines.push({label:"Онлайн-трансляція",amount:a});}
-  if(f.photographer&&p>0){
-    const hrs=parseInt(f.photographerHours)||1;
-    const a=gc(C,"tech","ph",city)*hrs;
-    total+=a;lines.push({label:`Фотограф (${hrs} год)`,amount:a});
-  }
+  if(f.photographer){const hrs=parseInt(f.photographerHours)||1;const a=gc(C,"tech","ph",city)*hrs;total+=a;lines.push({label:`Фотограф (${hrs} год)`,amount:a});}
   if(f.videographer){const a=gc(C,"tech","vd",city);total+=a;lines.push({label:"Відеооператор",amount:a});}
   if(f.badges&&p>0){const a=gc(C,"tech","bg",city)*p;total+=a;lines.push({label:`Бейджі (${p} ос)`,amount:a});}
   if(f.printedPrograms&&p>0){const a=gc(C,"tech","pr",city)*p;total+=a;lines.push({label:`Програми (${p} ос)`,amount:a});}
@@ -232,43 +326,28 @@ function genChecklist(f,taskTemplates,team){
   const ed=f.eventDate?new Date(f.eventDate):null;
   const today=new Date();today.setHours(0,0,0,0);
   const dd=d=>{
-    if(!ed||d===0)return{label:"День заходу",date:ed};
-    if(d<0){const dt=new Date(ed);dt.setDate(dt.getDate()+Math.abs(d));return{label:`${Math.abs(d)} дн. після`,date:dt};}
-    const dt=new Date(ed);dt.setDate(dt.getDate()-d);
-    return{label:dt.toLocaleDateString("uk-UA"),date:dt};
+    if(d===0)return{label:"День заходу",date:ed};
+    if(d<0){const dt=ed?new Date(ed):null;dt&&dt.setDate(dt.getDate()+Math.abs(d));return{label:`${Math.abs(d)} дн. після`,date:dt};}
+    if(!ed)return{label:`за ${d} днів`,date:null};
+    const dt=new Date(ed);dt.setDate(dt.getDate()-d);return{label:dt.toLocaleDateString("uk-UA"),date:dt};
   };
-  const resolveWho=(role,f,team)=>{
-    const roles={
-      expert:f.expertName||"Експерт",
-      coord:f.coordinator||"Координатор",
-      comm:f.commManager||"Комунікаційник",
-      dmitro:"Дмитро Український",
-    };
-    return roles[role]||role;
+  const roleMap={
+    expert:f.expertName||"Експерт",coord:f.coordinator||"Координатор",
+    comm:f.commManager||"Комунікаційник",dmitro:"Дмитро Український",other:"Відповідальний",
   };
-  const checkCond=(cond,f)=>{
-    if(!cond)return true;
-    const checks={
-      registrationForm:f.registrationForm,
-      hasDonor:f.donor&&f.donor!=="Без донора",
-      websiteAnnounce:f.websiteAnnounce,
-      media:f.media,
-      hasCoffee:f.coffeeItems&&f.coffeeItems.length>0,
-      translation:f.translation,
-      confService:f.confService,
-      photographer:f.photographer,
-      videographer:f.videographer,
-      donorApproval:f.donorApproval,
-      nameplates:f.nameplates,
-      banner:f.banner,
-      stream:f.stream,
-    };
-    return checks[cond]!==false&&checks[cond]!==undefined?!!checks[cond]:true;
+  const condMap={
+    registrationForm:!!f.registrationForm,hasDonor:!!(f.donor&&f.donor!=="Без донора"),
+    websiteAnnounce:!!f.websiteAnnounce,media:!!f.media,hasCoffee:!!(f.coffeeItems?.length>0),
+    translation:!!f.translation,confService:!!f.confService,photographer:!!f.photographer,
+    videographer:!!f.videographer,donorApproval:!!f.donorApproval,nameplates:!!f.nameplates,
+    banner:!!f.banner,stream:!!f.stream,needHall:!!f.needHall,pressRelease:!!f.pressRelease,
+    publishResearch:!!f.publishResearch,donorReport:!!f.donorReport,newsOnEventDay:!!f.newsOnEventDay,
+    flipchart:!!f.flipchart,folders:!!f.folders,notebooks:!!f.notebooks,badges:!!f.badges,
+    hasAccommodation:!!(parseInt(f.accommodation)>0),hasTravel:!!(parseInt(f.travel)>0),
   };
-  return(taskTemplates||DEFAULT_TASKS).filter(t=>checkCond(t.cond,f)).map(t=>{
-    const dl=dd(t.d);
-    const isOverdue=dl.date&&dl.date<today&&t.d>=0;
-    return{...t,who:resolveWho(t.role,f,team),dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue};
+  return(taskTemplates||DEFAULT_TASKS).filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
+    const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
+    return{...t,who:roleMap[t.role]||t.role,dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue};
   });
 }
 
@@ -276,30 +355,23 @@ async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
     let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
-    if(data&&Object.keys(data).length>0){
-      for(const[k,v]of Object.entries(data)){
-        url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
-      }
-    }
+    if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
     const r=await fetch(url,{method:"GET",redirect:"follow"});
-    const text=await r.text();
-    try{return JSON.parse(text);}catch(e){return null;}
-  }catch(e){console.error("Sheets error:",e);return null;}
+    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+  }catch(e){console.error(e);return null;}
 }
 
-function showToast(msg){
-  const t=document.getElementById("toast");
-  t.textContent=msg;t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),2500);
+function showToast(msg,type="info"){
+  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2800);
 }
 function copyText(text){
   navigator.clipboard.writeText(text).then(()=>showToast("Скопійовано!")).catch(()=>{
-    const ta=document.createElement("textarea");ta.value=text;
-    document.body.appendChild(ta);ta.select();document.execCommand("copy");
-    document.body.removeChild(ta);showToast("Скопійовано!");
+    const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);showToast("Скопійовано!");
   });
 }
 
+// ══ UI COMPONENTS ══════════════════════════════════════
 function Badge({s}){return<span className="tag"style={{background:SB[s],color:SC[s]}}>{SL[s]}</span>;}
 function Sel({val,set,opts,ph}){
   return<select value={val||""}onChange={e=>set(e.target.value)}>
@@ -307,37 +379,221 @@ function Sel({val,set,opts,ph}){
     {opts.map(o=>typeof o==="string"?<option key={o}value={o}>{o}</option>:<option key={o.v}value={o.v}>{o.l}</option>)}
   </select>;
 }
-function TeamSel({val,set,team,ph}){
+function TeamSel({val,set,team,ph,filterRole}){
+  const filtered=filterRole?(team||DEFAULT_TEAM).filter(m=>m.role===filterRole):(team||DEFAULT_TEAM);
   return<select value={val||""}onChange={e=>set(e.target.value)}>
     <option value="">{ph||"— оберіть —"}</option>
-    {(team||DEFAULT_TEAM).map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
+    {filtered.map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
   </select>;
 }
-function Inp({val,set,ph,type="text",min,max}){
-  return<input type={type}value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}min={min}max={max}/>;
-}
+function Inp({val,set,ph,type="text",min,max}){return<input type={type}value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}min={min}max={max}/>;}
 function TA({val,set,ph,rows=2}){return<textarea value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}rows={rows}/>;}
-function CB({checked,set,label}){
-  return<label className="cb-row"><input type="checkbox"checked={!!checked}onChange={e=>set(e.target.checked)}/>{label}</label>;
-}
+function CB({checked,set,label}){return<label className="cb-row"><input type="checkbox"checked={!!checked}onChange={e=>set(e.target.checked)}/>{label}</label>;}
 function F({label,req,children,hint}){
   return<div className="field">
-    <div className="field-label">{label}{req&&<span style={{color:"#E24B4A"}}> *</span>}</div>
+    <div className="field-label">{label}{req&&<span style={{color:"var(--red)"}}> *</span>}</div>
     {children}
-    {hint&&<div style={{fontSize:11,color:"#999",marginTop:2}}>{hint}</div>}
+    {hint&&<div className="field-hint">{hint}</div>}
   </div>;
 }
-function ST({children,color}){
-  return<div className="section-title"style={color?{color}:{}}>{children}</div>;
-}
+function ST({children,icon}){return<div className="section-title">{icon&&<span>{icon}</span>}{children}</div>;}
 function MultiCheck({options,selected,onChange}){
   const sel=selected||[];
   const toggle=v=>onChange(sel.includes(v)?sel.filter(x=>x!==v):[...sel,v]);
-  return<div className="multi-check">
-    {options.map(o=><div key={o}className={`multi-check-item${sel.includes(o)?" selected":""}`}onClick={()=>toggle(o)}>{o}</div>)}
+  return<div className="multi-check">{options.map(o=><div key={o}className={`multi-check-item${sel.includes(o)?" selected":""}`}onClick={()=>toggle(o)}>{o}</div>)}</div>;
+}
+
+// ══ GENERATE DOCUMENT HTML ══════════════════════════════
+function generateDocHTML(ev,budget,blocks){
+  const f=ev.form||{};
+  const formatDate=d=>d?new Date(d).toLocaleDateString("uk-UA"):"—";
+  const yn=v=>v?"Так":"Ні";
+  const sections=[];
+  if(blocks.includes("main")){
+    sections.push(`<h2>Основна інформація</h2>
+    <table><tr><td>Назва</td><td><b>${f.eventName||"—"}</b></td></tr>
+    <tr><td>Тип</td><td>${f.eventType==="Інше"?f.eventTypeCustom||"—":f.eventType||"—"}</td></tr>
+    <tr><td>Формат</td><td>${f.eventFormat||"—"}</td></tr>
+    <tr><td>Дата початку</td><td>${formatDate(f.eventDate)}</td></tr>
+    <tr><td>Дата закінчення</td><td>${formatDate(f.eventDateEnd)}</td></tr>
+    <tr><td>Місто</td><td>${f.city||"—"}</td></tr>
+    <tr><td>Місце</td><td>${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}</td></tr>
+    <tr><td>Донор</td><td>${f.donor||"—"}</td></tr>
+    <tr><td>Тип доступу</td><td>${f.eventAccess||"—"}</td></tr>
+    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}</td></tr></table>`);
+  }
+  if(blocks.includes("team")){
+    sections.push(`<h2>Відповідальні</h2>
+    <table><tr><td>Експерт ЦППР</td><td>${f.expertName||"—"}</td></tr>
+    <tr><td>Координатор</td><td>${f.coordinator||"—"}</td></tr>
+    <tr><td>Комунікаційний менеджер</td><td>${f.commManager||"—"}</td></tr>
+    <tr><td>Асистент</td><td>${f.assistant||"—"}</td></tr></table>`);
+  }
+  if(blocks.includes("participants")){
+    sections.push(`<h2>Учасники</h2>
+    <table><tr><td>Кількість</td><td>${f.participants||"—"}</td></tr>
+    <tr><td>Тип розсадки</td><td>${f.seating||"—"}</td></tr>
+    <tr><td>Склад аудиторії</td><td>${f.audienceDesc||"—"}</td></tr>
+    <tr><td>Учасники з регіонів</td><td>${f.regionParticipants||"—"}</td></tr>
+    <tr><td>Потреба у проживанні</td><td>${f.accommodation||0} ос.</td></tr>
+    <tr><td>Відшкодування проїзду</td><td>${f.travel||0} ос.</td></tr></table>`);
+  }
+  if(blocks.includes("tech")){
+    const techItems=[f.needHall&&"Оренда залу",f.microphone&&"Мікрофони",f.projector&&"Проектор і екран",f.laptop&&"Ноутбук",f.flipchart&&"Фліпчарт",f.stream&&`Трансляція (${(f.streamPlatforms||[]).join(", ")||"—"})`,f.translation&&"Синхронний переклад",f.photographer&&`Фотограф${f.photographerHours?` (${f.photographerHours} год)`:""}`,f.videographer&&"Відеооператор",f.recording&&"Запис"].filter(Boolean);
+    sections.push(`<h2>Технічне забезпечення</h2><ul>${techItems.map(i=>`<li>${i}</li>`).join("")||"<li>—</li>"}</ul>`);
+  }
+  if(blocks.includes("catering")){
+    const cats=[];
+    (f.coffeeItems||[]).forEach((c,i)=>cats.push(`Кава-пауза ${i+1}: ${c==="coffee_basic"?"Базовий":c==="coffee_premium"?"Преміум":"Стандартний"}`));
+    if(f.water)cats.push("Вода на стіл");if(f.lunch)cats.push(`Обід (${f.lunchType==="lunch_std"?"стандарт":"бізнес"})`);if(f.buffet)cats.push("Фуршет");
+    sections.push(`<h2>Харчування</h2><ul>${cats.map(i=>`<li>${i}</li>`).join("")||"<li>—</li>"}</ul>`);
+  }
+  if(blocks.includes("print")){
+    const items=[f.badges&&"Бейджі",f.printedPrograms&&"Друковані програми",f.folders&&"Папки учасника",f.notebooks&&"Блокноти і ручки",f.nameplates&&"Таблички на стіл",f.banner&&"Банер"].filter(Boolean);
+    sections.push(`<h2>Поліграфія</h2><ul>${items.map(i=>`<li>${i}</li>`).join("")||"<li>—</li>"}</ul>`);
+  }
+  if(blocks.includes("security")){
+    const sec=[f.secShelter&&"Наявність укриття на локації",f.secUDO&&"Координація з УДО",f.secAccreditation&&"Акредитація учасників на вході",f.secGenerator&&"Резервне живлення (генератор)",f.secInternational&&"Інструктаж для міжнародних учасників",f.secNoPhoto&&"Заборона фото/відео"].filter(Boolean);
+    sections.push(`<h2>🔒 Безпека</h2><ul>${sec.map(i=>`<li>${i}</li>`).join("")||"<li>Особливих вимог не зазначено</li>"}</ul>${f.secNotes?`<p>${f.secNotes}</p>`:""}`);
+  }
+  if(blocks.includes("donor")){
+    sections.push(`<h2>Комунікації та донор</h2>
+    <table><tr><td>Залучення ЗМІ</td><td>${yn(f.media)}</td></tr>
+    <tr><td>Анонс на сайті ЦППР</td><td>${yn(f.websiteAnnounce)}</td></tr>
+    <tr><td>Донор залучений до організації</td><td>${yn(f.donorInvolved)}</td></tr>
+    <tr><td>Донор фінансує частину</td><td>${yn(f.donorFunds)}</td></tr>
+    <tr><td>Погодження програми з донором</td><td>${yn(f.donorApproval)}</td></tr>
+    <tr><td>Погодження новин/постів</td><td>${yn(f.donorNewsApproval)}</td></tr>
+    <tr><td>Надіслати звіт донору</td><td>${yn(f.donorReport)}</td></tr></table>`);
+  }
+  if(blocks.includes("budget")){
+    sections.push(`<h2>Орієнтовний бюджет</h2>
+    <table><tr><th>Стаття витрат</th><th>Сума, грн</th></tr>
+    ${budget.lines.map(l=>`<tr><td>${l.label}</td><td>${l.amount.toLocaleString("uk-UA")}</td></tr>`).join("")}
+    <tr class="total"><td><b>Разом</b></td><td><b>${budget.total.toLocaleString("uk-UA")}</b></td></tr></table>`);
+  }
+  if(blocks.includes("checklist")&&ev.checklist?.length){
+    const groups=[...new Set(ev.checklist.map(t=>t.g))];
+    sections.push(`<h2>Чеклист задач</h2>${groups.map(g=>`<h3>${g}</h3><ul>${ev.checklist.filter(t=>t.g===g).map(t=>`<li${t.done?' style="text-decoration:line-through;color:#999"':''}><b>${t.who}</b> — ${t.t} <span style="color:#999">(${t.dl||"—"})</span></li>`).join("")}</ul>`).join("")}`);
+  }
+  return`<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+  <title>${f.eventName||"Захід ЦППР"}</title>
+  <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1A2535;font-size:13px}
+  .doc-header{display:flex;align-items:center;gap:12px;border-bottom:3px solid #1C75BC;padding-bottom:16px;margin-bottom:24px}
+  .doc-header img{width:40px;height:40px}
+  .doc-title h1{font-size:18px;color:#252868;margin:0}.doc-title p{font-size:11px;color:#6B7A90;margin:2px 0 0}
+  h2{font-size:14px;color:#1C75BC;border-bottom:1px solid #D0DCE8;padding-bottom:6px;margin:24px 0 10px}
+  h3{font-size:12px;color:#6B7A90;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.06em}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  td,th{padding:6px 10px;border:1px solid #D0DCE8;font-size:12px}td:first-child{color:#6B7A90;width:40%}
+  th{background:#F0F4F8;font-weight:600}tr.total td{background:#E8F3FB}
+  ul{padding-left:18px;margin:0 0 10px}li{margin:3px 0;font-size:12px}
+  .footer{margin-top:40px;padding-top:16px;border-top:1px solid #D0DCE8;font-size:11px;color:#9AAABB;text-align:center}
+  </style></head><body>
+  <div class="doc-header">
+    <img src="${LOGO_B64}" alt="ЦППР"/>
+    <div class="doc-title"><h1>${f.eventName||"Захід ЦППР"}</h1>
+    <p>Центр політико-правових реформ — Система заявок на заходи</p>
+    <p>Сформовано: ${new Date().toLocaleDateString("uk-UA")}</p></div>
+  </div>
+  ${sections.join("\n")}
+  <div class="footer">ЦППР — Центр політико-правових реформ · cplr.org.ua</div>
+  </body></html>`;
+}
+
+// ══ DOC MODAL ══════════════════════════════════════════
+function DocModal({ev,budget,onClose}){
+  const [docType,setDocType]=useState("team");
+  const [customBlocks,setCustomBlocks]=useState(["main","tech","catering","print","security"]);
+  const allBlocks=[
+    {id:"main",l:"Основна інформація"},
+    {id:"team",l:"Відповідальні"},
+    {id:"participants",l:"Учасники"},
+    {id:"tech",l:"Технічне забезпечення"},
+    {id:"catering",l:"Харчування"},
+    {id:"print",l:"Поліграфія"},
+    {id:"security",l:"Безпека"},
+    {id:"donor",l:"Комунікації та донор"},
+    {id:"budget",l:"Бюджет"},
+    {id:"checklist",l:"Чеклист задач"},
+  ];
+  const presets={
+    team:["main","team","participants","tech","catering","print","security","donor","budget","checklist"],
+    donor:["main","participants","tech","catering","donor"],
+    contractor:customBlocks,
+  };
+  const getBlocks=()=>presets[docType]||customBlocks;
+
+  const generateAndOpen=()=>{
+    const html=generateDocHTML(ev,budget,getBlocks());
+    const blob=new Blob([html],{type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    window.open(url,"_blank");
+    showToast("Документ відкрито у новій вкладці — збережіть як PDF (Ctrl+P → Зберегти як PDF)");
+  };
+
+  const generateDocx=()=>{
+    const f=ev.form||{};
+    const blocks=getBlocks();
+    let text=`ЦППР — Система заявок на заходи\n${"=".repeat(50)}\n\n`;
+    text+=`Захід: ${f.eventName||"—"}\nСформовано: ${new Date().toLocaleDateString("uk-UA")}\n\n`;
+    if(blocks.includes("main")){
+      text+=`ОСНОВНА ІНФОРМАЦІЯ\n${"-".repeat(30)}\n`;
+      text+=`Назва: ${f.eventName||"—"}\nТип: ${f.eventType==="Інше"?f.eventTypeCustom||"—":f.eventType||"—"}\n`;
+      text+=`Формат: ${f.eventFormat||"—"}\nДата: ${f.eventDate||"—"} — ${f.eventDateEnd||"—"}\n`;
+      text+=`Місто: ${f.city||"—"}\nМісце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\n`;
+      text+=`Донор: ${f.donor||"—"}\nДоступ: ${f.eventAccess||"—"}\n\n`;
+    }
+    if(blocks.includes("team")){
+      text+=`ВІДПОВІДАЛЬНІ\n${"-".repeat(30)}\n`;
+      text+=`Експерт: ${f.expertName||"—"}\nКоординатор: ${f.coordinator||"—"}\n`;
+      text+=`Комунікаційний менеджер: ${f.commManager||"—"}\nАсистент: ${f.assistant||"—"}\n\n`;
+    }
+    if(blocks.includes("budget")&&budget.lines.length>0){
+      text+=`ОРІЄНТОВНИЙ БЮДЖЕТ\n${"-".repeat(30)}\n`;
+      budget.lines.forEach(l=>text+=`${l.label}: ${l.amount.toLocaleString("uk-UA")} грн\n`);
+      text+=`РАЗОМ: ${budget.total.toLocaleString("uk-UA")} грн\n\n`;
+    }
+    const blob=new Blob([text],{type:"text/plain;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${f.eventName||"захід"}_ЦППР.txt`;
+    a.click();URL.revokeObjectURL(url);
+    showToast("Текстовий документ завантажено");
+  };
+
+  return<div className="modal-overlay"onClick={onClose}>
+    <div className="modal"onClick={e=>e.stopPropagation()}>
+      <div className="modal-title">📄 Сформувати документ</div>
+      <F label="Версія документу">
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          {[{v:"team",l:"Для команди"},{v:"donor",l:"Для донора"},{v:"contractor",l:"Для підрядника"}].map(o=>(
+            <button key={o.v}onClick={()=>setDocType(o.v)}style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${docType===o.v?"var(--blue)":"var(--border)"}`,background:docType===o.v?"var(--blue-light)":"transparent",color:docType===o.v?"var(--blue)":"var(--text2)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)"}}>
+              {o.l}
+            </button>
+          ))}
+        </div>
+      </F>
+      {docType==="contractor"&&<F label="Оберіть блоки">
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {allBlocks.map(b=>(
+            <label key={b.id}style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",border:`1.5px solid ${customBlocks.includes(b.id)?"var(--blue)":"var(--border)"}`,borderRadius:20,cursor:"pointer",fontSize:12,background:customBlocks.includes(b.id)?"var(--blue-light)":"var(--bg-white)",color:customBlocks.includes(b.id)?"var(--blue)":"var(--text2)"}}>
+              <input type="checkbox"checked={customBlocks.includes(b.id)}onChange={e=>{setCustomBlocks(e.target.checked?[...customBlocks,b.id]:customBlocks.filter(x=>x!==b.id));}}style={{width:13,height:13,accentColor:"var(--blue)"}}/>
+              {b.l}
+            </label>
+          ))}
+        </div>
+      </F>}
+      <div style={{display:"flex",gap:8,marginTop:16}}>
+        <button className="btn-primary"onClick={generateAndOpen}>📄 Відкрити PDF</button>
+        <button className="btn-outline"onClick={generateDocx}>📝 Завантажити .txt</button>
+        <button className="btn-outline"style={{marginLeft:"auto"}}onClick={onClose}>Закрити</button>
+      </div>
+      <div className="alert-info"style={{marginTop:12}}>PDF: відкриється у новій вкладці — натисніть Ctrl+P → «Зберегти як PDF»</div>
+    </div>
   </div>;
 }
 
+// ══ MAIN APP ════════════════════════════════════════════
 function App(){
   const [view,setView]=useState("list");
   const [evs,setEvs]=useState([]);
@@ -345,33 +601,32 @@ function App(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [tab,setTab]=useState("form");
+  const [showDocModal,setShowDocModal]=useState(false);
   const [config,setConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
   const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
   const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});
   const [tasks,setTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_tasks"))||DEFAULT_TASKS;}catch{return DEFAULT_TASKS;}});
   const [venues,setVenues]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_venues"))||DEFAULT_VENUES;}catch{return DEFAULT_VENUES;}});
   const [localConfig,setLocalConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
-  const [newMember,setNewMember]=useState({name:"",email:""});
+  const [newMember,setNewMember]=useState({name:"",email:"",role:"expert"});
   const [settingsTab,setSettingsTab]=useState("general");
+  const [eventTypesList,setEventTypesList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_event_types"))||DEFAULT_EVENT_TYPES;}catch{return DEFAULT_EVENT_TYPES;}});
+  const [accessTypesList,setAccessTypesList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_access_types"))||DEFAULT_ACCESS_TYPES;}catch{return DEFAULT_ACCESS_TYPES;}});
+  const [donorsList,setDonorsList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_donors"))||DEFAULT_DONORS;}catch{return DEFAULT_DONORS;}});
+  const [newListItem,setNewListItem]=useState("");
 
   useEffect(()=>{
     (async()=>{
       setLoading(true);
-      if(config.sheetsApiUrl){
-        const res=await sheetsRequest(config.sheetsApiUrl,"getAll",{});
-        if(res?.events){setEvs(res.events);setLoading(false);return;}
-      }
+      if(config.sheetsApiUrl){const res=await sheetsRequest(config.sheetsApiUrl,"getAll",{});if(res?.events){setEvs(res.events);setLoading(false);return;}}
       try{const s=localStorage.getItem("cppr_events_v3");if(s)setEvs(JSON.parse(s));}catch(e){}
       setLoading(false);
     })();
   },[config.sheetsApiUrl]);
 
   const saveEvs=async(list)=>{
-    setSaving(true);
-    localStorage.setItem("cppr_events_v3",JSON.stringify(list));
-    if(config.sheetsApiUrl){
-      await sheetsRequest(config.sheetsApiUrl,"saveAll",{events:list});
-    }
+    setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
+    if(config.sheetsApiUrl)await sheetsRequest(config.sheetsApiUrl,"saveAll",{events:list});
     setSaving(false);
   };
 
@@ -379,200 +634,229 @@ function App(){
   const createNew=()=>{
     const id=Date.now().toString();
     const n={id,status:"draft",createdAt:new Date().toISOString(),
-      form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",
-        coffeeItems:[],streamPlatforms:[],donor:"GIZ"},checklist:[]};
-    const u=[n,...evs];setEvs(u);saveEvs(u);
-    setCid(id);setTab("form");setView("detail");
+      form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",coffeeItems:[],streamPlatforms:[]},checklist:[]};
+    const u=[n,...evs];setEvs(u);saveEvs(u);setCid(id);setTab("form");setView("detail");
   };
   const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u);};
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);saveEvs(u);if(cid===id)setView("list");};
-  const approve=()=>{
-    const ev=getEv();
-    const cl=genChecklist(ev.form,tasks,team);
-    upd({status:"approved",checklist:cl,approvedAt:new Date().toISOString()});
-    setTab("checklist");showToast("Заявку затверджено, чеклист сформовано");
-  };
+  const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const toggleCL=(idx)=>{
-    const ev=getEv();
-    const today=new Date();today.setHours(0,0,0,0);
-    const cl=ev.checklist.map((t,i)=>{
-      if(i!==idx)return t;
-      const updated={...t,done:!t.done};
-      if(updated.dlDate){
-        const dl=new Date(updated.dlDate);
-        updated.overdue=!updated.done&&dl<today&&t.d>=0;
-      }
-      return updated;
-    });
+    const ev=getEv();const today=new Date();today.setHours(0,0,0,0);
+    const cl=ev.checklist.map((t,i)=>{if(i!==idx)return t;const u={...t,done:!t.done};if(u.dlDate){const dl=new Date(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}return u;});
     upd({checklist:cl});
   };
 
-  const saveConfig=(c)=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
-  const saveTeam=(t)=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));};
-  const saveTasks=(t)=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));};
-  const saveVenues=(v)=>{setVenues(v);localStorage.setItem("cppr_venues",JSON.stringify(v));};
-  const saveCosts=(c)=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));};
+  const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
+  const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));};
+  const saveTasks=t=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));};
+  const saveVenues=v=>{setVenues(v);localStorage.setItem("cppr_venues",JSON.stringify(v));};
+  const saveCosts=c=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));};
+  const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));};
+  const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));};
+  const saveDonors=l=>{setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));};
 
-  if(loading)return<div style={{padding:60,textAlign:"center",color:"#888"}}>
-    <div className="spinner"style={{width:24,height:24,margin:"0 auto 12px"}}></div>
-    <div style={{fontSize:13}}>Завантаження...</div>
+  const Header=()=><div className="app-header">
+    <div className="header-inner">
+      <img src={LOGO_B64} className="header-logo" alt="ЦППР"/>
+      <div className="header-brand">
+        <span className="header-brand-name">ЦППР</span>
+        <span className="header-brand-sub">Центр політико-правових реформ</span>
+      </div>
+      <div className="header-divider"/>
+      <span className="header-title">Система заявок на заходи</span>
+      <div className="header-right">
+        <span className="header-version">v3.0</span>
+        {view!=="settings"&&<button className="btn-outline"style={{fontSize:11}}onClick={()=>setView("settings")}>⚙ Налаштування</button>}
+        {view!=="list"&&<button className="btn-outline"style={{fontSize:11}}onClick={()=>setView("list")}>← До списку</button>}
+      </div>
+    </div>
   </div>;
 
-  // ── СПИСОК ──
+  if(loading)return<><Header/><div style={{padding:60,textAlign:"center",color:"var(--text2)"}}>
+    <div className="spinner"style={{width:28,height:28,margin:"0 auto 12px"}}></div>
+    <div style={{fontSize:13}}>Завантаження...</div></div></>;
+
+  // ══ LIST ══
   if(view==="list"){
-    return<div className="app">
+    return<><Header/><div className="app">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontSize:20,fontWeight:600}}>Заявки на заходи ЦППР</div>
-          <div style={{fontSize:12,color:"#888",marginTop:2}}>{evs.length} заявок</div>
+          <div style={{fontSize:18,fontWeight:700,color:"var(--text)"}}>Заявки на заходи</div>
+          <div style={{fontSize:12,color:"var(--text2)",marginTop:2}}>{evs.length} заявок у системі</div>
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <button className="btn-outline"onClick={()=>setView("settings")}>⚙ Налаштування</button>
-          <button className="btn-primary"onClick={createNew}>+ Нова заявка</button>
-        </div>
+        <button className="btn-primary"onClick={createNew}>+ Нова заявка</button>
       </div>
       {!config.sheetsApiUrl&&<div className="setup-banner">
-        <b>⚠ Google Sheets не підключено</b> — заявки зберігаються лише локально.
-        <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"#185FA5",cursor:"pointer",padding:"0 4px",fontSize:13,textDecoration:"underline"}}>Налаштувати</button>
+        ⚠ <b>Google Sheets не підключено</b> — дані зберігаються локально в цьому браузері.
+        <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"var(--blue)",cursor:"pointer",padding:"0 4px",fontSize:13,textDecoration:"underline",fontFamily:"var(--font)"}}>Налаштувати</button>
       </div>}
-      {evs.length===0&&<div style={{textAlign:"center",padding:"50px 0",color:"#888"}}>
-        <div style={{fontSize:32,marginBottom:10}}>📋</div>
-        <div style={{fontSize:14}}>Заявок поки немає — натисніть «+ Нова заявка»</div>
+      {evs.length===0&&<div style={{textAlign:"center",padding:"60px 0",color:"var(--text2)"}}>
+        <div style={{fontSize:36,marginBottom:12}}>📋</div>
+        <div style={{fontSize:14,fontWeight:500}}>Заявок поки немає</div>
+        <div style={{fontSize:12,marginTop:4}}>Натисніть «+ Нова заявка» щоб розпочати</div>
       </div>}
       {["approved","review","draft","cancelled","done"].map(s=>{
-        const list=evs.filter(e=>e.status===s);
-        if(!list.length)return null;
-        return<div key={s}style={{marginBottom:20}}>
-          <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>{SL[s]} ({list.length})</div>
+        const list=evs.filter(e=>e.status===s);if(!list.length)return null;
+        return<div key={s}style={{marginBottom:24}}>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+            <span style={{width:6,height:6,borderRadius:"50%",background:SC[s],display:"inline-block"}}/>
+            {SL[s]} ({list.length})
+          </div>
           {list.map(ev=>(
-            <div key={ev.id}className="card"style={{marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}
+            <div key={ev.id}className="card"style={{marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,transition:"all .15s"}}
               onClick={()=>{setCid(ev.id);setTab("form");setView("detail");}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:500,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ev.form?.eventName||"— Без назви —"}</div>
-                <div style={{fontSize:12,color:"#888",marginTop:2}}>{[ev.form?.eventFormat,ev.form?.eventType,ev.form?.city,ev.form?.eventDate].filter(Boolean).join(" · ")}</div>
-                {ev.form?.expertName&&<div style={{fontSize:11,color:"#aaa",marginTop:1}}>Експерт: {ev.form.expertName}</div>}
+                <div style={{fontWeight:700,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:3}}>{ev.form?.eventName||"— Без назви —"}</div>
+                <div style={{fontSize:12,color:"var(--text2)",display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {ev.form?.eventFormat&&<span>{ev.form.eventFormat}</span>}
+                  {ev.form?.eventType&&<span>· {ev.form.eventType}</span>}
+                  {ev.form?.city&&<span>· {ev.form.city}</span>}
+                  {ev.form?.eventDate&&<span>· {ev.form.eventDate}</span>}
+                </div>
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:3,display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {ev.form?.expertName&&<span>Експерт: {ev.form.expertName}</span>}
+                  {ev.form?.donor&&ev.form.donor!=="Без донора"&&<span className="donor-badge">{ev.form.donor}</span>}
+                </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                 <Badge s={ev.status}/>
-                {ev.checklist?.length>0&&(()=>{
-                  const overdueCount=ev.checklist.filter(t=>t.overdue&&!t.done).length;
-                  return<div style={{fontSize:10,color:overdueCount>0?"#E24B4A":"#888"}}>
-                    {overdueCount>0&&<span style={{fontWeight:600}}>⚠ {overdueCount} просрочено · </span>}
-                    {ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач
-                  </div>;
-                })()}
-                <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:11,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
+                {ev.checklist?.length>0&&(()=>{const od=ev.checklist.filter(t=>t.overdue&&!t.done).length;
+                  return<div style={{fontSize:10,color:od>0?"var(--red)":"var(--text3)",fontWeight:od>0?700:400}}>
+                    {od>0&&`⚠ ${od} просрочено · `}{ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач</div>;})()}
+                <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
               </div>
             </div>
           ))}
         </div>;
       })}
-    </div>;
+    </div></>;
   }
 
-  // ── НАЛАШТУВАННЯ ──
+  // ══ SETTINGS ══
   if(view==="settings"){
-    const stabs=[
-      {id:"general",l:"Підключення"},
-      {id:"team",l:"Команда"},
-      {id:"tasks",l:"Задачі"},
-      {id:"costs",l:"Вартості"},
-      {id:"venues",l:"Локації"},
-    ];
-    return<div className="app">
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-        <button onClick={()=>setView("list")}className="btn-outline">← Назад</button>
-        <div style={{fontSize:18,fontWeight:600}}>Налаштування</div>
-      </div>
-      <div className="tabs"style={{marginBottom:20}}>
-        {stabs.map(t=><button key={t.id}className={`tab${settingsTab===t.id?" active":""}`}onClick={()=>setSettingsTab(t.id)}>{t.l}</button>)}
-      </div>
+    const stabs=[{id:"general",l:"Підключення"},{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"venues",l:"Локації"}];
+    const EditableList=({items,onSave,title})=>{
+      const [list,setList]=useState([...items]);
+      const [newItem,setNewItem]=useState("");
+      return<div>
+        <div style={{maxHeight:200,overflowY:"auto",marginBottom:8}}>
+          {list.map((item,i)=><div key={i}style={{display:"flex",gap:6,marginBottom:4,alignItems:"center"}}>
+            <input value={item}onChange={e=>{const l=[...list];l[i]=e.target.value;setList(l);onSave(l);}}style={{flex:1,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
+            <button onClick={()=>{const l=list.filter((_,j)=>j!==i);setList(l);onSave(l);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:16}}>✕</button>
+          </div>)}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <input value={newItem}onChange={e=>setNewItem(e.target.value)}placeholder={`Додати...`}onKeyDown={e=>{if(e.key==="Enter"&&newItem){const l=[...list,newItem];setList(l);onSave(l);setNewItem("");}}}style={{flex:1,padding:"6px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
+          <button className="btn-ghost"onClick={()=>{if(newItem){const l=[...list,newItem];setList(l);onSave(l);setNewItem("");}}}style={{fontSize:12}}>+ Додати</button>
+        </div>
+      </div>;
+    };
+    return<><Header/><div className="app">
+      <div style={{fontSize:18,fontWeight:700,marginBottom:16}}>Налаштування</div>
+      <div className="tabs"style={{marginBottom:20}}>{stabs.map(t=><button key={t.id}className={`tab${settingsTab===t.id?" active":""}`}onClick={()=>setSettingsTab(t.id)}>{t.l}</button>)}</div>
 
       {settingsTab==="general"&&<div className="settings-section">
-        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Підключення Google Sheets</div>
-        <F label="URL Google Apps Script (Web App URL)">
-          <Inp val={localConfig.sheetsApiUrl}set={v=>setLocalConfig({...localConfig,sheetsApiUrl:v})}ph="https://script.google.com/macros/s/.../exec"/>
-        </F>
+        <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Підключення Google Sheets</div>
+        <F label="URL Google Apps Script"><Inp val={localConfig.sheetsApiUrl}set={v=>setLocalConfig({...localConfig,sheetsApiUrl:v})}ph="https://script.google.com/macros/s/.../exec"/></F>
         <button className="btn-primary"onClick={()=>{saveConfig(localConfig);showToast("Збережено!");}}>Зберегти</button>
-        <div className="info">Після збереження перезавантажте сторінку щоб підтягнулись дані з таблиці.</div>
+        <div className="alert-info"style={{marginTop:10}}>Після збереження перезавантажте сторінку щоб підтягнулись дані.</div>
       </div>}
 
       {settingsTab==="team"&&<div className="settings-section">
-        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Команда ({team.length} осіб)</div>
-        <div style={{maxHeight:300,overflowY:"auto",marginBottom:12}}>
+        <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Команда ({team.length} осіб)</div>
+        <div style={{maxHeight:320,overflowY:"auto",marginBottom:12}}>
           {team.map((m,i)=>(
-            <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f0efe8",fontSize:13}}>
-              <div><b>{m.name}</b> <span style={{color:"#888",fontSize:12}}>{m.email}</span></div>
-              <button onClick={()=>{const t=[...team];t.splice(i,1);saveTeam(t);setTeam(t);}}
-                style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:13}}>✕</button>
+            <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--bg-card)",fontSize:13}}>
+              <div style={{flex:1}}>
+                <b>{m.name}</b>
+                <span style={{color:"var(--text2)",fontSize:11,marginLeft:8}}>{m.email}</span>
+                <span style={{marginLeft:8,padding:"2px 7px",borderRadius:10,fontSize:10,fontWeight:600,
+                  background:m.role==="comm"?"#E8F3FB":m.role==="expert"?"#E6F5F1":"var(--bg-card)",
+                  color:m.role==="comm"?"var(--blue)":m.role==="expert"?"var(--green)":"var(--text2)"}}>
+                  {m.role==="comm"?"Комунікаційник":m.role==="expert"?"Експерт":"Інша роль"}
+                </span>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <select value={m.role||"other"}onChange={e=>{const t=[...team];t[i]={...t[i],role:e.target.value};saveTeam(t);setTeam(t);}}style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:6,background:"var(--bg-white)",fontFamily:"var(--font)"}}>
+                  <option value="expert">Експерт</option><option value="comm">Комунікаційник</option><option value="other">Інша роль</option>
+                </select>
+                <button onClick={()=>{const t=[...team];t.splice(i,1);saveTeam(t);setTeam(t);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:16}}>✕</button>
+              </div>
             </div>
           ))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"end"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 100px auto",gap:8,alignItems:"end"}}>
           <F label="Ім'я"><Inp val={newMember.name}set={v=>setNewMember({...newMember,name:v})}ph="Прізвище Ім'я"/></F>
           <F label="Email"><Inp val={newMember.email}set={v=>setNewMember({...newMember,email:v})}ph="name@pravo.org.ua"/></F>
-          <button className="btn-primary"style={{marginBottom:13}}onClick={()=>{
-            if(!newMember.name||!newMember.email)return;
-            const t=[...team,newMember];saveTeam(t);setTeam(t);setNewMember({name:"",email:""});showToast("Додано!");
-          }}>Додати</button>
+          <F label="Роль"><select value={newMember.role}onChange={e=>setNewMember({...newMember,role:e.target.value})}style={{width:"100%",padding:"8px 8px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}>
+            <option value="expert">Експерт</option><option value="comm">Комунікаційник</option><option value="other">Інша роль</option>
+          </select></F>
+          <button className="btn-primary"style={{marginBottom:12}}onClick={()=>{if(!newMember.name||!newMember.email)return;const t=[...team,newMember];saveTeam(t);setTeam(t);setNewMember({name:"",email:"",role:"expert"});showToast("Додано!");}}>Додати</button>
+        </div>
+      </div>}
+
+      {settingsTab==="lists"&&<div>
+        <div className="settings-section">
+          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Типи заходу</div>
+          <EditableList items={eventTypesList}onSave={saveEventTypes}/>
+        </div>
+        <div className="settings-section">
+          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Типи доступу</div>
+          <EditableList items={accessTypesList}onSave={saveAccessTypes}/>
+        </div>
+        <div className="settings-section">
+          <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Донори</div>
+          <EditableList items={donorsList}onSave={saveDonors}/>
         </div>
       </div>}
 
       {settingsTab==="tasks"&&<div className="settings-section">
-        <div style={{fontWeight:500,fontSize:14,marginBottom:4}}>Шаблони задач ({tasks.length})</div>
-        <div style={{fontSize:12,color:"#888",marginBottom:12}}>Ролі: expert, coord, comm, dmitro</div>
-        <div style={{maxHeight:400,overflowY:"auto"}}>
+        <div style={{fontWeight:600,fontSize:14,marginBottom:4}}>Шаблони задач ({tasks.length})</div>
+        <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, dmitro, other</div>
+        <div style={{maxHeight:420,overflowY:"auto"}}>
           {tasks.map((t,i)=>(
-            <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 30px",gap:6,marginBottom:8,alignItems:"center",padding:"8px",background:"#f9f9f7",borderRadius:6}}>
-              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts);setTasks(ts);}}
-                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5,width:"100%"}}/>
-              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts);setTasks(ts);}}
-                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5}}placeholder="роль"/>
-              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts);setTasks(ts);}}
-                style={{fontSize:12,padding:"4px 8px",border:"1px solid #ddd",borderRadius:5}}/>
-              <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}
-                style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:16}}>✕</button>
+            <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
+              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts);setTasks(ts);}}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
+              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
+              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts);setTasks(ts);}}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>
+              <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
             </div>
           ))}
         </div>
-        <button className="btn-outline"style={{marginTop:10}}onClick={()=>{
-          const ts=[...tasks,{g:"Нова група",d:7,t:"Нова задача",role:"coord"}];
-          saveTasks(ts);setTasks(ts);
-        }}>+ Додати задачу</button>
-        <button className="btn-outline"style={{marginTop:10,marginLeft:8,color:"#A32D2D",borderColor:"#f0c0c0"}}onClick={()=>{
-          if(confirm("Скинути до стандартних задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}
-        }}>Скинути до стандартних</button>
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button className="btn-ghost"onClick={()=>{const ts=[...tasks,{g:"Нова група",d:7,t:"Нова задача",role:"coord"}];saveTasks(ts);setTasks(ts);}}>+ Задача</button>
+          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 74 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
+        </div>
       </div>}
 
-      {settingsTab==="costs"&&<div className="settings-section">
-        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Довідник вартостей</div>
+      {settingsTab==="costs"&&<div>
         {["Київ","Львів","def"].map(city=>(
-          <div key={city}style={{marginBottom:20}}>
-            <div style={{fontWeight:500,fontSize:13,marginBottom:8,color:"#555"}}>{city==="def"?"Інші міста":city}</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+          <div key={city}className="settings-section">
+            <div style={{fontWeight:600,fontSize:13,marginBottom:10}}>{city==="def"?"Інші міста":city}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
               {[
-                {cat:"hall",key:"sf",label:"Зал до 50 (пов. день)"},
-                {cat:"hall",key:"mf",label:"Зал 50-100 (пов. день)"},
-                {cat:"hall",key:"lf",label:"Зал 100+ (пов. день)"},
+                {cat:"hall",key:"sf",label:"Зал <50 ос (день)"},
+                {cat:"hall",key:"mf",label:"Зал 50-100 ос (день)"},
+                {cat:"hall",key:"lf",label:"Зал 100+ ос (день)"},
                 {cat:"cat",key:"cs",label:"Кава-пауза стандарт/ос"},
                 {cat:"cat",key:"cp",label:"Кава-пауза преміум/ос"},
-                {cat:"cat",key:"lb",label:"Обід бізнес/ос"},
                 {cat:"cat",key:"frs",label:"Фуршет/ос"},
+                {cat:"cat",key:"lb",label:"Обід бізнес/ос"},
+                {cat:"tech",key:"ph",label:"Фотограф/год"},
                 {cat:"tech",key:"tr",label:"Переклад"},
                 {cat:"tech",key:"st",label:"Трансляція"},
-                {cat:"tech",key:"ph",label:"Фотограф/год"},
+                {cat:"tech",key:"vd",label:"Відеооператор"},
+                {cat:"tech",key:"bg",label:"Бейдж/шт"},
               ].map(({cat,key,label})=>{
-                const val=(costs[cat]?.[city]||DEFAULT_COSTS[cat]?.def||{})[key]||0;
-                return<div key={`${cat}-${key}`}style={{marginBottom:4}}>
-                  <div style={{fontSize:11,color:"#888",marginBottom:2}}>{label}</div>
+                const val=(costs[cat]?.[city]||costs[cat]?.def||DEFAULT_COSTS[cat]?.def||{})[key]||0;
+                return<div key={`${cat}-${key}`}>
+                  <div style={{fontSize:10,color:"var(--text2)",marginBottom:2,fontWeight:600}}>{label}</div>
                   <input type="number"value={val}onChange={e=>{
-                    const newCosts=JSON.parse(JSON.stringify(costs));
-                    if(!newCosts[cat])newCosts[cat]={};
-                    if(!newCosts[cat][city])newCosts[cat][city]={...(DEFAULT_COSTS[cat]?.def||{})};
-                    newCosts[cat][city][key]=parseInt(e.target.value)||0;
-                    saveCosts(newCosts);setCosts(newCosts);
-                  }}style={{width:"100%",padding:"5px 8px",border:"1px solid #ddd",borderRadius:5,fontSize:13}}/>
+                    const nc=JSON.parse(JSON.stringify(costs));
+                    if(!nc[cat])nc[cat]={};if(!nc[cat][city])nc[cat][city]={...(DEFAULT_COSTS[cat]?.def||{})};
+                    nc[cat][city][key]=parseInt(e.target.value)||0;saveCosts(nc);setCosts(nc);
+                  }}style={{width:"100%",padding:"5px 8px",border:"1px solid var(--border)",borderRadius:6,fontSize:12,fontFamily:"var(--font)"}}/>
                 </div>;
               })}
             </div>
@@ -581,117 +865,99 @@ function App(){
       </div>}
 
       {settingsTab==="venues"&&<div className="settings-section">
-        <div style={{fontWeight:500,fontSize:14,marginBottom:12}}>Локації по містах</div>
+        <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Локації по містах</div>
         {CITIES.filter(c=>c!=="Інше").map(city=>(
           <div key={city}style={{marginBottom:16}}>
-            <div style={{fontWeight:500,fontSize:13,marginBottom:6}}>{city}</div>
+            <div style={{fontWeight:500,fontSize:13,marginBottom:6,color:"var(--text2)"}}>{city}</div>
             {(venues[city]||[]).map((v,i)=>(
               <div key={i}style={{display:"flex",gap:6,marginBottom:4,alignItems:"center"}}>
-                <input value={v}onChange={e=>{
-                  const nv={...venues};nv[city]=[...nv[city]];nv[city][i]=e.target.value;
-                  saveVenues(nv);setVenues(nv);
-                }}style={{flex:1,padding:"5px 8px",border:"1px solid #ddd",borderRadius:5,fontSize:13}}/>
-                <button onClick={()=>{
-                  const nv={...venues};nv[city]=nv[city].filter((_,j)=>j!==i);
-                  saveVenues(nv);setVenues(nv);
-                }}style={{background:"none",border:"none",color:"#ccc",cursor:"pointer",fontSize:16}}>✕</button>
+                <input value={v}onChange={e=>{const nv={...venues};nv[city]=[...nv[city]];nv[city][i]=e.target.value;saveVenues(nv);setVenues(nv);}}style={{flex:1,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}/>
+                <button onClick={()=>{const nv={...venues};nv[city]=nv[city].filter((_,j)=>j!==i);saveVenues(nv);setVenues(nv);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:16}}>✕</button>
               </div>
             ))}
-            <button className="btn-outline"style={{fontSize:11,padding:"3px 8px",marginTop:4}}onClick={()=>{
-              const nv={...venues};nv[city]=[...(nv[city]||[]),""];
-              saveVenues(nv);setVenues(nv);
-            }}>+ Додати локацію</button>
+            <button className="btn-ghost"style={{fontSize:11,marginTop:2}}onClick={()=>{const nv={...venues};nv[city]=[...(nv[city]||[]),""];saveVenues(nv);setVenues(nv);}}>+ Додати локацію</button>
           </div>
         ))}
       </div>}
-    </div>;
+    </div></>;
   }
 
-  // ── ДЕТАЛІ ──
+  // ══ DETAIL ══
   const ev=getEv();if(!ev){setView("list");return null;}
   const f=ev.form;
   const budget=calcBudget(f,costs);
   const clDone=ev.checklist?.filter(t=>t.done).length||0;
   const clTotal=ev.checklist?.length||0;
   const clOverdue=ev.checklist?.filter(t=>t.overdue&&!t.done).length||0;
+  const cityVenues=venues[f.city]||[];
+  const photoPrice=gc(costs,"tech","ph",f.city||"Київ");
 
   const tabs=[
     {id:"form",l:"Заявка"},
     {id:"budget",l:`Бюджет (~${Math.round(budget.total/1000)}k грн)`},
-    {id:"checklist",l:`Чеклист${clTotal?` (${clDone}/${clTotal}${clOverdue>0?`, ⚠${clOverdue}`:""})`:""}`},
+    {id:"checklist",l:`Чеклист${clTotal?` ${clDone}/${clTotal}${clOverdue>0?` ⚠${clOverdue}`:""}`:""}`},
     {id:"tasks",l:"Розсилка задач"},
   ];
 
-  const cityVenues=venues[f.city]||[];
-
-  return<div className="app">
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1px solid #eee"}}>
-      <button onClick={()=>setView("list")}className="btn-outline"style={{padding:"5px 12px",fontSize:12}}>← Назад</button>
-      <div style={{flex:1,fontWeight:600,fontSize:15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.eventName||"— Без назви —"}</div>
+  return<><Header/>
+  {showDocModal&&<DocModal ev={ev}budget={budget}onClose={()=>setShowDocModal(false)}/>}
+  <div className="app">
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1.5px solid var(--border)"}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:16,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.eventName||"— Без назви —"}</div>
+        <div style={{fontSize:12,color:"var(--text2)",marginTop:2,display:"flex",gap:8,alignItems:"center"}}>
+          {f.eventFormat&&<span>{f.eventFormat}</span>}
+          {f.city&&<span>· {f.city}</span>}
+          {f.eventDate&&<span>· {f.eventDate}</span>}
+          {f.donor&&f.donor!=="Без донора"&&<span className="donor-badge">{f.donor}</span>}
+        </div>
+      </div>
       <Badge s={ev.status}/>
-      {saving&&<span style={{fontSize:11,color:"#aaa"}}>збер…</span>}
+      {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
+      <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
     </div>
 
-    <div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+    <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {Object.entries(SL).map(([k,v])=>(
-        <button key={k}onClick={()=>upd({status:k})}
-          style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${k===ev.status?SC[k]:"#ddd"}`,
-            background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"#888",
-            fontSize:12,cursor:"pointer",fontWeight:k===ev.status?600:400}}>{v}</button>
+        <button key={k}onClick={()=>upd({status:k})}className="status-btn"
+          style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)"}}>
+          {v}
+        </button>
       ))}
       {ev.status!=="approved"&&ev.status!=="done"&&ev.status!=="cancelled"&&(
-        <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12,padding:"5px 14px"}}>
-          ✓ Затвердити + чеклист
-        </button>
+        <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
       )}
     </div>
 
-    <div className="tabs">
-      {tabs.map(t=><button key={t.id}className={`tab${tab===t.id?" active":""}`}onClick={()=>setTab(t.id)}>{t.l}</button>)}
-    </div>
+    <div className="tabs">{tabs.map(t=><button key={t.id}className={`tab${tab===t.id?" active":""}`}onClick={()=>setTab(t.id)}>{t.l}</button>)}</div>
 
     {tab==="form"&&<div>
-      <ST>Основна інформація</ST>
+      <ST icon="📋">Основна інформація</ST>
       <div className="grid2">
         <F label="Назва заходу"req><Inp val={f.eventName}set={v=>uf("eventName",v)}ph="Назва"/></F>
         <F label="Тип заходу">
-          <Sel val={f.eventType}set={v=>uf("eventType",v)}opts={EVENT_TYPES}ph="— оберіть —"/>
-          {f.eventType==="Інше"&&<input value={f.eventTypeCustom||""}onChange={e=>uf("eventTypeCustom",e.target.value)}
-            placeholder="Вкажіть тип заходу"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1px solid #d0cfc8",borderRadius:8,fontSize:14}}/>}
+          <Sel val={f.eventType}set={v=>uf("eventType",v)}opts={eventTypesList}ph="— оберіть —"/>
+          {f.eventType==="Інше"&&<input value={f.eventTypeCustom||""}onChange={e=>uf("eventTypeCustom",e.target.value)}placeholder="Вкажіть тип"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>}
         </F>
-        <F label="Формат заходу"req>
-          <Sel val={f.eventFormat}set={v=>uf("eventFormat",v)}opts={EVENT_FORMATS}/>
+        <F label="Формат заходу"req><Sel val={f.eventFormat}set={v=>uf("eventFormat",v)}opts={EVENT_FORMATS}/></F>
+        <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={accessTypesList}/>
+          {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
-        <F label="Тип доступу">
-          <Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={ACCESS_TYPES}/>
-          {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&
-            <div className="venue-info">📍 Місце проведення буде повідомлено лише підтвердженим учасникам</div>}
-        </F>
-        <F label="Дата початку"req>
-          <Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);if(!f.eventDateEnd)uf("eventDateEnd",v);}}/>
-        </F>
-        <F label="Дата закінчення">
-          <Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/>
-        </F>
-        <F label="Тривалість">
-          <Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/>
-        </F>
-        <F label="Кількість годин">
-          <Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 4"min="1"max="24"/>
-        </F>
+        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);if(!f.eventDateEnd)uf("eventDateEnd",v);}}/></F>
+        <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
+        <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
+        <F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 4"min="1"max="24"/></F>
         <F label="Місто"><Sel val={f.city}set={v=>uf("city",v)}opts={CITIES}/></F>
-        <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={DONORS}ph="— оберіть —"/></F>
+        <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={donorsList}ph="— оберіть —"/></F>
       </div>
-
       <F label="Місце проведення">
         {cityVenues.length>0
           ?<><Sel val={f.venue}set={v=>uf("venue",v)}opts={[...cityVenues,"Інше"]}ph="— оберіть —"/>
-            {f.venue==="Інше"&&<input value={f.venueCustom||""}onChange={e=>uf("venueCustom",e.target.value)}
-              placeholder="Вкажіть місце або побажання"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1px solid #d0cfc8",borderRadius:8,fontSize:14}}/>}</>
+            {f.venue==="Інше"&&<input value={f.venueCustom||""}onChange={e=>uf("venueCustom",e.target.value)}placeholder="Вкажіть місце"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>}</>
           :<Inp val={f.venueCustom}set={v=>uf("venueCustom",v)}ph="Готель, зал або побажання"/>}
       </F>
 
-      <ST>Учасники</ST>
+      <ST icon="👥">Учасники</ST>
       <div className="grid2">
         <F label="Кількість учасників"req><Inp type="number"val={f.participants}set={v=>uf("participants",v)}ph="20"/></F>
         <F label="Тип розсадки"><Sel val={f.seating}set={v=>uf("seating",v)}opts={SEATING}ph="— оберіть —"/></F>
@@ -703,7 +969,7 @@ function App(){
       </div>
       <F label="Учасники з регіонів"><TA val={f.regionParticipants}set={v=>uf("regionParticipants",v)}ph="ПІБ, міста"/></F>
 
-      <ST>Технічне забезпечення</ST>
+      <ST icon="🖥">Технічне забезпечення</ST>
       <div className="grid2"style={{marginBottom:10}}>
         {f.eventFormat!=="Онлайн"&&<CB checked={f.needHall}set={v=>uf("needHall",v)}label="Потрібна оренда залу"/>}
         <CB checked={f.microphone}set={v=>uf("microphone",v)}label="Мікрофони"/>
@@ -714,48 +980,43 @@ function App(){
         <CB checked={f.translation}set={v=>uf("translation",v)}label="Синхронний переклад"/>
         <CB checked={f.recording}set={v=>uf("recording",v)}label="Запис заходу"/>
       </div>
-      {f.stream&&<F label="Платформи трансляції">
-        <MultiCheck options={STREAM_PLATFORMS}selected={f.streamPlatforms||[]}onChange={v=>uf("streamPlatforms",v)}/>
-      </F>}
-      <div className="grid2"style={{marginBottom:10}}>
+      {f.stream&&<F label="Платформи трансляції"><MultiCheck options={STREAM_PLATFORMS}selected={f.streamPlatforms||[]}onChange={v=>uf("streamPlatforms",v)}/></F>}
+      <div className="grid2"style={{marginBottom:6}}>
         <CB checked={f.photographer}set={v=>uf("photographer",v)}label="Фотограф"/>
         <CB checked={f.videographer}set={v=>uf("videographer",v)}label="Відеооператор"/>
       </div>
-      {f.photographer&&<F label="Фотограф — кількість годин"hint="Бюджет: 2500 грн × кількість годин">
+      {f.photographer&&<F label="Фотограф — кількість годин"hint={`Бюджет: ${photoPrice.toLocaleString("uk-UA")} грн × кількість годин`}>
         <Inp type="number"val={f.photographerHours}set={v=>uf("photographerHours",v)}ph="3"min="1"max="12"/>
       </F>}
 
-      <ST>Харчування</ST>
+      <ST icon="☕">Харчування</ST>
       <F label="Кава-паузи">
-        <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+        <div style={{display:"flex",gap:7,marginBottom:8}}>
           {[0,1,2,3].map(n=>(
-            <button key={n}onClick={()=>{
-              const cur=f.coffeeItems||[];
+            <button key={n}onClick={()=>{const cur=f.coffeeItems||[];
               if(n===0)uf("coffeeItems",[]);
               else if(n>cur.length)uf("coffeeItems",[...cur,...Array(n-cur.length).fill("coffee_std")]);
               else uf("coffeeItems",cur.slice(0,n));
-            }}style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${(f.coffeeItems||[]).length===n?"#185FA5":"#ddd"}`,
-              background:(f.coffeeItems||[]).length===n?"#E6F1FB":"transparent",
-              color:(f.coffeeItems||[]).length===n?"#185FA5":"#555",fontSize:13,cursor:"pointer"}}>
+            }}style={{padding:"5px 14px",borderRadius:20,border:`1.5px solid ${(f.coffeeItems||[]).length===n?"var(--blue)":"var(--border)"}`,background:(f.coffeeItems||[]).length===n?"var(--blue-light)":"transparent",color:(f.coffeeItems||[]).length===n?"var(--blue)":"var(--text2)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)"}}>
               {n===0?"Немає":`${n}`}
             </button>
           ))}
         </div>
         {(f.coffeeItems||[]).map((level,i)=>(
           <div key={i}className="coffee-pair">
-            <div style={{fontSize:12,color:"#888",marginBottom:4}}>Кава-пауза {i+1}</div>
+            <div style={{fontSize:11,color:"var(--text2)",marginBottom:4,fontWeight:600}}>Кава-пауза {i+1}</div>
             <Sel val={level}set={v=>{const ci=[...(f.coffeeItems||[])];ci[i]=v;uf("coffeeItems",ci);}}opts={COFFEE_LEVELS}/>
           </div>
         ))}
       </F>
-      <div className="grid2"style={{marginBottom:10}}>
+      <div className="grid2"style={{marginBottom:8}}>
         <CB checked={f.water}set={v=>uf("water",v)}label="Вода на стіл"/>
         <CB checked={f.lunch}set={v=>uf("lunch",v)}label="Обід"/>
         <CB checked={f.buffet}set={v=>uf("buffet",v)}label="Фуршет"/>
       </div>
       {f.lunch&&<F label="Тип обіду"><Sel val={f.lunchType}set={v=>uf("lunchType",v)}opts={[{v:"lunch_biz",l:"Бізнес-обід (~600 грн/ос)"},{v:"lunch_std",l:"Стандарт (~400 грн/ос)"}]}/></F>}
 
-      <ST>Поліграфія</ST>
+      <ST icon="🖨">Поліграфія</ST>
       <div className="grid2"style={{marginBottom:10}}>
         <CB checked={f.badges}set={v=>uf("badges",v)}label="Бейджі"/>
         <CB checked={f.printedPrograms}set={v=>uf("printedPrograms",v)}label="Друковані програми"/>
@@ -765,7 +1026,7 @@ function App(){
         <CB checked={f.banner}set={v=>uf("banner",v)}label="Банер"/>
       </div>
 
-      <ST color="#B45309">🔒 Безпека</ST>
+      <ST icon="🔒">Безпека</ST>
       <div className="security-section">
         <div className="grid2"style={{marginBottom:10}}>
           <CB checked={f.secShelter}set={v=>uf("secShelter",v)}label="Наявність укриття на локації"/>
@@ -775,34 +1036,21 @@ function App(){
           <CB checked={f.secInternational}set={v=>uf("secInternational",v)}label="Інструктаж для міжнародних учасників"/>
           <CB checked={f.secNoPhoto}set={v=>uf("secNoPhoto",v)}label="Заборона фото/відео"/>
         </div>
-        <F label="Додаткові безпекові вимоги">
-          <TA val={f.secNotes}set={v=>uf("secNotes",v)}ph="Особливі вимоги, план евакуації тощо"/>
-        </F>
+        <F label="Додаткові безпекові вимоги"><TA val={f.secNotes}set={v=>uf("secNotes",v)}ph="Особливі вимоги, план евакуації тощо"/></F>
       </div>
 
-      <ST>Конференц-сервіс</ST>
+      <ST icon="🤝">Конференц-сервіс</ST>
       <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу (IQ Conference)"/>
-      {f.confService&&<div className="contractor-section"style={{marginTop:10}}>
-        <div style={{fontWeight:500,fontSize:13,marginBottom:8}}>Інформація для підрядника</div>
-        <div style={{fontSize:12,color:"#555",lineHeight:1.7}}>
-          <div>📅 Дата: <b>{f.eventDate||"—"}</b></div>
-          <div>📍 Місце: <b>{f.venue||f.venueCustom||"—"}</b></div>
-          <div>👥 Учасників: <b>{f.participants||"—"}</b></div>
-          <div>⏱ Тривалість: <b>{f.duration||"—"}{f.durationHours?` (${f.durationHours} год)`:""}</b></div>
-          <div>🪑 Розсадка: <b>{f.seating||"—"}</b></div>
-          <div>☕ Кава-паузи: <b>{(f.coffeeItems||[]).length||"0"}</b></div>
-          {f.translation&&<div>🌐 Синхронний переклад: <b>так</b></div>}
-          {f.stream&&<div>📡 Трансляція: <b>{(f.streamPlatforms||[]).join(", ")||"так"}</b></div>}
-          {f.badges&&<div>🏷 Бейджі: <b>{f.participants||"—"} шт</b></div>}
-          {f.nameplates&&<div>🪧 Таблички на стіл: <b>так</b></div>}
+      {f.confService&&<div className="contractor-section">
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8}}>Інформація для підрядника</div>
+        <div style={{fontSize:12,color:"var(--text)",lineHeight:1.9}}>
+          {[["📅 Дата",f.eventDate||"—"],["📍 Місце",f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"],["👥 Учасників",f.participants||"—"],["⏱ Тривалість",`${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}`],["🪑 Розсадка",f.seating||"—"],["☕ Кава-паузи",(f.coffeeItems||[]).length||"0"],f.translation&&["🌐 Переклад","так"],f.stream&&["📡 Трансляція",(f.streamPlatforms||[]).join(", ")||"так"],f.badges&&["🏷 Бейджі",`${f.participants||"—"} шт`],f.nameplates&&["🪧 Таблички","так"]].filter(Boolean).map(([k,v])=><div key={k}><span style={{color:"var(--text2)"}}>{k}:</span> <b>{v}</b></div>)}
         </div>
-        <button className="copy-btn"style={{marginTop:10}}onClick={()=>copyText(
-          `Захід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісце: ${f.venue||f.venueCustom||"—"}\nУчасників: ${f.participants||"—"}\nТривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\nРозсадка: ${f.seating||"—"}\nКава-паузи: ${(f.coffeeItems||[]).length||0}\nПереклад: ${f.translation?"так":"ні"}\nТрансляція: ${f.stream?(f.streamPlatforms||[]).join(", ")||"так":"ні"}\nБейджі: ${f.badges?`${f.participants||"—"} шт`:"ні"}\nТаблички: ${f.nameplates?"так":"ні"}`
-        )}>Копіювати для підрядника</button>
+        <button className="copy-btn"style={{marginTop:10}}onClick={()=>copyText(`Захід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\nУчасників: ${f.participants||"—"}\nТривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\nРозсадка: ${f.seating||"—"}\nКава-паузи: ${(f.coffeeItems||[]).length||0}\nПереклад: ${f.translation?"так":"ні"}\nТрансляція: ${f.stream?"так":"ні"}\nБейджі: ${f.badges?`${f.participants} шт`:"ні"}`)}>Копіювати для підрядника</button>
       </div>}
 
-      <ST>Комунікації та донор</ST>
-      <div className="grid2"style={{marginBottom:10}}>
+      <ST icon="📢">Комунікації та донор</ST>
+      <div className="grid2"style={{marginBottom:8}}>
         <CB checked={f.media}set={v=>uf("media",v)}label="Залучення ЗМІ"/>
         <CB checked={f.registrationForm}set={v=>uf("registrationForm",v)}label="Google-форма реєстрації"/>
         <CB checked={f.websiteAnnounce}set={v=>uf("websiteAnnounce",v)}label="Анонс на сайті ЦППР"/>
@@ -810,23 +1058,23 @@ function App(){
         <CB checked={f.pressRelease}set={v=>uf("pressRelease",v)}label="Прес-реліз (для ЗМІ)"/>
         <CB checked={f.publishResearch}set={v=>uf("publishResearch",v)}label="Опублікувати дослідження до заходу"/>
       </div>
-      <div style={{background:"#f9f9f7",border:"1px solid #e8e7e0",borderRadius:8,padding:12,marginBottom:10}}>
-        <div style={{fontSize:12,fontWeight:500,color:"#555",marginBottom:8}}>Взаємодія з донором</div>
+      <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12,marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Взаємодія з донором</div>
         <div className="grid2">
           <CB checked={f.donorInvolved}set={v=>uf("donorInvolved",v)}label="Донор залучений до організації"/>
           <CB checked={f.donorFunds}set={v=>uf("donorFunds",v)}label="Донор фінансує частину заходу"/>
           <CB checked={f.donorApproval}set={v=>uf("donorApproval",v)}label="Погодження програми з донором"/>
-          <CB checked={f.donorNewsApproval}set={v=>uf("donorNewsApproval",v)}label="Погодження новин/постів з донором"/>
+          <CB checked={f.donorNewsApproval}set={v=>uf("donorNewsApproval",v)}label="Погодження новин/постів"/>
           <CB checked={f.donorReport}set={v=>uf("donorReport",v)}label="Надіслати інформацію донору після заходу"/>
         </div>
       </div>
       <F label="Співорганізатори"><Inp val={f.coOrganizers}set={v=>uf("coOrganizers",v)}ph="Назви, контакти"/></F>
 
-      <ST>Відповідальні</ST>
+      <ST icon="👤">Відповідальні</ST>
       <div className="grid2">
         <F label="Відповідальний експерт ЦППР"><TeamSel val={f.expertName}set={v=>uf("expertName",v)}team={team}/></F>
         <F label="Координатор заходу"><TeamSel val={f.coordinator}set={v=>uf("coordinator",v)}team={team}/></F>
-        <F label="Комунікаційний менеджер"><TeamSel val={f.commManager}set={v=>uf("commManager",v)}team={team}/></F>
+        <F label="Комунікаційний менеджер"><TeamSel val={f.commManager}set={v=>uf("commManager",v)}team={team}filterRole="comm"/></F>
         <F label="Асистент"><TeamSel val={f.assistant}set={v=>uf("assistant",v)}team={team}/></F>
       </div>
       <F label="Коментарі"><TA val={f.notes}set={v=>uf("notes",v)}ph="Додаткова інформація…"rows={3}/></F>
@@ -834,77 +1082,52 @@ function App(){
 
     {tab==="budget"&&<div>
       <div className="grid3"style={{marginBottom:18}}>
-        {[
-          {l:"Орієнтовний бюджет",v:`${budget.total.toLocaleString("uk-UA")} грн`},
-          {l:"На одного учасника",v:f.participants?`${Math.round(budget.total/(parseInt(f.participants)||1)).toLocaleString("uk-UA")} грн`:"—"},
-          {l:"Статей витрат",v:budget.lines.length},
-        ].map((c,i)=><div key={i}className="metric">
-          <div style={{fontSize:11,color:"#888",marginBottom:3}}>{c.l}</div>
-          <div style={{fontSize:19,fontWeight:600}}>{c.v}</div>
-        </div>)}
+        {[{l:"Орієнтовний бюджет",v:`${budget.total.toLocaleString("uk-UA")} грн`},{l:"На учасника",v:f.participants?`${Math.round(budget.total/(parseInt(f.participants)||1)).toLocaleString("uk-UA")} грн`:"—"},{l:"Статей витрат",v:budget.lines.length}].map((c,i)=>(
+          <div key={i}className="metric"><div className="metric-label">{c.l}</div><div className="metric-value">{c.v}</div></div>
+        ))}
       </div>
-      {budget.lines.length===0
-        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Заповніть форму щоб побачити бюджет.</div>
-        :<div style={{border:"1px solid #e8e7e0",borderRadius:10,overflow:"hidden"}}>
-          {budget.lines.map((l,i)=>(
-            <div key={i}className="budget-row"style={{background:i%2?"#fafaf8":"#fff"}}>
-              <span>{l.label}</span>
-              <span style={{fontWeight:500,whiteSpace:"nowrap"}}>{l.amount.toLocaleString("uk-UA")} грн</span>
-            </div>
-          ))}
-          <div className="budget-total">
-            <span style={{color:"#185FA5"}}>Разом</span>
-            <span style={{color:"#185FA5",fontSize:15}}>{budget.total.toLocaleString("uk-UA")} грн</span>
-          </div>
+      {budget.lines.length===0?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Заповніть форму щоб побачити бюджет.</div>
+        :<div style={{border:"1.5px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}}>
+          {budget.lines.map((l,i)=><div key={i}className="budget-row"style={{background:i%2?"var(--bg-card)":"var(--bg-white)"}}><span>{l.label}</span><span style={{fontWeight:600,whiteSpace:"nowrap"}}>{l.amount.toLocaleString("uk-UA")} грн</span></div>)}
+          <div className="budget-total"><span style={{color:"var(--blue)"}}>Разом</span><span style={{color:"var(--blue)",fontSize:15}}>{budget.total.toLocaleString("uk-UA")} грн</span></div>
         </div>}
-      <div className="warning"style={{marginTop:14}}>Бюджет розраховано за нормативами довідника. Вартості конкретних локацій можна оновити в Налаштуваннях → Вартості.</div>
+      <div className="alert-warn"style={{marginTop:14}}>Бюджет орієнтовний. Вартості можна оновити в Налаштуваннях → Вартості.</div>
     </div>}
 
     {tab==="checklist"&&<div>
-      {clOverdue>0&&<div style={{background:"#fff5f5",border:"1px solid #f0c0c0",borderRadius:8,padding:"10px 13px",marginBottom:14,fontSize:13,color:"#A32D2D"}}>
-        ⚠ <b>{clOverdue} задач</b> мали бути виконані до сьогодні
-      </div>}
-      {!ev.checklist?.length
-        ?<div style={{color:"#888",fontSize:13,padding:"16px 0"}}>Натисніть «Затвердити + чеклист», щоб сформувати список задач.</div>
+      {clOverdue>0&&<div className="alert-danger"style={{marginBottom:14}}>⚠ <b>{clOverdue} задач</b> мали бути виконані до сьогодні</div>}
+      {!ev.checklist?.length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Натисніть «Затвердити + чеклист» щоб сформувати список задач.</div>
         :(() => {
           const groups=[...new Set(ev.checklist.map(t=>t.g))];
           return groups.map(g=>(
             <div key={g}style={{marginBottom:16}}>
-              <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>{g}</div>
+              <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>
+                {g}
+              </div>
               {ev.checklist.filter(t=>t.g===g).map(t=>{
-                const idx=ev.checklist.indexOf(t);
-                const isOverdue=t.overdue&&!t.done;
-                return<div key={idx}className={`checklist-item${isOverdue?" overdue":""}`}onClick={()=>toggleCL(idx)}style={{opacity:t.done?.5:1}}>
-                  <div className={`chk-box${t.done?" done":""}`}>{t.done&&<span style={{fontSize:10,color:"#0F6E56",fontWeight:700}}>✓</span>}</div>
+                const idx=ev.checklist.indexOf(t);const isOd=t.overdue&&!t.done;
+                return<div key={idx}className={`checklist-item${isOd?" overdue":""}`}onClick={()=>toggleCL(idx)}style={{opacity:t.done?.5:1}}>
+                  <div className={`chk-box${t.done?" done":""}`}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOverdue?"#A32D2D":"inherit"}}>
-                      {t.t}{isOverdue&&<span className="overdue-label">ПРОСТРОЧЕНО</span>}
-                    </div>
-                    <div style={{fontSize:11,color:isOverdue?"#E24B4A":"#aaa",marginTop:1}}>{t.who} · {t.dl||"—"}</div>
+                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)"}}>{t.t}{isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}</div>
+                    <div style={{fontSize:11,color:isOd?"var(--red)":"var(--text3)",marginTop:2}}>{t.who} · {t.dl||"—"}</div>
                   </div>
                 </div>;
               })}
             </div>
           ));
-        })()
-      }
+        })()}
     </div>}
 
     {tab==="tasks"&&<div>
-      <div style={{fontSize:13,color:"#666",marginBottom:14}}>
-        Натисніть «Копіювати» — текст листа скопіюється в буфер. Відкрийте Gmail і вставте.
+      <div style={{fontSize:13,color:"var(--text2)",marginBottom:14}}>Натисніть «Копіювати» — текст листа скопіюється в буфер. Вставте у Gmail.</div>
+      <div style={{background:"var(--bg-card)",borderRadius:"var(--radius-lg)",padding:13,marginBottom:14,border:"1px solid var(--border)"}}>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8}}>Google Calendar — подія заходу</div>
+        {f.eventDate?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nФормат: ${f.eventFormat||""}\nДонор: ${f.donor||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}`)}&location=${encodeURIComponent(f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||f.city||"")}`}target="_blank"rel="noopener noreferrer"style={{fontSize:13}}>Відкрити в Google Calendar →</a>
+          :<div style={{fontSize:12,color:"var(--text3)"}}>Вкажіть дату у формі.</div>}
       </div>
-      <div style={{background:"#f5f5f3",borderRadius:10,padding:13,marginBottom:14}}>
-        <div style={{fontWeight:500,fontSize:13,marginBottom:8}}>Google Calendar — подія заходу</div>
-        {f.eventDate
-          ?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nФормат: ${f.eventFormat||""}\nДонор: ${f.donor||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}`)}&location=${encodeURIComponent(f.venue||f.venueCustom||f.city||"")}`}
-            target="_blank"rel="noopener noreferrer"style={{fontSize:13}}>
-            Відкрити в Google Calendar →
-          </a>
-          :<div style={{fontSize:12,color:"#aaa"}}>Вкажіть дату у формі.</div>}
-      </div>
-      {!ev.checklist?.length
-        ?<div style={{fontSize:13,color:"#888"}}>Спочатку затвердіть заявку.</div>
+      {!ev.checklist?.length?<div style={{fontSize:13,color:"var(--text2)"}}>Спочатку затвердіть заявку.</div>
         :(() => {
           const assignees=[...new Set(ev.checklist.map(t=>t.who))];
           return assignees.map(who=>{
@@ -915,27 +1138,21 @@ function App(){
             const body=`Вітаємо, ${who}!\n\nЗахід: ${f.eventName||"—"}\nДата: ${f.eventDate||"—"}\nМісто: ${f.city||"—"}\n\nВаші задачі:\n\n${wtasks.map(t=>`• ${t.t}\n  Дедлайн: ${t.dl||"—"}`).join("\n\n")}\n\nЗ повагою,\nКоманда ЦППР`;
             return<div key={who}className="task-card">
               <div className="task-card-head">
-                <div>
-                  <span style={{fontWeight:500,fontSize:13}}>{who}</span>
-                  {email&&<span style={{fontSize:11,color:"#888",marginLeft:6}}>{email}</span>}
-                </div>
+                <div><span style={{fontWeight:600,fontSize:13}}>{who}</span>{email&&<span style={{fontSize:11,color:"var(--text2)",marginLeft:6}}>{email}</span>}</div>
                 <button className="copy-btn"onClick={()=>copyText(`Кому: ${email}\nТема: ${subj}\n\n${body}`)}>Копіювати лист</button>
               </div>
               <div className="task-card-body">
-                {wtasks.map((t,i)=>(
-                  <div key={i}className="task-line">
-                    <span style={{color:t.overdue&&!t.done?"#E24B4A":"#185FA5",flexShrink:0}}>•</span>
-                    <span style={{color:t.overdue&&!t.done?"#A32D2D":"inherit"}}>{t.t}</span>
-                    <span style={{color:"#aaa",whiteSpace:"nowrap",marginLeft:"auto"}}>({t.dl||"—"})</span>
-                  </div>
-                ))}
+                {wtasks.map((t,i)=><div key={i}className="task-line">
+                  <span style={{color:t.overdue&&!t.done?"var(--red)":"var(--blue)",flexShrink:0}}>•</span>
+                  <span style={{color:t.overdue&&!t.done?"var(--red)":"var(--text)"}}>{t.t}</span>
+                  <span style={{color:"var(--text3)",whiteSpace:"nowrap",marginLeft:"auto"}}>({t.dl||"—"})</span>
+                </div>)}
               </div>
             </div>;
           });
-        })()
-      }
+        })()}
     </div>}
-  </div>;
+  </div></>;
 }
 
 ReactDOM.render(<App/>,document.getElementById("root"));

@@ -242,12 +242,15 @@ const SB={draft:"#f5f5f3",review:"#FAEEDA",approved:"#E6F1FB",cancelled:"#FCEBEB
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
-    const r=await fetch(apiUrl,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({action,...data}),
-    });
-    return await r.json();
+    let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
+    if(data&&Object.keys(data).length>0){
+      for(const[k,v]of Object.entries(data)){
+        url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
+      }
+    }
+    const r=await fetch(url,{method:"GET",redirect:"follow"});
+    const text=await r.text();
+    try{return JSON.parse(text);}catch(e){return null;}
   }catch(e){console.error("Sheets error:",e);return null;}
 }
 

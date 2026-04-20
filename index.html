@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ЦППР — Система заявок на заходи</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMxQzc1QkMiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMyNTI4NjgiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cG9seWdvbiBwb2ludHM9IjUwLDIgOTMsMjYgOTMsNzQgNTAsOTggNyw3NCA3LDI2IiBmaWxsPSJ1cmwoI2cpIi8+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -776,7 +777,6 @@ function App(){
     <div className="header-inner">
       <img src={LOGO_B64} className="header-logo" alt="ЦППР"/>
       <div className="header-brand">
-        <span className="header-brand-name">ЦППР</span>
         <span className="header-brand-sub">Центр політико-правових реформ</span>
       </div>
       <div className="header-divider"/>
@@ -1168,7 +1168,7 @@ function App(){
           </div>}
         </div>
         <div style={{marginBottom:10}}>
-          <CB checked={f.coffeeBreak}set={v=>uf("coffeeBreak",v)}label="Кава-пауза"/>
+          <CB checked={f.coffeeBreak}set={v=>uf("coffeeBreak",v)}label="Кава-пауза (включно з вітальною та фінальною)"/>
           {f.coffeeBreak&&<div style={{marginLeft:24,marginTop:6,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:12,color:"var(--text2)"}}>Кількість:</span>

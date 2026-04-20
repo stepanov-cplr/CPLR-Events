@@ -164,7 +164,12 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 
 
 // ══ DEFAULTS ══════════════════════════════════════════
-const DEFAULT_CONFIG={sheetsApiUrl:""};
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  КОНФІГУРАЦІЯ — змініть тут якщо URL таблиці зміниться      ║
+// ╚══════════════════════════════════════════════════════════════╝
+const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbx6qv9Zk63R2i3qAbX4liW2DZKRluFIbmtngdTayiXfEtoTHhVi0ZSwbf2MVsauNI7R/exec";
+// ──────────────────────────────────────────────────────────────
+const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
   {name:"Банчук Олександр",email:"banchuk@pravo.org.ua",role:"expert"},
   {name:"Виноградова Ольга",email:"vynohradova@pravo.org.ua",role:"comm"},
@@ -192,19 +197,20 @@ const DEFAULT_TEAM=[
 const DEFAULT_EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція","Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч","Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
 const DEFAULT_ACCESS_TYPES=["Вільний для всіх","Лише для тих, хто має посилання","Для запрошених","Лише для підтверджених учасників"];
 const DEFAULT_DONORS=["GIZ","IDEA","DRI","Відродження","Ukr2EU","Інший","Без донора"];
-const DEFAULT_VENUES={"Київ":["Готель Національний","Hilton Kyiv","Radisson Blu","Укрінформ (УКМЦ)","KyivHall","Зелений зал ЦППР","Фіолетовий зал ЦППР"],"Львів":["Готель Кобрин","Львівська політехніка"],"Дніпро":[],"Одеса":[],"Харків":[],"Луцьк":[],"Запоріжжя":[]};
+const VENUE_TYPES=["Робочий (без зайвих послуг)","Стандарт (конференц-зал у готелі/БЦ)","Люкс (преміум локація)"];
 const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
-const SEATING=["Будь-який","Коло","Півколо","Амфітеатр","Інше"];
+const SEATING=["Будь-який","Коло","П-подібна (U-shape)","Театр","Клас","Давос","Інше"];
 const EVENT_FORMATS=["Офлайн","Онлайн","Гібрид"];
-const DURATION_TYPES=["2-3 години","Пів дня","Повний день","Кілька днів"];
-const COFFEE_LEVELS=[{v:"coffee_basic",l:"Базовий"},{v:"coffee_std",l:"Стандартний"},{v:"coffee_premium",l:"Преміум"}];
-const STREAM_PLATFORMS=["YouTube","Facebook","Zoom","Teams"];
+const DURATION_TYPES=["Неповний день","Пів дня","Кілька днів"];
+
+
 
 const DEFAULT_COSTS={
   hall:{"Київ":{sh:9000,sf:15000,mh:15000,mf:25000,lh:25000,lf:40000},"Львів":{sh:5000,sf:8000,mh:8500,mf:14000,lh:13000,lf:22000},def:{sh:6000,sf:10000,mh:11000,mf:18000,lh:18000,lf:30000}},
   cat:{"Київ":{cb:350,cs:450,cp:600,w:34,lb:600,ls:400,frs:700},"Львів":{cb:350,cs:430,cp:550,w:30,lb:500,ls:350,frs:600},def:{cb:350,cs:400,cp:500,w:30,lb:450,ls:320,frs:550}},
   tech:{"Київ":{tr:10350,st:10000,ph:2500,vd:3000,bg:95,pr:45},"Львів":{tr:9500,st:9000,ph:2200,vd:2800,bg:90,pr:40},def:{tr:9000,st:8000,ph:2000,vd:2500,bg:90,pr:40}},
   confFee:5,
+  confFee:10,
   transport:{"Черкаси":{train_min:350,train_max:550,bus_min:300,bus_max:500},"Львів":{train_min:450,train_max:650,bus_min:480,bus_max:750},"Дніпро":{train_min:500,train_max:700,bus_min:500,bus_max:800},"Харків":{train_min:500,train_max:750,bus_min:550,bus_max:900},"Одеса":{train_min:600,train_max:900,bus_min:500,bus_max:900}},
 };
 
@@ -307,20 +313,32 @@ function calcBudget(f,costs){
     const a=gc(C,"hall",pp,city);
     if(a){total+=a;lines.push({label:`Оренда залу (${f.duration||"повний день"})`,amount:a});}
   }
-  (f.coffeeItems||[]).forEach((ci,i)=>{
-    if(p>0){const key=ci==="coffee_basic"?"cb":ci==="coffee_premium"?"cp":"cs";
-      const a=gc(C,"cat",key,city)*p;total+=a;lines.push({label:`Кава-пауза ${i+1} (${p} ос)`,amount:a});}
-  });
+  // Welcome coffee
+  if(f.coffeeWelcome&&p>0){const key=f.coffeeWelcomeType==="light"?"cb":f.coffeeWelcomeType==="ext"?"cp":"cs";const a=gc(C,"cat",key,city)*p;total+=a;lines.push({label:`Вітальна кава (${p} ос)`,amount:a});}
+  // Coffee breaks
+  if(f.coffeeBreak&&p>0){const cnt=parseInt(f.coffeeBreakCount)||1;const key=f.coffeeBreakType==="light"?"cb":f.coffeeBreakType==="ext"?"cp":"cs";const a=gc(C,"cat",key,city)*p*cnt;total+=a;lines.push({label:`Кава-паузи ${cnt}×${p} ос`,amount:a});}
+  // Final coffee
+  if(f.coffeeFinal&&p>0){const key=f.coffeeFinalType==="light"?"cb":f.coffeeFinalType==="buffet"?"frs":f.coffeeFinalType==="ext"?"cp":"cs";const a=gc(C,"cat",key,city)*p;total+=a;lines.push({label:`Фінальна кава${f.coffeeFinalType==="buffet"?" (фуршет)":""} (${p} ос)`,amount:a});if(f.coffeeFinalWine&&p>0){const wine=Math.round(300*p);total+=wine;lines.push({label:`Вино (${p} ос)`,amount:wine});}}
+  if(f.breakfast&&p>0){const a=400*p;total+=a;lines.push({label:`Сніданок (${p} ос)`,amount:a});}
   if(f.water&&p>0){const a=gc(C,"cat","w",city)*p;total+=a;lines.push({label:`Вода (${p} ос)`,amount:a});}
-  if(f.lunch&&p>0){const a=gc(C,"cat",f.lunchType==="lunch_std"?"ls":"lb",city)*p;total+=a;lines.push({label:`Обід (${p} ос)`,amount:a});}
-  if(f.buffet&&p>0){const a=gc(C,"cat","frs",city)*p;total+=a;lines.push({label:`Фуршет (${p} ос)`,amount:a});}
+  if(f.lunch&&p>0){const a=gc(C,"cat","lb",city)*p;total+=a;lines.push({label:`Обід (${p} ос)`,amount:a});}
+  if(f.dinner&&p>0){const a=gc(C,"cat","frs",city)*p;total+=a;lines.push({label:`Вечеря (${p} ос)`,amount:a});}
   if(f.translation){const a=gc(C,"tech","tr",city);total+=a;lines.push({label:"Синхронний переклад",amount:a});}
-  if(f.stream){const a=gc(C,"tech","st",city);total+=a;lines.push({label:"Онлайн-трансляція",amount:a});}
+  const hasStream=f.stream||f.streamYoutubeUkr||f.streamYoutubeEng||f.streamCrosspost||f.streamFB;
+  if(hasStream){
+    if(f.confService){
+      const hasCrosspost=f.streamYoutubeUkr||f.streamYoutubeEng||f.streamCrosspost||f.streamFB;
+      const streamAmt=hasCrosspost?38000:31000;
+      total+=streamAmt;lines.push({label:`Трансляція + обладнання (конференц-сервіс)`,amount:streamAmt});
+    } else {
+      const a=gc(C,"tech","st",city);total+=a;lines.push({label:"Онлайн-трансляція",amount:a});
+    }
+  }
   if(f.photographer){const hrs=parseInt(f.photographerHours)||1;const a=gc(C,"tech","ph",city)*hrs;total+=a;lines.push({label:`Фотограф (${hrs} год)`,amount:a});}
   if(f.videographer){const a=gc(C,"tech","vd",city);total+=a;lines.push({label:"Відеооператор",amount:a});}
   if(f.badges&&p>0){const a=gc(C,"tech","bg",city)*p;total+=a;lines.push({label:`Бейджі (${p} ос)`,amount:a});}
   if(f.printedPrograms&&p>0){const a=gc(C,"tech","pr",city)*p;total+=a;lines.push({label:`Програми (${p} ос)`,amount:a});}
-  if(f.confService&&total>0){const fee=Math.round(total*(C.confFee||5)/100);total+=fee;lines.push({label:`Конференц-сервіс (${C.confFee||5}%)`,amount:fee});}
+  if(f.confService&&total>0){const fee=Math.round(total*(C.confFee||10)/100);total+=fee;lines.push({label:`Конференц-сервіс (${C.confFee||5}%)`,amount:fee});}
   return{total,lines};
 }
 
@@ -339,10 +357,10 @@ function genChecklist(f,taskTemplates,team){
   };
   const condMap={
     registrationForm:!!f.registrationForm,hasDonor:!!(f.donor&&f.donor!=="Без донора"),
-    websiteAnnounce:!!f.websiteAnnounce,media:!!f.media,hasCoffee:!!(f.coffeeItems?.length>0),
+    websiteAnnounce:!!f.websiteAnnounce,media:!!f.media,hasCoffee:!!(f.coffeeWelcome||f.coffeeBreak||f.coffeeFinal||f.breakfast||f.lunch||f.dinner),
     translation:!!f.translation,confService:!!f.confService,photographer:!!f.photographer,
     videographer:!!f.videographer,donorApproval:!!f.donorApproval,nameplates:!!f.nameplates,
-    banner:!!f.banner,stream:!!f.stream,needHall:!!f.needHall,pressRelease:!!f.pressRelease,
+    banner:!!f.banner,stream:!!(f.stream||f.streamYoutubeUkr||f.streamYoutubeEng||f.streamFB||f.streamCrosspost),needHall:!!f.needHall,pressRelease:!!f.pressRelease,
     publishResearch:!!f.publishResearch,donorReport:!!f.donorReport,newsOnEventDay:!!f.newsOnEventDay,
     flipchart:!!f.flipchart,folders:!!f.folders,notebooks:!!f.notebooks,badges:!!f.badges,
     hasAccommodation:!!(parseInt(f.accommodation)>0),hasTravel:!!(parseInt(f.travel)>0),
@@ -419,7 +437,7 @@ function generateDocHTML(ev,budget,blocks){
     <tr><td>Дата початку</td><td>${formatDate(f.eventDate)}</td></tr>
     <tr><td>Дата закінчення</td><td>${formatDate(f.eventDateEnd)}</td></tr>
     <tr><td>Місто</td><td>${f.city||"—"}</td></tr>
-    <tr><td>Місце</td><td>${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}</td></tr>
+    <tr><td>Клас локації</td><td>${f.venueType||"—"}</td></tr><tr><td>Побажання щодо локації</td><td>${f.venueCustom||"—"}</td></tr>
     <tr><td>Донор</td><td>${f.donor||"—"}</td></tr>
     <tr><td>Тип доступу</td><td>${f.eventAccess||"—"}</td></tr>
     <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}</td></tr></table>`);
@@ -435,19 +453,25 @@ function generateDocHTML(ev,budget,blocks){
     sections.push(`<h2>Учасники</h2>
     <table><tr><td>Кількість</td><td>${f.participants||"—"}</td></tr>
     <tr><td>Тип розсадки</td><td>${f.seating||"—"}</td></tr>
-    <tr><td>Склад аудиторії</td><td>${f.audienceDesc||"—"}</td></tr>
-    <tr><td>Учасники з регіонів</td><td>${f.regionParticipants||"—"}</td></tr>
+    <tr><td>Склад аудиторії</td><td>${(f.audienceItems||[]).join(", ")||"—"}${f.audienceOther?", "+f.audienceOther:""}</td></tr>
+    ${docType!=="donor"?`<tr><td>Учасники з регіонів</td><td>${f.regionParticipants||"—"}</td></tr>`:""}
     <tr><td>Потреба у проживанні</td><td>${f.accommodation||0} ос.</td></tr>
     <tr><td>Відшкодування проїзду</td><td>${f.travel||0} ос.</td></tr></table>`);
   }
   if(blocks.includes("tech")){
-    const techItems=[f.needHall&&"Оренда залу",f.microphone&&"Мікрофони",f.projector&&"Проектор і екран",f.laptop&&"Ноутбук",f.flipchart&&"Фліпчарт",f.stream&&`Трансляція (${(f.streamPlatforms||[]).join(", ")||"—"})`,f.translation&&"Синхронний переклад",f.photographer&&`Фотограф${f.photographerHours?` (${f.photographerHours} год)`:""}`,f.videographer&&"Відеооператор",f.recording&&"Запис"].filter(Boolean);
+    const techItems=[f.needHall&&"Оренда залу",f.micGoose&&"Мікрофони-гусаки",f.micRadio&&"Радіомікрофони",f.projector&&"Проектор і екран",f.laptop&&"Ноутбук",f.flipchart&&`Фліпчарт${f.flipchartCount>1?` (${f.flipchartCount} шт)`:""}`,(f.streamYoutubeUkr||f.streamYoutubeEng||f.streamFB||f.streamCrosspost)&&`Трансляція (${[f.streamYoutubeUkr&&"YouTube укр",f.streamYoutubeEng&&"YouTube eng",f.streamFB&&"Facebook",f.streamCrosspost&&"Кроспостинг"].filter(Boolean).join(", ")})`,f.onlineZoom&&"Zoom",f.onlineTeams&&"Teams",f.onlineMeets&&"Google Meet",f.translation&&"Синхронний переклад",f.photographer&&`Фотограф${f.photographerHours?` (${f.photographerHours} год)`:""}`,f.videographer&&"Відеооператор",f.recording&&"Запис"].filter(Boolean);
     sections.push(`<h2>Технічне забезпечення</h2><ul>${techItems.map(i=>`<li>${i}</li>`).join("")||"<li>—</li>"}</ul>`);
   }
   if(blocks.includes("catering")){
     const cats=[];
-    (f.coffeeItems||[]).forEach((c,i)=>cats.push(`Кава-пауза ${i+1}: ${c==="coffee_basic"?"Базовий":c==="coffee_premium"?"Преміум":"Стандартний"}`));
-    if(f.water)cats.push("Вода на стіл");if(f.lunch)cats.push(`Обід (${f.lunchType==="lunch_std"?"стандарт":"бізнес"})`);if(f.buffet)cats.push("Фуршет");
+    const cfl=t=>t==="light"?"легка":t==="ext"?"розширена":t==="buffet"?"фуршет":"стандарт";
+    if(f.breakfast)cats.push("Сніданок");
+    if(f.coffeeWelcome)cats.push(`Вітальна кава (${cfl(f.coffeeWelcomeType)})`);
+    if(f.coffeeBreak)cats.push(`Кава-пауза ×${f.coffeeBreakCount||1} (${cfl(f.coffeeBreakType)})`);
+    if(f.water)cats.push("Вода на стіл");
+    if(f.lunch)cats.push("Обід");
+    if(f.coffeeFinal)cats.push(`Фінальна кава (${cfl(f.coffeeFinalType)})${f.coffeeFinalWine?" + вино":""}`);
+    if(f.dinner)cats.push("Вечеря");
     sections.push(`<h2>Харчування</h2><ul>${cats.map(i=>`<li>${i}</li>`).join("")||"<li>—</li>"}</ul>`);
   }
   if(blocks.includes("print")){
@@ -549,7 +573,7 @@ function DocModal({ev,budget,onClose}){
       text+=`Дата початку: ${fmt(f.eventDate)}\n`;
       text+=`Дата закінчення: ${fmt(f.eventDateEnd)}\n`;
       text+=`Місто: ${f.city||"—"}\n`;
-      text+=`Місце: ${f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||"—"}\n`;
+      text+=`Клас локації: ${f.venueType||"—"}\nПобажання: ${f.venueCustom||"—"}\n`;
       text+=`Донор: ${f.donor||"—"}\n`;
       text+=`Тип доступу: ${f.eventAccess||"—"}\n`;
       text+=`Тривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\n\n`;
@@ -565,8 +589,8 @@ function DocModal({ev,budget,onClose}){
       text+=`УЧАСНИКИ\n${"-".repeat(40)}\n`;
       text+=`Кількість: ${f.participants||"—"}\n`;
       text+=`Тип розсадки: ${f.seating||"—"}\n`;
-      text+=`Склад аудиторії: ${f.audienceDesc||"—"}\n`;
-      text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
+      text+=`Склад аудиторії: ${(f.audienceItems||[]).join(", ")||"—"}${f.audienceOther?", "+f.audienceOther:""}\n`;
+      if(blocks!=="donor")text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
       text+=`Потреба у проживанні: ${f.accommodation||0} ос.\n`;
       text+=`Відшкодування проїзду: ${f.travel||0} ос.\n\n`;
     }
@@ -586,10 +610,14 @@ function DocModal({ev,budget,onClose}){
     }
     if(blocks.includes("catering")){
       text+=`ХАРЧУВАННЯ\n${"-".repeat(40)}\n`;
-      (f.coffeeItems||[]).forEach((c,i)=>text+=`• Кава-пауза ${i+1}: ${c==="coffee_basic"?"Базовий":c==="coffee_premium"?"Преміум":"Стандартний"}\n`);
+      const cfl2=t=>t==="light"?"легка":t==="ext"?"розширена":t==="buffet"?"фуршет":"стандарт";
+      if(f.breakfast)text+=`• Сніданок\n`;
+      if(f.coffeeWelcome)text+=`• Вітальна кава (${cfl2(f.coffeeWelcomeType)})\n`;
+      if(f.coffeeBreak)text+=`• Кава-пауза ×${f.coffeeBreakCount||1} (${cfl2(f.coffeeBreakType)})\n`;
       if(f.water)text+=`• Вода на стіл\n`;
-      if(f.lunch)text+=`• Обід (${f.lunchType==="lunch_std"?"стандарт":"бізнес"})\n`;
-      if(f.buffet)text+=`• Фуршет\n`;
+      if(f.lunch)text+=`• Обід\n`;
+      if(f.coffeeFinal)text+=`• Фінальна кава (${cfl2(f.coffeeFinalType)})${f.coffeeFinalWine?" + вино":""}\n`;
+      if(f.dinner)text+=`• Вечеря\n`;
       text+=`\n`;
     }
     if(blocks.includes("print")){
@@ -694,7 +722,7 @@ function App(){
   const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
   const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});
   const [tasks,setTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_tasks"))||DEFAULT_TASKS;}catch{return DEFAULT_TASKS;}});
-  const [venues,setVenues]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_venues"))||DEFAULT_VENUES;}catch{return DEFAULT_VENUES;}});
+  // venues replaced by venueType dropdown
   const [localConfig,setLocalConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
   const [newMember,setNewMember]=useState({name:"",email:"",role:"expert"});
   const [settingsTab,setSettingsTab]=useState("general");
@@ -738,7 +766,7 @@ function App(){
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));};
   const saveTasks=t=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));};
-  const saveVenues=v=>{setVenues(v);localStorage.setItem("cppr_venues",JSON.stringify(v));};
+  
   const saveCosts=c=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));};
   const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));};
   const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));};
@@ -775,7 +803,7 @@ function App(){
         </div>
         <button className="btn-primary"onClick={createNew}>+ Нова заявка</button>
       </div>
-      {!config.sheetsApiUrl&&<div className="setup-banner">
+      {false&&<div className="setup-banner">
         ⚠ <b>Google Sheets не підключено</b> — дані зберігаються локально в цьому браузері.
         <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"var(--blue)",cursor:"pointer",padding:"0 4px",fontSize:13,textDecoration:"underline",fontFamily:"var(--font)"}}>Налаштувати</button>
       </div>}
@@ -823,7 +851,7 @@ function App(){
 
   // ══ SETTINGS ══
   if(view==="settings"){
-    const stabs=[{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"venues",l:"Локації"},{id:"general",l:"Підключення"}];
+    const stabs=[{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"general",l:"Підключення"}];
     const EditableList=({items,onSave})=>{
       const [list,setList]=useState([...items]);
       const [newItem,setNewItem]=useState("");
@@ -959,7 +987,7 @@ function App(){
           <div style={{fontSize:11,color:"var(--text2)",marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:".06em"}}>Конференц-сервіс</div>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{fontSize:12,color:"var(--text)"}}>Надбавка за конференц-сервіс (%)</div>
-            <input type="number"value={costs.confFee||5}onChange={e=>{const nc=JSON.parse(JSON.stringify(costs));nc.confFee=parseInt(e.target.value)||5;saveCosts(nc);setCosts(nc);}}style={{width:70,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:6,fontSize:13,fontFamily:"var(--font)"}}/>
+            <input type="number"value={costs.confFee||10}onChange={e=>{const nc=JSON.parse(JSON.stringify(costs));nc.confFee=parseInt(e.target.value)||10;saveCosts(nc);setCosts(nc);}}style={{width:70,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:6,fontSize:13,fontFamily:"var(--font)"}}/>
             <div style={{fontSize:11,color:"var(--text3)"}}>% від загального бюджету</div>
           </div>
         </div>
@@ -990,7 +1018,7 @@ function App(){
   const clDone=ev.checklist?.filter(t=>t.done).length||0;
   const clTotal=ev.checklist?.length||0;
   const clOverdue=ev.checklist?.filter(t=>t.overdue&&!t.done).length||0;
-  const cityVenues=venues[f.city]||[];
+  // venues now use type-based selection
   const photoPrice=gc(costs,"tech","ph",f.city||"Київ");
 
   const tabs=[
@@ -1040,22 +1068,24 @@ function App(){
           <Sel val={f.eventType}set={v=>uf("eventType",v)}opts={eventTypesList}ph="— оберіть —"/>
           {f.eventType==="Інше"&&<input value={f.eventTypeCustom||""}onChange={e=>uf("eventTypeCustom",e.target.value)}placeholder="Вкажіть тип"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>}
         </F>
-        <F label="Формат заходу"req><Sel val={f.eventFormat}set={v=>uf("eventFormat",v)}opts={EVENT_FORMATS}/></F>
+        <F label="Формат заходу"req><Sel val={f.eventFormat}set={v=>{uf("eventFormat",v);if(v==="Офлайн")uf("eventAccess","Лише для підтверджених учасників");}}opts={EVENT_FORMATS}/></F>
         <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={accessTypesList}/>
           {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
-        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{uf("eventDate",v);uf("eventDateEnd",v);}}/></F>
+        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}/></F>
         <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
-        <F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 4"min="1"max="24"/></F>
-        <F label="Місто"><Sel val={f.city}set={v=>uf("city",v)}opts={CITIES}/></F>
+        {f.duration==="Неповний день"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
         <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={donorsList}ph="— оберіть —"/></F>
       </div>
-      <F label="Місце проведення">
-        {cityVenues.length>0
-          ?<><Sel val={f.venue}set={v=>uf("venue",v)}opts={[...cityVenues,"Інше"]}ph="— оберіть —"/>
-            {f.venue==="Інше"&&<input value={f.venueCustom||""}onChange={e=>uf("venueCustom",e.target.value)}placeholder="Вкажіть місце"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>}</>
-          :<Inp val={f.venueCustom}set={v=>uf("venueCustom",v)}ph="Готель, зал або побажання"/>}
+      <div className="grid2">
+        <F label="Клас локації">
+          <Sel val={f.venueType}set={v=>uf("venueType",v)}opts={VENUE_TYPES}ph="— оберіть —"/>
+        </F>
+        <F label="Місто"><Sel val={f.city}set={v=>uf("city",v)}opts={CITIES}/></F>
+      </div>
+      <F label="Побажання щодо конкретної локації">
+        <TA val={f.venueCustom}set={v=>uf("venueCustom",v)}ph="Назва готелю, залу, особливі вимоги до локації…"rows={2}/>
       </F>
 
       <ST icon="👥">Учасники</ST>
@@ -1063,7 +1093,13 @@ function App(){
         <F label="Кількість учасників"req><Inp type="number"val={f.participants}set={v=>uf("participants",v)}ph="20"/></F>
         <F label="Тип розсадки"><Sel val={f.seating}set={v=>uf("seating",v)}opts={SEATING}ph="— оберіть —"/></F>
       </div>
-      <F label="Склад аудиторії"><TA val={f.audienceDesc}set={v=>uf("audienceDesc",v)}ph="Держ. органи, міжнародні партнери, медіа…"/></F>
+      {(()=>{
+        const AUDIENCE_OPTIONS=["Дипломатичні установи","Донори","Органи публічної служби (керівники)","Органи публічної служби (рядові службовці)","Громадські організації","Медіа","Активні громадяни / цільова аудиторія проєкту","Члени, експерти, персонал ЦППР","Інше"];
+        return<F label="Склад аудиторії">
+          <MultiCheck options={AUDIENCE_OPTIONS}selected={f.audienceItems||[]}onChange={v=>uf("audienceItems",v)}/>
+          {(f.audienceItems||[]).includes("Інше")&&<input value={f.audienceOther||""}onChange={e=>uf("audienceOther",e.target.value)}placeholder="Вкажіть інший склад аудиторії"style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>}
+        </F>;
+      })()}
       <div className="grid2">
         <F label="Потреба у проживанні (осіб)"><Inp type="number"val={f.accommodation}set={v=>uf("accommodation",v)}ph="0"/></F>
         <F label="Відшкодування проїзду (осіб)"><Inp type="number"val={f.travel}set={v=>uf("travel",v)}ph="0"/></F>
@@ -1073,15 +1109,38 @@ function App(){
       <ST icon="🖥">Технічне забезпечення</ST>
       <div className="grid2"style={{marginBottom:10}}>
         {f.eventFormat!=="Онлайн"&&<CB checked={f.needHall}set={v=>uf("needHall",v)}label="Потрібна оренда залу"/>}
-        <CB checked={f.microphone}set={v=>uf("microphone",v)}label="Мікрофони"/>
+        <CB checked={f.micGoose}set={v=>uf("micGoose",v)}label="Мікрофони-гусаки на столи"/>
+        <CB checked={f.micRadio}set={v=>uf("micRadio",v)}label="Радіомікрофони"/>
         <CB checked={f.projector}set={v=>uf("projector",v)}label="Проектор і екран"/>
         <CB checked={f.laptop}set={v=>uf("laptop",v)}label="Ноутбук"/>
-        <CB checked={f.flipchart}set={v=>uf("flipchart",v)}label="Фліпчарт"/>
-        <CB checked={f.stream}set={v=>uf("stream",v)}label="Онлайн-трансляція"/>
+        <div style={{gridColumn:"1/-1"}}>
+          <CB checked={f.flipchart}set={v=>uf("flipchart",v)}label="Фліпчарт"/>
+          {f.flipchart&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:6,marginLeft:24}}>
+            <span style={{fontSize:12,color:"var(--text2)"}}>Кількість:</span>
+            <input type="number"value={f.flipchartCount||1}onChange={e=>uf("flipchartCount",e.target.value)}min="1"max="10"style={{width:60,padding:"4px 8px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
+          </div>}
+        </div>
+        
         <CB checked={f.translation}set={v=>uf("translation",v)}label="Синхронний переклад"/>
         <CB checked={f.recording}set={v=>uf("recording",v)}label="Запис заходу"/>
       </div>
-      {f.stream&&<F label="Платформи трансляції"><MultiCheck options={STREAM_PLATFORMS}selected={f.streamPlatforms||[]}onChange={v=>uf("streamPlatforms",v)}/></F>}
+      <ST icon="📡">Онлайн-участь та трансляція</ST>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Інструменти онлайн-участі</div>
+        <div className="grid2"style={{marginBottom:8}}>
+          <CB checked={f.onlineZoom}set={v=>uf("onlineZoom",v)}label="Zoom"/>
+          <CB checked={f.onlineTeams}set={v=>uf("onlineTeams",v)}label="Microsoft Teams"/>
+          <CB checked={f.onlineMeets}set={v=>uf("onlineMeets",v)}label="Google Meet"/>
+        </div>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".06em"}}>Трансляція (публічна)</div>
+        <div className="grid2">
+          <CB checked={f.streamYoutubeUkr}set={v=>uf("streamYoutubeUkr",v)}label="YouTube українською"/>
+          <CB checked={f.streamYoutubeEng}set={v=>uf("streamYoutubeEng",v)}label="YouTube англійською"/>
+          <CB checked={f.streamCrosspost}set={v=>uf("streamCrosspost",v)}label="Кроспостинг (донор/партнер)"/>
+          <CB checked={f.streamFB}set={v=>uf("streamFB",v)}label="Facebook Live"/>
+        </div>
+        {(f.streamYoutubeUkr||f.streamYoutubeEng||f.streamCrosspost||f.streamFB)&&<div className="alert-info"style={{marginTop:8,fontSize:11}}>💡 При залученні конференц-сервісу трансляція входить у комплекс послуг (≈38k грн). Без конференц-сервісу — окрема послуга (~10k грн).</div>}
+      </div>
       <div className="grid2"style={{marginBottom:6}}>
         <CB checked={f.photographer}set={v=>uf("photographer",v)}label="Фотограф"/>
         <CB checked={f.videographer}set={v=>uf("videographer",v)}label="Відеооператор"/>
@@ -1091,31 +1150,43 @@ function App(){
       </F>}
 
       <ST icon="☕">Харчування</ST>
-      <F label="Кава-паузи">
-        <div style={{display:"flex",gap:7,marginBottom:8}}>
-          {[0,1,2,3].map(n=>(
-            <button key={n}onClick={()=>{const cur=f.coffeeItems||[];
-              if(n===0)uf("coffeeItems",[]);
-              else if(n>cur.length)uf("coffeeItems",[...cur,...Array(n-cur.length).fill("coffee_std")]);
-              else uf("coffeeItems",cur.slice(0,n));
-            }}style={{padding:"5px 14px",borderRadius:20,border:`1.5px solid ${(f.coffeeItems||[]).length===n?"var(--blue)":"var(--border)"}`,background:(f.coffeeItems||[]).length===n?"var(--blue-light)":"transparent",color:(f.coffeeItems||[]).length===n?"var(--blue)":"var(--text2)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)"}}>
-              {n===0?"Немає":`${n}`}
-            </button>
-          ))}
+      <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:14,marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Основне харчування</div>
+        <div className="grid2"style={{marginBottom:8}}>
+          <CB checked={f.breakfast}set={v=>uf("breakfast",v)}label="Сніданок"/>
+          <CB checked={f.lunch}set={v=>uf("lunch",v)}label="Обід"/>
+          <CB checked={f.dinner}set={v=>uf("dinner",v)}label="Вечеря"/>
+          <CB checked={f.water}set={v=>uf("water",v)}label="Вода на стіл"/>
         </div>
-        {(f.coffeeItems||[]).map((level,i)=>(
-          <div key={i}className="coffee-pair">
-            <div style={{fontSize:11,color:"var(--text2)",marginBottom:4,fontWeight:600}}>Кава-пауза {i+1}</div>
-            <Sel val={level}set={v=>{const ci=[...(f.coffeeItems||[])];ci[i]=v;uf("coffeeItems",ci);}}opts={COFFEE_LEVELS}/>
-          </div>
-        ))}
-      </F>
-      <div className="grid2"style={{marginBottom:8}}>
-        <CB checked={f.water}set={v=>uf("water",v)}label="Вода на стіл"/>
-        <CB checked={f.lunch}set={v=>uf("lunch",v)}label="Обід"/>
-        <CB checked={f.buffet}set={v=>uf("buffet",v)}label="Фуршет"/>
       </div>
-      {f.lunch&&<F label="Тип обіду"><Sel val={f.lunchType}set={v=>uf("lunchType",v)}opts={[{v:"lunch_biz",l:"Бізнес-обід (~600 грн/ос)"},{v:"lunch_std",l:"Стандарт (~400 грн/ос)"}]}/></F>}
+      <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:14,marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:10,textTransform:"uppercase",letterSpacing:".06em"}}>Кава-сервіс</div>
+        <div style={{marginBottom:10}}>
+          <CB checked={f.coffeeWelcome}set={v=>uf("coffeeWelcome",v)}label="Вітальна кава"/>
+          {f.coffeeWelcome&&<div style={{marginLeft:24,marginTop:6}}>
+            <Sel val={f.coffeeWelcomeType||"std"}set={v=>uf("coffeeWelcomeType",v)}opts={[{v:"light",l:"Легка"},{v:"std",l:"Стандарт"},{v:"ext",l:"Розширена"}]}/>
+          </div>}
+        </div>
+        <div style={{marginBottom:10}}>
+          <CB checked={f.coffeeBreak}set={v=>uf("coffeeBreak",v)}label="Кава-пауза (включно з вітальною та фінальною)"/>
+          {f.coffeeBreak&&<div style={{marginLeft:24,marginTop:6,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:12,color:"var(--text2)"}}>Кількість:</span>
+              <input type="number"value={f.coffeeBreakCount||1}onChange={e=>uf("coffeeBreakCount",e.target.value)}min="1"max="10"style={{width:60,padding:"4px 8px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
+            </div>
+            <Sel val={f.coffeeBreakType||"std"}set={v=>uf("coffeeBreakType",v)}opts={[{v:"light",l:"Легка"},{v:"std",l:"Стандарт"},{v:"ext",l:"Розширена"}]}/>
+          </div>}
+        </div>
+        <div style={{marginBottom:4}}>
+          <CB checked={f.coffeeFinal}set={v=>uf("coffeeFinal",v)}label="Фінальна кава"/>
+          {f.coffeeFinal&&<div style={{marginLeft:24,marginTop:6}}>
+            <Sel val={f.coffeeFinalType||"std"}set={v=>uf("coffeeFinalType",v)}opts={[{v:"light",l:"Легка"},{v:"std",l:"Стандарт"},{v:"ext",l:"Розширена"},{v:"buffet",l:"Фуршет"}]}/>
+            {f.coffeeFinalType==="buffet"&&<label className="cb-row"style={{marginTop:6}}>
+              <input type="checkbox"checked={!!f.coffeeFinalWine}onChange={e=>uf("coffeeFinalWine",e.target.checked)}/>Включити вино
+            </label>}
+          </div>}
+        </div>
+      </div>
 
       <ST icon="🖨">Поліграфія</ST>
       <div className="grid2"style={{marginBottom:10}}>
@@ -1141,7 +1212,7 @@ function App(){
       </div>
 
       <ST icon="🤝">Конференц-сервіс</ST>
-      <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу"/>
+      <CB checked={f.confService}set={v=>uf("confService",v)}label="Залучення компанії конференц-сервісу (необхідність визначає адміністратор)"/>
 
 
       <ST icon="📢">Комунікації та донор</ST>
@@ -1152,6 +1223,7 @@ function App(){
         <CB checked={f.newsOnEventDay}set={v=>uf("newsOnEventDay",v)}label="Новина в день заходу"/>
         <CB checked={f.pressRelease}set={v=>uf("pressRelease",v)}label="Прес-реліз (для ЗМІ)"/>
         <CB checked={f.publishResearch}set={v=>uf("publishResearch",v)}label="Опублікувати дослідження до заходу"/>
+        <CB checked={f.sendMaterials}set={v=>uf("sendMaterials",v)}label="Розсилка учасникам матеріалів за результатами заходу"/>
       </div>
       <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12,marginBottom:10}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Взаємодія з донором</div>
@@ -1163,7 +1235,7 @@ function App(){
           <CB checked={f.donorReport}set={v=>uf("donorReport",v)}label="Надіслати інформацію донору після заходу"/>
         </div>
       </div>
-      <F label="Співорганізатори"><Inp val={f.coOrganizers}set={v=>uf("coOrganizers",v)}ph="Назви, контакти"/></F>
+      <F label="Співорганізатори та їх контактні особи"><TA val={f.coOrganizers}set={v=>uf("coOrganizers",v)}ph="Назва організації, контактна особа, email/телефон…"rows={3}/></F>
 
       <ST icon="👤">Відповідальні</ST>
       <div className="grid2">

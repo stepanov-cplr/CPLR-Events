@@ -202,7 +202,7 @@ const VENUE_TYPES=["Робочий (без зайвих послуг)","Стан
 const CITIES=["Київ","Львів","Дніпро","Одеса","Харків","Луцьк","Запоріжжя","Інше"];
 const SEATING=["Будь-який","Коло","П-подібна (U-shape)","Театр","Клас","Давос","Інше"];
 const EVENT_FORMATS=["Офлайн","Онлайн","Гібрид"];
-const DURATION_TYPES=["Неповний день","Пів дня","Кілька днів"];
+const DURATION_TYPES=["Неповний день (вказати кількість годин)","Пів дня","Кілька днів"];
 
 
 
@@ -453,7 +453,7 @@ function generateDocHTML(ev,budget,blocks){
   if(blocks.includes("participants")){
     sections.push(`<h2>Учасники</h2>
     <table><tr><td>Кількість</td><td>${f.participants||"—"}</td></tr>
-    <tr><td>Тип розсадки</td><td>${f.seating||"—"}</td></tr>
+    <tr><td>Тип розсадки</td><td>${(f.seatingItems||[]).join(", ")||f.seating||"—"}</td></tr>
     <tr><td>Склад аудиторії</td><td>${(f.audienceItems||[]).join(", ")||"—"}${f.audienceOther?", "+f.audienceOther:""}</td></tr>
     ${docType!=="donor"?`<tr><td>Учасники з регіонів</td><td>${f.regionParticipants||"—"}</td></tr>`:""}
     <tr><td>Потреба у проживанні</td><td>${f.accommodation||0} ос.</td></tr>
@@ -555,8 +555,10 @@ function DocModal({ev,budget,onClose}){
     const html=generateDocHTML(ev,budget,getBlocks());
     const blob=new Blob([html],{type:"text/html"});
     const url=URL.createObjectURL(blob);
-    window.open(url,"_blank");
-    showToast("Документ відкрито у новій вкладці — збережіть як PDF (Ctrl+P → Зберегти як PDF)");
+    const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    showToast("Документ відкрито у новій вкладці — натисніть Ctrl+P → «Зберегти як PDF»");
   };
 
   const generateDocx=()=>{
@@ -589,7 +591,7 @@ function DocModal({ev,budget,onClose}){
     if(blocks.includes("participants")){
       text+=`УЧАСНИКИ\n${"-".repeat(40)}\n`;
       text+=`Кількість: ${f.participants||"—"}\n`;
-      text+=`Тип розсадки: ${f.seating||"—"}\n`;
+      text+=`Тип розсадки: ${(f.seatingItems||[]).join(", ")||f.seating||"—"}\n`;
       text+=`Склад аудиторії: ${(f.audienceItems||[]).join(", ")||"—"}${f.audienceOther?", "+f.audienceOther:""}\n`;
       if(blocks!=="donor")text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
       text+=`Потреба у проживанні: ${f.accommodation||0} ос.\n`;
@@ -1043,6 +1045,7 @@ function App(){
       </div>
       <Badge s={ev.status}/>
       {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
+      <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
     </div>
 
@@ -1072,10 +1075,10 @@ function App(){
         <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={accessTypesList}/>
           {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
-        <F label="Дата початку"req><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}/></F>
+        <F label="Дата початку"req hint="Якщо дата ще не фінальна або можливі варіанти — вкажіть це в полі «Коментарі» внизу форми"><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}/></F>
         <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
-        {f.duration==="Неповний день"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
+        {f.duration==="Неповний день (вказати кількість годин)"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
         <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={donorsList}ph="— оберіть —"/></F>
       </div>
       <div className="grid2">
@@ -1090,8 +1093,8 @@ function App(){
 
       <ST icon="👥">Учасники</ST>
       <div className="grid2">
-        <F label="Кількість учасників"req><Inp type="number"val={f.participants}set={v=>uf("participants",v)}ph="20"/></F>
-        <F label="Тип розсадки"><Sel val={f.seating}set={v=>uf("seating",v)}opts={SEATING}ph="— оберіть —"/></F>
+        <F label="Кількість учасників (офлайн, фізично присутні)"req><Inp type="number"val={f.participants}set={v=>uf("participants",v)}ph="20"/></F>
+        <F label="Тип розсадки"><MultiCheck options={SEATING}selected={f.seatingItems||[]}onChange={v=>uf("seatingItems",v)}/></F>
       </div>
       {(()=>{
         const AUDIENCE_OPTIONS=["Дипломатичні установи","Донори","Органи публічної служби (керівники)","Органи публічної служби (рядові службовці)","Громадські організації","Медіа","Активні громадяни / цільова аудиторія проєкту","Члени, експерти, персонал ЦППР","Інше"];

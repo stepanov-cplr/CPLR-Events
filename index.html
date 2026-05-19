@@ -744,7 +744,22 @@ function App(){
   useEffect(()=>{
     (async()=>{
       setLoading(true);
-      if(config.sheetsApiUrl){const res=await sheetsRequest(config.sheetsApiUrl,"getAll",{});if(res?.events){setEvs(res.events);setLoading(false);return;}}
+      if(config.sheetsApiUrl){
+        // Завантажуємо налаштування з таблиці
+        const sRes=await sheetsRequest(config.sheetsApiUrl,"getSettings",{});
+        if(sRes?.settings){
+          const s=sRes.settings;
+          if(s.team){setTeam(s.team);localStorage.setItem("cppr_team",JSON.stringify(s.team));}
+          if(s.tasks){setTasks(s.tasks);localStorage.setItem("cppr_tasks",JSON.stringify(s.tasks));}
+          if(s.costs){setCosts(s.costs);localStorage.setItem("cppr_costs",JSON.stringify(s.costs));}
+          if(s.eventTypes){setEventTypesList(s.eventTypes);localStorage.setItem("cppr_event_types",JSON.stringify(s.eventTypes));}
+          if(s.accessTypes){setAccessTypesList(s.accessTypes);localStorage.setItem("cppr_access_types",JSON.stringify(s.accessTypes));}
+          if(s.donors){setDonorsList(s.donors);localStorage.setItem("cppr_donors",JSON.stringify(s.donors));}
+        }
+        // Завантажуємо заявки
+        const res=await sheetsRequest(config.sheetsApiUrl,"getAll",{});
+        if(res?.events){setEvs(res.events);setLoading(false);return;}
+      }
       try{const s=localStorage.getItem("cppr_events_v3");if(s)setEvs(JSON.parse(s));}catch(e){}
       setLoading(false);
     })();
@@ -794,9 +809,14 @@ function App(){
     setSending(true);
     showToast("Надсилаємо листи...");
     try{
-      // Передаємо стиснутий чеклист (тільки потрібні поля)
+      // Зберігаємо чеклист частинами по 10 задач
       const cl=ev.checklist.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false}));
-      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,team:JSON.stringify(team),cl:JSON.stringify(cl)});
+      const chunkSize=10;
+      for(let i=0;i<cl.length;i+=chunkSize){
+        await sheetsRequest(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:JSON.stringify(cl.slice(i,i+chunkSize)),total:cl.length});
+      }
+      // Надсилаємо листи — команда читається скриптом з аркушу "Налаштування"
+      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id});
       if(res?.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
       else showToast("Помилка: "+(res?.error||"невідома"));
     }catch(e){showToast("Помилка надсилання");}
@@ -809,13 +829,13 @@ function App(){
   };
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
-  const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));};
-  const saveTasks=t=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));};
+  const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
+  const saveTasks=t=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"tasks",value:JSON.stringify(t)});};
   
-  const saveCosts=c=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));};
-  const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));};
-  const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));};
-  const saveDonors=l=>{setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));};
+  const saveCosts=c=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"costs",value:JSON.stringify(c)});};
+  const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"eventTypes",value:JSON.stringify(l)});};
+  const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"accessTypes",value:JSON.stringify(l)});};
+  const saveDonors=l=>{setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"donors",value:JSON.stringify(l)});};
 
   const Header=()=><div className="app-header">
     <div className="header-inner">

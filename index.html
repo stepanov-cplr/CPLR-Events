@@ -774,7 +774,8 @@ function App(){
     setSending(true);
     showToast("Надсилаємо листи...");
     try{
-      const url=`${config.sheetsApiUrl}?action=sendEmails&ev=${encodeURIComponent(JSON.stringify(ev))}`;
+      const evWithTeam={...ev, team};
+      const url=`${config.sheetsApiUrl}?action=sendEmails&ev=${encodeURIComponent(JSON.stringify(evWithTeam))}`;
       const r=await fetch(url,{method:"GET",redirect:"follow"});
       const text=await r.text();
       const res=JSON.parse(text);

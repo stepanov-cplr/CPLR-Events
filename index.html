@@ -375,11 +375,13 @@ function genChecklist(f,taskTemplates,team){
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
-    if(action==="getAll"){
-      const r=await fetch(`${apiUrl}?action=getAll`,{method:"GET",redirect:"follow"});
+    if(action==="sendEmails"){
+      const r=await fetch(apiUrl,{method:"POST",redirect:"follow",body:JSON.stringify({action,...data}),headers:{"Content-Type":"application/json"}});
       const text=await r.text();try{return JSON.parse(text);}catch{return null;}
     } else {
-      const r=await fetch(apiUrl,{method:"POST",redirect:"follow",body:JSON.stringify({action,...data}),headers:{"Content-Type":"application/json"}});
+      let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
+      if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
+      const r=await fetch(url,{method:"GET",redirect:"follow"});
       const text=await r.text();try{return JSON.parse(text);}catch{return null;}
     }
   }catch(e){console.error(e);return null;}
@@ -753,9 +755,15 @@ function App(){
     })();
   },[config.sheetsApiUrl]);
 
-  const saveEvs=async(list)=>{
+  const saveEvs=async(list,changedId)=>{
     setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
-    if(config.sheetsApiUrl)await sheetsRequest(config.sheetsApiUrl,"saveAll",{events:list});
+    if(config.sheetsApiUrl&&changedId){
+      const ev=list.find(e=>e.id===changedId);
+      if(ev)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+    } else if(config.sheetsApiUrl){
+      // fallback — зберігаємо по одній
+      for(const ev of list)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+    }
     setSaving(false);
   };
 
@@ -764,11 +772,11 @@ function App(){
     const id=Date.now().toString();
     const n={id,status:"draft",createdAt:new Date().toISOString(),
       form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",coffeeItems:[],streamPlatforms:[]},checklist:[]};
-    const u=[n,...evs];setEvs(u);saveEvs(u);setCid(id);setTab("form");setView("detail");
+    const u=[n,...evs];setEvs(u);saveEvs(u,id);setCid(id);setTab("form");setView("detail");
   };
-  const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u);};
+  const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);};
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
-  const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);saveEvs(u);if(cid===id)setView("list");};
+  const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
   const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const sendEmails=async()=>{
     const ev=getEv();
@@ -1072,7 +1080,7 @@ function App(){
       </div>
       <Badge s={ev.status}/>
       {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
-      <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
+      <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs,cid);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
       <button className="btn-ghost"onClick={sendEmails}disabled={sending}style={{opacity:sending?0.6:1}}>{sending?"Надсилаємо...":"📧 Надіслати задачі"}</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
     </div>

@@ -754,9 +754,24 @@ function App(){
     setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
     if(config.sheetsApiUrl&&changedId){
       const ev=list.find(e=>e.id===changedId);
-      if(ev)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+      if(ev){
+        // Передаємо без чеклиста — скрипт зберігає старий чеклист з таблиці
+        const evToSend={...ev,checklist:[]};
+        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
+        // Якщо є чеклист — оновлюємо статуси виконання окремо (тільки done/overdue)
+        if(ev.checklist?.length){
+          const clStatus=ev.checklist.map(t=>({done:t.done||false,overdue:t.overdue||false}));
+          const clStr=JSON.stringify(clStatus);
+          if(clStr.length<6000){
+            await sheetsRequest(config.sheetsApiUrl,"upsertClStatus",{id:ev.id,cls:clStr});
+          }
+        }
+      }
     } else if(config.sheetsApiUrl){
-      for(const ev of list)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+      for(const ev of list){
+        const evToSend={...ev,checklist:[]};
+        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
+      }
     }
     setSaving(false);
   };

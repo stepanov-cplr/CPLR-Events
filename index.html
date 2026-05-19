@@ -425,7 +425,7 @@ function MultiCheck({options,selected,onChange}){
 }
 
 // ══ GENERATE DOCUMENT HTML ══════════════════════════════
-function generateDocHTML(ev,budget,blocks){
+function generateDocHTML(ev,budget,blocks,docType){
   const f=ev.form||{};
   const formatDate=d=>d?new Date(d).toLocaleDateString("uk-UA"):"—";
   const yn=v=>v?"Так":"Ні";
@@ -552,7 +552,7 @@ function DocModal({ev,budget,onClose}){
   const getBlocks=()=>presets[docType]||customBlocks;
 
   const generateAndOpen=()=>{
-    const html=generateDocHTML(ev,budget,getBlocks());
+    const html=generateDocHTML(ev,budget,getBlocks(),docType);
     const blob=new Blob([html],{type:"text/html"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";

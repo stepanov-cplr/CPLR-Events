@@ -375,15 +375,10 @@ function genChecklist(f,taskTemplates,team){
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
-    if(action==="sendEmails"){
-      const r=await fetch(apiUrl,{method:"POST",redirect:"follow",body:JSON.stringify({action,...data}),headers:{"Content-Type":"application/json"}});
-      const text=await r.text();try{return JSON.parse(text);}catch{return null;}
-    } else {
-      let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
-      if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
-      const r=await fetch(url,{method:"GET",redirect:"follow"});
-      const text=await r.text();try{return JSON.parse(text);}catch{return null;}
-    }
+    let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
+    if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
+    const r=await fetch(url,{method:"GET",redirect:"follow"});
+    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
 
@@ -785,13 +780,9 @@ function App(){
     setSending(true);
     showToast("Надсилаємо листи...");
     try{
-      const evWithTeam={...ev, team};
-      const url=config.sheetsApiUrl;
-      const r=await fetch(url,{method:"POST",redirect:"follow",body:JSON.stringify({action:"sendEmails",ev:evWithTeam}),headers:{"Content-Type":"application/json"}});
-      const text=await r.text();
-      const res=JSON.parse(text);
-      if(res.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
-      else showToast("Помилка: "+( res.error||"невідома"));
+      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,team:JSON.stringify(team)});
+      if(res?.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
+      else showToast("Помилка: "+(res?.error||"невідома"));
     }catch(e){showToast("Помилка надсилання");}
     setSending(false);
   };

@@ -354,7 +354,8 @@ function genChecklist(f,taskTemplates,team){
   };
   const roleMap={
     expert:f.expertName||"Експерт",coord:f.coordinator||"Координатор",
-    comm:f.commManager||"Комунікаційник",dmitro:"Дмитро Український",other:"Відповідальний",
+    comm:f.commManager||"Комунікаційник",dmitro:"Дмитро Український",
+    assist:f.assistant||"Асистент",other:"Відповідальний",
   };
   const condMap={
     registrationForm:!!f.registrationForm,hasDonor:!!(f.donor&&f.donor!=="Без донора"),

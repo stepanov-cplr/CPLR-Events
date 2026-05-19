@@ -754,10 +754,23 @@ function App(){
     setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
     if(config.sheetsApiUrl&&changedId){
       const ev=list.find(e=>e.id===changedId);
-      if(ev)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+      if(ev){
+        // Зберігаємо без чеклиста (він великий)
+        const evSmall={...ev,checklist:[]};
+        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evSmall)});
+        // Чеклист окремо якщо є
+        if(ev.checklist?.length){
+          await sheetsRequest(config.sheetsApiUrl,"upsertChecklist",{id:ev.id,cl:JSON.stringify(ev.checklist)});
+        }
+      }
     } else if(config.sheetsApiUrl){
-      // fallback — зберігаємо по одній
-      for(const ev of list)await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(ev)});
+      for(const ev of list){
+        const evSmall={...ev,checklist:[]};
+        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evSmall)});
+        if(ev.checklist?.length){
+          await sheetsRequest(config.sheetsApiUrl,"upsertChecklist",{id:ev.id,cl:JSON.stringify(ev.checklist)});
+        }
+      }
     }
     setSaving(false);
   };

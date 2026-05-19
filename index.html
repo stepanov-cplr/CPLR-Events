@@ -794,7 +794,9 @@ function App(){
     setSending(true);
     showToast("Надсилаємо листи...");
     try{
-      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,team:JSON.stringify(team)});
+      // Передаємо стиснутий чеклист (тільки потрібні поля)
+      const cl=ev.checklist.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false}));
+      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,team:JSON.stringify(team),cl:JSON.stringify(cl)});
       if(res?.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
       else showToast("Помилка: "+(res?.error||"невідома"));
     }catch(e){showToast("Помилка надсилання");}

@@ -593,22 +593,28 @@ function DocModal({ev,budget,onClose}){
       text+=`Кількість: ${f.participants||"—"}\n`;
       text+=`Тип розсадки: ${(f.seatingItems||[]).join(", ")||f.seating||"—"}\n`;
       text+=`Склад аудиторії: ${(f.audienceItems||[]).join(", ")||"—"}${f.audienceOther?", "+f.audienceOther:""}\n`;
-      if(blocks!=="donor")text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
+      if(!blocks.includes("donor"))text+=`Учасники з регіонів: ${f.regionParticipants||"—"}\n`;
       text+=`Потреба у проживанні: ${f.accommodation||0} ос.\n`;
       text+=`Відшкодування проїзду: ${f.travel||0} ос.\n\n`;
     }
     if(blocks.includes("tech")){
       text+=`ТЕХНІЧНЕ ЗАБЕЗПЕЧЕННЯ\n${"-".repeat(40)}\n`;
       if(f.needHall)text+=`• Оренда залу\n`;
-      if(f.microphone)text+=`• Мікрофони\n`;
+      if(f.micGoose)text+=`• Мікрофони-гусаки\n`;
+      if(f.micRadio)text+=`• Радіомікрофони\n`;
       if(f.projector)text+=`• Проектор і екран\n`;
       if(f.laptop)text+=`• Ноутбук\n`;
-      if(f.flipchart)text+=`• Фліпчарт\n`;
-      if(f.stream)text+=`• Онлайн-трансляція: ${(f.streamPlatforms||[]).join(", ")||"—"}\n`;
+      if(f.flipchart)text+=`• Фліпчарт${f.flipchartCount>1?` (${f.flipchartCount} шт)`:""}\n`;
+      if(f.onlineZoom)text+=`• Zoom\n`;
+      if(f.onlineTeams)text+=`• Teams\n`;
+      if(f.onlineMeets)text+=`• Google Meet\n`;
+      const streamParts=[f.streamYoutubeUkr&&"YouTube укр",f.streamYoutubeEng&&"YouTube eng",f.streamFB&&"Facebook",f.streamCrosspost&&"Кроспостинг"].filter(Boolean);
+      if(streamParts.length)text+=`• Трансляція: ${streamParts.join(", ")}\n`;
       if(f.translation)text+=`• Синхронний переклад\n`;
       if(f.photographer)text+=`• Фотограф${f.photographerHours?` (${f.photographerHours} год)`:""}\n`;
       if(f.videographer)text+=`• Відеооператор\n`;
       if(f.recording)text+=`• Запис заходу\n`;
+      if(f.confService)text+=`• Конференц-сервіс\n`;
       text+=`\n`;
     }
     if(blocks.includes("catering")){

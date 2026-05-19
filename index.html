@@ -725,6 +725,7 @@ function App(){
   const [cid,setCid]=useState(null);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
+  const [sending,setSending]=useState(false);
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
   const [config,setConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
@@ -766,6 +767,22 @@ function App(){
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);saveEvs(u);if(cid===id)setView("list");};
   const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
+  const sendEmails=async()=>{
+    const ev=getEv();
+    if(!ev.checklist?.length){showToast("Спочатку затвердіть заявку і сформуйте чеклист");return;}
+    if(!config.sheetsApiUrl){showToast("Немає підключення до Google Sheets");return;}
+    setSending(true);
+    showToast("Надсилаємо листи...");
+    try{
+      const url=`${config.sheetsApiUrl}?action=sendEmails&ev=${encodeURIComponent(JSON.stringify(ev))}`;
+      const r=await fetch(url,{method:"GET",redirect:"follow"});
+      const text=await r.text();
+      const res=JSON.parse(text);
+      if(res.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
+      else showToast("Помилка: "+( res.error||"невідома"));
+    }catch(e){showToast("Помилка надсилання");}
+    setSending(false);
+  };
   const toggleCL=(idx)=>{
     const ev=getEv();const today=new Date();today.setHours(0,0,0,0);
     const cl=ev.checklist.map((t,i)=>{if(i!==idx)return t;const u={...t,done:!t.done};if(u.dlDate){const dl=new Date(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}return u;});
@@ -1052,6 +1069,7 @@ function App(){
       <Badge s={ev.status}/>
       {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
       <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
+      <button className="btn-ghost"onClick={sendEmails}disabled={sending}style={{opacity:sending?0.6:1}}>{sending?"Надсилаємо...":"📧 Надіслати задачі"}</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
     </div>
 

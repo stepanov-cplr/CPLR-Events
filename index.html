@@ -375,10 +375,13 @@ function genChecklist(f,taskTemplates,team){
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
-    let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
-    if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
-    const r=await fetch(url,{method:"GET",redirect:"follow"});
-    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+    if(action==="getAll"){
+      const r=await fetch(`${apiUrl}?action=getAll`,{method:"GET",redirect:"follow"});
+      const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+    } else {
+      const r=await fetch(apiUrl,{method:"POST",redirect:"follow",body:JSON.stringify({action,...data}),headers:{"Content-Type":"application/json"}});
+      const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+    }
   }catch(e){console.error(e);return null;}
 }
 

@@ -1159,11 +1159,11 @@ function App(){
           {v}
         </button>
       ))}
-      {ev.status!=="approved"&&ev.status!=="done"&&ev.status!=="cancelled"&&(
-        {!ev.checklist?.length
-          ?<button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
-          :<button onClick={updateChecklist}className="btn-ghost"style={{marginLeft:"auto",fontSize:12}}>🔄 Оновити чеклист</button>
-        }
+      {!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
+        <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
+      )}
+      {!!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
+        <button onClick={updateChecklist}className="btn-ghost"style={{marginLeft:"auto",fontSize:12}}>🔄 Оновити чеклист</button>
       )}
     </div>
 

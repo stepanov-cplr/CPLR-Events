@@ -733,7 +733,8 @@ function App(){
   const [config,setConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
   const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
   const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});
-  const [tasks,setTasks]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_tasks"))||DEFAULT_TASKS;}catch{return DEFAULT_TASKS;}});
+  const sortTasks=t=>[...t].sort((a,b)=>b.d-a.d);
+  const [tasks,setTasks]=useState(()=>{try{return sortTasks(JSON.parse(localStorage.getItem("cppr_tasks"))||DEFAULT_TASKS);}catch{return DEFAULT_TASKS;}});
   // venues replaced by venueType dropdown
   const [localConfig,setLocalConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
   const [newMember,setNewMember]=useState({name:"",email:"",role:"expert"});
@@ -752,7 +753,7 @@ function App(){
         if(sRes?.settings){
           const s=sRes.settings;
           if(s.team){setTeam(s.team);localStorage.setItem("cppr_team",JSON.stringify(s.team));}
-          if(s.tasks){setTasks(s.tasks);localStorage.setItem("cppr_tasks",JSON.stringify(s.tasks));}
+          if(s.tasks){const st=sortTasks(s.tasks);setTasks(st);localStorage.setItem("cppr_tasks",JSON.stringify(st));}
           if(s.costs){setCosts(s.costs);localStorage.setItem("cppr_costs",JSON.stringify(s.costs));}
           if(s.eventTypes){setEventTypesList(s.eventTypes);localStorage.setItem("cppr_event_types",JSON.stringify(s.eventTypes));}
           if(s.accessTypes){setAccessTypesList(s.accessTypes);localStorage.setItem("cppr_access_types",JSON.stringify(s.accessTypes));}
@@ -833,19 +834,21 @@ function App(){
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
   const saveTasks=async(t,changedIdx)=>{
-    setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));
+    const sorted=sortTasks(t);
+    setTasks(sorted);localStorage.setItem("cppr_tasks",JSON.stringify(sorted));
     if(config.sheetsApiUrl){
       if(changedIdx!==undefined&&changedIdx>=0){
-        // Зберігаємо тільки змінену задачу
-        const task=t[changedIdx];
+        // Знаходимо задачу в відсортованому списку
+        const originalTask=t[changedIdx];
+        const newIdx=sorted.findIndex(task=>task===originalTask||task.t===originalTask.t&&task.g===originalTask.g&&task.role===originalTask.role&&task.d===originalTask.d);
+        const task=sorted[newIdx>=0?newIdx:0];
         const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:changedIdx,row,total:t.length});
+        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:newIdx>=0?newIdx:0,row,total:sorted.length});
       } else {
-        // Повний перезапис по одній задачі
-        for(let i=0;i<t.length;i++){
-          const task=t[i];
+        for(let i=0;i<sorted.length;i++){
+          const task=sorted[i];
           const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row,total:t.length});
+          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row,total:sorted.length});
         }
       }
     }

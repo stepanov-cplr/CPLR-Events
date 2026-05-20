@@ -237,7 +237,7 @@ const DEFAULT_TASKS=[
   {g:"За 10 днів",d:10,t:"Погодження з донором програми заходу",role:"expert",cond:"hasDonor"},
   {g:"За 8 днів",d:8,t:"Запрошення учасників. Розсилка листів з посиланням на реєстрацію",role:"coord"},
   {g:"За 8 днів",d:8,t:"Підготовка презентації, надсилання комунікаційникам",role:"expert"},
-  {g:"За 8 днів",d:8,t:"Формування остаточного списку учасників з проживанням/проїздом",role:"expert"},
+  {g:"За 8 днів",d:8,t:"Формування остаточного списку учасників з проживанням/проїздом",role:"expert",cond:"hasAccommodationOrTravel"},
   {g:"За 7 днів",d:7,t:"Формування остаточного списку доповідачів",role:"expert"},
   {g:"За 7 днів",d:7,t:"Підготовка прес-анонсу",role:"comm",cond:"media"},
   {g:"За 7 днів",d:7,t:"Поширення прес-анонсу",role:"comm",cond:"media"},
@@ -366,6 +366,7 @@ function genChecklist(f,taskTemplates,team){
     publishResearch:!!f.publishResearch,donorReport:!!f.donorReport,newsOnEventDay:!!f.newsOnEventDay,
     flipchart:!!f.flipchart,folders:!!f.folders,notebooks:!!f.notebooks,badges:!!f.badges,
     hasAccommodation:!!(parseInt(f.accommodation)>0),hasTravel:!!(parseInt(f.travel)>0),
+    hasAccommodationOrTravel:!!(parseInt(f.accommodation)>0||parseInt(f.travel)>0),
   };
   return(taskTemplates||DEFAULT_TASKS).filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
     const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
@@ -1016,7 +1017,7 @@ function App(){
 
       {settingsTab==="tasks"&&<div className="settings-section">
         <div style={{fontWeight:600,fontSize:14,marginBottom:4}}>Шаблони задач ({tasks.length})</div>
-        <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, dmitro, other</div>
+        <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, assist, dmitro, other</div>
         <div style={{maxHeight:420,overflowY:"auto"}}>
           {tasks.map((t,i)=>(
             <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
@@ -1028,7 +1029,7 @@ function App(){
           ))}
         </div>
         <div style={{display:"flex",gap:8,marginTop:10}}>
-          <button className="btn-ghost"onClick={()=>{const ts=[...tasks,{g:"Нова група",d:7,t:"Нова задача",role:"coord"}];saveTasks(ts);setTasks(ts);}}>+ Задача</button>
+          <button className="btn-ghost"onClick={()=>{const newTask={g:"Нова група",d:7,t:"Нова задача",role:"coord"};const ts=[...tasks,newTask].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
           <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 74 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
         </div>
       </div>}

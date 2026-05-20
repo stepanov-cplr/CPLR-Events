@@ -838,17 +838,19 @@ function App(){
     setTasks(sorted);localStorage.setItem("cppr_tasks",JSON.stringify(sorted));
     if(config.sheetsApiUrl){
       if(changedIdx!==undefined&&changedIdx>=0){
-        // Знаходимо задачу в відсортованому списку
         const originalTask=t[changedIdx];
-        const newIdx=sorted.findIndex(task=>task===originalTask||task.t===originalTask.t&&task.g===originalTask.g&&task.role===originalTask.role&&task.d===originalTask.d);
+        const newIdx=sorted.findIndex(task=>task===originalTask||(task.t===originalTask.t&&task.g===originalTask.g&&task.role===originalTask.role&&task.d===originalTask.d));
         const task=sorted[newIdx>=0?newIdx:0];
         const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:newIdx>=0?newIdx:0,row,total:sorted.length});
+        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:newIdx>=0?newIdx:0,row});
       } else {
+        // Спочатку очищаємо аркуш
+        await sheetsRequest(config.sheetsApiUrl,"clearTasks",{});
+        // Потім записуємо послідовно
         for(let i=0;i<sorted.length;i++){
           const task=sorted[i];
           const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row,total:sorted.length});
+          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row});
         }
       }
     }
@@ -1023,7 +1025,8 @@ function App(){
         <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, assist, dmitro, other</div>
         <div style={{maxHeight:420,overflowY:"auto"}}>
           {tasks.map((t,i)=>(
-            <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
+            <div key={i}style={{display:"grid",gridTemplateColumns:"140px 1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
+              <input value={t.g}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],g:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="група"/>
               <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
               <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
               <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>

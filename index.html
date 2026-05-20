@@ -831,7 +831,26 @@ function App(){
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
-  const saveTasks=t=>{setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"tasks",value:JSON.stringify(t)});};
+  const saveTasks=async(t)=>{
+    setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));
+    if(config.sheetsApiUrl){
+      // Задачі зберігаємо по одній рядку (кожна задача = окремий запит)
+      // При будь-якій зміні — повний перезапис через спеціальний action
+      const rows=t.map(task=>`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`).join("~");
+      // Якщо рядок не надто довгий — надсилаємо одним запитом
+      if(rows.length<1800){
+        await sheetsRequest(config.sheetsApiUrl,"saveTaskRows",{rows});
+      } else {
+        // Надсилаємо по 10 задач
+        const chunkSize=10;
+        for(let i=0;i<t.length;i+=chunkSize){
+          const chunk=t.slice(i,i+chunkSize);
+          const chunkRows=chunk.map(task=>`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`).join("~");
+          await sheetsRequest(config.sheetsApiUrl,"saveTaskRows",{rows:chunkRows,offset:i,total:t.length});
+        }
+      }
+    }
+  };
   
   const saveCosts=c=>{setCosts(c);localStorage.setItem("cppr_costs",JSON.stringify(c));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"costs",value:JSON.stringify(c)});};
   const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"eventTypes",value:JSON.stringify(l)});};

@@ -805,6 +805,21 @@ function App(){
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
   const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
+  const updateChecklist=()=>{
+    const ev=getEv();
+    const newCl=genChecklist(ev.form,tasks,team);
+    const oldCl=ev.checklist||[];
+    // Зберігаємо статус виконання для задач що вже існували
+    const merged=newCl.map(newTask=>{
+      const existing=oldCl.find(old=>old.t===newTask.t&&old.g===newTask.g);
+      return existing?{...newTask,done:existing.done,overdue:existing.overdue}:newTask;
+    });
+    upd({checklist:merged});
+    setTab("checklist");
+    const added=newCl.filter(m=>!oldCl.find(o=>o.t===m.t&&o.g===m.g)).length;
+    const kept=merged.filter(m=>oldCl.find(o=>o.t===m.t&&o.g===m.g)).length;
+    showToast(`Чеклист оновлено: ${merged.length} задач (збережено виконання ${oldCl.filter(o=>o.done).length} задач)`);
+  };
   const sendEmails=async()=>{
     const ev=getEv();
     if(!ev.checklist?.length){showToast("Спочатку затвердіть заявку і сформуйте чеклист");return;}
@@ -1145,7 +1160,10 @@ function App(){
         </button>
       ))}
       {ev.status!=="approved"&&ev.status!=="done"&&ev.status!=="cancelled"&&(
-        <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
+        {!ev.checklist?.length
+          ?<button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
+          :<button onClick={updateChecklist}className="btn-ghost"style={{marginLeft:"auto",fontSize:12}}>🔄 Оновити чеклист</button>
+        }
       )}
     </div>
 

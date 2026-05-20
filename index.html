@@ -831,22 +831,20 @@ function App(){
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
-  const saveTasks=async(t)=>{
+  const saveTasks=async(t,changedIdx)=>{
     setTasks(t);localStorage.setItem("cppr_tasks",JSON.stringify(t));
     if(config.sheetsApiUrl){
-      // Задачі зберігаємо по одній рядку (кожна задача = окремий запит)
-      // При будь-якій зміні — повний перезапис через спеціальний action
-      const rows=t.map(task=>`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`).join("~");
-      // Якщо рядок не надто довгий — надсилаємо одним запитом
-      if(rows.length<1800){
-        await sheetsRequest(config.sheetsApiUrl,"saveTaskRows",{rows});
+      if(changedIdx!==undefined&&changedIdx>=0){
+        // Зберігаємо тільки змінену задачу
+        const task=t[changedIdx];
+        const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
+        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:changedIdx,row,total:t.length});
       } else {
-        // Надсилаємо по 10 задач
-        const chunkSize=10;
-        for(let i=0;i<t.length;i+=chunkSize){
-          const chunk=t.slice(i,i+chunkSize);
-          const chunkRows=chunk.map(task=>`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`).join("~");
-          await sheetsRequest(config.sheetsApiUrl,"saveTaskRows",{rows:chunkRows,offset:i,total:t.length});
+        // Повний перезапис по одній задачі
+        for(let i=0;i<t.length;i++){
+          const task=t[i];
+          const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
+          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row,total:t.length});
         }
       }
     }
@@ -1022,9 +1020,9 @@ function App(){
         <div style={{maxHeight:420,overflowY:"auto"}}>
           {tasks.map((t,i)=>(
             <div key={i}style={{display:"grid",gridTemplateColumns:"1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
-              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts);setTasks(ts);}}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
-              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
-              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts);setTasks(ts);}}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>
+              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
+              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
+              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>
               <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
             </div>
           ))}

@@ -525,7 +525,7 @@ function generateDocHTML(ev,budget,blocks,docType){
     <p>Сформовано: ${new Date().toLocaleDateString("uk-UA")}</p></div>
   </div>
   ${sections.join("\n")}
-  <div class="footer">ЦППР — Центр політико-правових реформ · cplr.org.ua</div>
+  <div class="footer">ЦППР — Центр політико-правових реформ · pravo.org.ua</div>
   </body></html>`;
 }
 
@@ -679,7 +679,7 @@ function DocModal({ev,budget,onClose}){
       });
     }
     if(f.notes)text+=`\nКОМЕНТАРІ\n${"-".repeat(40)}\n${f.notes}\n`;
-    text+=`\n${"=".repeat(50)}\nЦППР — cplr.org.ua`;
+    text+=`\n${"=".repeat(50)}\nЦППР — pravo.org.ua`;
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`${f.eventName||"захід"}_ЦППР.txt`;

@@ -219,6 +219,7 @@ const DEFAULT_COSTS={
   transport:{"Черкаси":{train_min:350,train_max:550,bus_min:300,bus_max:500},"Львів":{train_min:450,train_max:650,bus_min:480,bus_max:750},"Дніпро":{train_min:500,train_max:700,bus_min:500,bus_max:800},"Харків":{train_min:500,train_max:750,bus_min:550,bus_max:900},"Одеса":{train_min:600,train_max:900,bus_min:500,bus_max:900}},
 };
 
+// 74 tasks from Excel
 // 80 tasks from Excel
 const DEFAULT_TASKS=[
   {g:"Підготовка (за 21 день)",d:21,t:"Формування документу «опис заходу»",role:"expert"},
@@ -386,6 +387,15 @@ async function sheetsRequest(apiUrl,action,data){
     let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
     if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
     const r=await fetch(url,{method:"GET",redirect:"follow"});
+    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+  }catch(e){console.error(e);return null;}
+}
+// POST для великих даних (чеклист, задачі) — обходить ліміт GET URL
+async function sheetsPost(apiUrl,action,data){
+  if(!apiUrl)return null;
+  try{
+    const body=JSON.stringify({action,...data});
+    const r=await fetch(apiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body});
     const text=await r.text();try{return JSON.parse(text);}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
@@ -806,7 +816,7 @@ function App(){
         if(ev.checklist?.length){
           const chunkSize=15;
           for(let i=0;i<ev.checklist.length;i+=chunkSize){
-            await sheetsRequest(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:JSON.stringify(ev.checklist.slice(i,i+chunkSize)),total:ev.checklist.length});
+            await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
           }
         }
       }
@@ -856,7 +866,7 @@ function App(){
       const cl=ev.checklist.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false}));
       const chunkSize=10;
       for(let i=0;i<cl.length;i+=chunkSize){
-        await sheetsRequest(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:JSON.stringify(cl.slice(i,i+chunkSize)),total:cl.length});
+        await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:cl.slice(i,i+chunkSize),total:cl.length});
       }
       // Надсилаємо листи — команда читається скриптом з аркушу "Налаштування"
       const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id});
@@ -884,7 +894,7 @@ function App(){
       await sheetsRequest(config.sheetsApiUrl,"clearTasks",{});
       for(let i=0;i<sorted.length;i+=chunkSize){
         const chunk=sorted.slice(i,i+chunkSize);
-        await sheetsRequest(config.sheetsApiUrl,"saveTasksChunk",{offset:i,tasks:JSON.stringify(chunk)});
+        await sheetsPost(config.sheetsApiUrl,"saveTasksChunk",{offset:i,tasks:chunk});
       }
     }
   };

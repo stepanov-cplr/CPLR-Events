@@ -769,9 +769,9 @@ function App(){
   useEffect(()=>{
     (async()=>{
       setLoading(true);
-      if(config.sheetsApiUrl){
+      if(SHEETS_API_URL){
         // Завантажуємо налаштування з таблиці
-        const sRes=await sheetsRequest(config.sheetsApiUrl,"getSettings",{});
+        const sRes=await sheetsRequest(SHEETS_API_URL,"getSettings",{});
         if(sRes===null){
           showToast("⚠️ Не вдалось підключитись до таблиці","error");
         }
@@ -784,7 +784,7 @@ function App(){
           if(s.donors){setDonorsList(s.donors);localStorage.setItem("cppr_donors",JSON.stringify(s.donors));}
         }
         // Задачі — окремий запит, завжди актуальні
-        const tRes=await sheetsRequest(config.sheetsApiUrl,"getTasks",{});
+        const tRes=await sheetsRequest(SHEETS_API_URL,"getTasks",{});
         if(tRes?.tasks&&tRes.tasks.length){
           const st=sortTasks(tRes.tasks);
           setTasks(st);
@@ -796,13 +796,13 @@ function App(){
           localStorage.setItem("cppr_tasks",JSON.stringify(st));
         }
         // Завантажуємо заявки
-        const res=await sheetsRequest(config.sheetsApiUrl,"getAll",{});
+        const res=await sheetsRequest(SHEETS_API_URL,"getAll",{});
         if(res?.events){setEvs(res.events);setLoading(false);return;}
       }
       try{const s=localStorage.getItem("cppr_events_v3");if(s)setEvs(JSON.parse(s));}catch(e){}
       setLoading(false);
     })();
-  },[config.sheetsApiUrl]);
+  },[]);
 
   const saveEvs=async(list,changedId)=>{
     setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));

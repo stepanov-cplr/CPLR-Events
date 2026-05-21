@@ -217,6 +217,7 @@ const DEFAULT_COSTS={
 };
 
 // 74 tasks from Excel
+// 80 tasks from Excel
 const DEFAULT_TASKS=[
   {g:"Підготовка (за 21 день)",d:21,t:"Формування документу «опис заходу»",role:"expert"},
   {g:"Підготовка (за 21 день)",d:21,t:"Надіслати контакти донора комунікаційницям",role:"expert",cond:"hasDonor"},
@@ -236,27 +237,29 @@ const DEFAULT_TASKS=[
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити фотографа",role:"comm",cond:"photographer"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити відеооператора",role:"comm",cond:"videographer"},
   {g:"За 10 днів",d:10,t:"Погодження з донором програми заходу",role:"expert",cond:"hasDonor"},
-  {g:"За 8 днів",d:8,t:"Запрошення учасників. Розсилка листів з посиланням на реєстрацію",role:"coord"},
+  {g:"За 9 днів",d:9,t:"Підготовка тексту запрошення",role:"coord"},
+  {g:"За 9 днів",d:9,t:"Підготовка остаточного списку учасників для розсилки запрошення",role:"coord"},
+  {g:"За 8 днів",d:8,t:"Запрошення учасників. Розсилка листів з посиланням на реєстрацію",role:"assist"},
   {g:"За 8 днів",d:8,t:"Підготовка презентації, надсилання комунікаційникам",role:"expert"},
   {g:"За 8 днів",d:8,t:"Формування остаточного списку учасників з проживанням/проїздом",role:"expert",cond:"hasAccommodationOrTravel"},
   {g:"За 7 днів",d:7,t:"Формування остаточного списку доповідачів",role:"expert"},
   {g:"За 7 днів",d:7,t:"Підготовка прес-анонсу",role:"comm",cond:"media"},
   {g:"За 7 днів",d:7,t:"Поширення прес-анонсу",role:"comm",cond:"media"},
   {g:"За 6 днів",d:6,t:"Запрошення ЗМІ",role:"comm",cond:"media"},
-  {g:"За 6 днів",d:6,t:"Формування остаточного пакету роздаткових матеріалів (>20 стор.)",role:"expert"},
+  {g:"За 6 днів",d:6,t:"Формування остаточного пакету роздаткових матеріалів (>20 стор.)",role:"assist"},
   {g:"За 5 днів",d:5,t:"Формування остаточної програми заходу",role:"expert"},
-  {g:"За 5 днів",d:5,t:"Розсилка програми учасникам",role:"coord"},
+  {g:"За 5 днів",d:5,t:"Розсилка програми учасникам",role:"assist"},
   {g:"За 5 днів",d:5,t:"Погодження з донором новин, постів тощо",role:"comm",cond:"donorApproval"},
   {g:"За 5 днів",d:5,t:"Опублікувати дослідження на ресурсах до заходу",role:"comm",cond:"publishResearch"},
-  {g:"За 5 днів",d:5,t:"Друк роздаткових матеріалів (>20 стор.)",role:"dmitro"},
-  {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",role:"coord"},
-  {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",role:"expert"},
-  {g:"За 3 дні",d:3,t:"Формування і відправка готових видань",role:"coord",cond:"publishResearch"},
-  {g:"За 3 дні",d:3,t:"Формування остаточного пакету роздаткових матеріалів (<20 стор.)",role:"expert"},
+  {g:"За 5 днів",d:5,t:"Друк роздаткових матеріалів (>20 стор.)",role:"assist"},
+  {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",role:"assist"},
+  {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",role:"coord"},
+  {g:"За 3 дні",d:3,t:"Формування і відправка готових видань",role:"assist",cond:"publishResearch"},
+  {g:"За 3 дні",d:3,t:"Формування остаточного пакету роздаткових матеріалів (<20 стор.)",role:"assist"},
   {g:"За 3 дні",d:3,t:"Отримати цитату для новини від донора",role:"comm",cond:"hasDonor"},
   {g:"За 2 дні",d:2,t:"Надати цитату комунікаційницям для новини ДО заходу",role:"expert"},
-  {g:"За 2 дні",d:2,t:"Друк роздаткових матеріалів (<20 стор.)",role:"dmitro"},
-  {g:"За 2 дні",d:2,t:"Нагадати учасникам про захід та надіслати інформацію",role:"coord"},
+  {g:"За 2 дні",d:2,t:"Друк роздаткових матеріалів (<20 стор.)",role:"assist"},
+  {g:"За 2 дні",d:2,t:"Нагадати учасникам про захід та надіслати інформацію",role:"assist"},
   {g:"За 2 дні",d:2,t:"Формування списку табличок на столи, надіслати Українському",role:"coord",cond:"nameplates"},
   {g:"За 2 дні",d:2,t:"Формування остаточного списку реєстрації учасників",role:"coord"},
   {g:"За 2 дні",d:2,t:"Формування електронного списку реєстрації",role:"coord"},
@@ -264,14 +267,14 @@ const DEFAULT_TASKS=[
   {g:"За 1 день",d:1,t:"Надати цитату комунікаційницям для новини",role:"expert"},
   {g:"За 1 день",d:1,t:"Надіслати електронний список реєстрації до IQ Conference",role:"coord",cond:"confService"},
   {g:"За 1 день",d:1,t:"Забезпечення модерації заходу",role:"expert"},
-  {g:"День заходу",d:0,t:"Забезпечити приміщення",role:"dmitro",cond:"needHall"},
-  {g:"День заходу",d:0,t:"Забезпечити проживання",role:"dmitro",cond:"hasAccommodation"},
-  {g:"День заходу",d:0,t:"Забезпечити харчування",role:"dmitro",cond:"hasCoffee"},
-  {g:"День заходу",d:0,t:"Забезпечити проїзд",role:"dmitro",cond:"hasTravel"},
-  {g:"День заходу",d:0,t:"Забезпечити переклад",role:"dmitro",cond:"translation"},
-  {g:"День заходу",d:0,t:"Забезпечити обладнання",role:"dmitro"},
-  {g:"День заходу",d:0,t:"Фліпчарт",role:"dmitro",cond:"flipchart"},
-  {g:"День заходу",d:0,t:"Обладнання для перекладу",role:"dmitro",cond:"translation"},
+  {g:"День заходу",d:0,t:"Забезпечити приміщення",role:"",cond:"needHall"},
+  {g:"День заходу",d:0,t:"Забезпечити проживання",role:"",cond:"hasAccommodation"},
+  {g:"День заходу",d:0,t:"Забезпечити харчування",role:"",cond:"hasCoffee"},
+  {g:"День заходу",d:0,t:"Забезпечити проїзд",role:"",cond:"hasTravel"},
+  {g:"День заходу",d:0,t:"Забезпечити переклад",role:"",cond:"translation"},
+  {g:"День заходу",d:0,t:"Забезпечити обладнання",role:""},
+  {g:"День заходу",d:0,t:"Фліпчарт",role:"",cond:"flipchart"},
+  {g:"День заходу",d:0,t:"Обладнання для перекладу",role:"",cond:"translation"},
   {g:"День заходу",d:0,t:"Папки учасника",role:"coord",cond:"folders"},
   {g:"День заходу",d:0,t:"Блокноти і ручки",role:"coord",cond:"notebooks"},
   {g:"День заходу",d:0,t:"Бейджі",role:"coord",cond:"badges"},
@@ -282,7 +285,7 @@ const DEFAULT_TASKS=[
   {g:"День заходу",d:0,t:"Організувати розміщення табличок з ПІБ учасників",role:"coord",cond:"nameplates"},
   {g:"День заходу",d:0,t:"Організувати розміщення води зі склянками",role:"coord"},
   {g:"День заходу",d:0,t:"Фотографування заходу",role:"comm",cond:"photographer"},
-  {g:"День заходу",d:0,t:"Забезпечити онлайн-трансляцію",role:"dmitro",cond:"stream"},
+  {g:"День заходу",d:0,t:"Забезпечити онлайн-трансляцію",role:"",cond:"stream"},
   {g:"День заходу",d:0,t:"Опублікувати новину в день заходу",role:"comm",cond:"newsOnEventDay"},
   {g:"День заходу",d:0,t:"Повідомлення на ресурсах ЦППР",role:"comm"},
   {g:"Після заходу",d:-1,t:"Надсилання фото спікерам, подяк, матеріалів заходу",role:"coord"},
@@ -292,8 +295,8 @@ const DEFAULT_TASKS=[
   {g:"Після заходу",d:-2,t:"Підготовка та розсилка матеріалів заходу, листів-подяки",role:"coord"},
   {g:"Після заходу",d:-5,t:"Моніторинг ЗМІ",role:"comm",cond:"media"},
   {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами заходу",role:"coord"},
-  {g:"Документи (після заходу)",d:-7,t:"Отримання оригіналів документів від контрагентів",role:"dmitro"},
-  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами — фінансові",role:"other"},
+  {g:"Документи (після заходу)",d:-7,t:"Отримання оригіналів документів від контрагентів",role:"assist"},
+  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами — фінансові",role:"assist"},
   {g:"Аналіз (після заходу)",d:-10,t:"Організація аналізу результатів заходу",role:"expert"},
   {g:"Аналіз (після заходу)",d:-12,t:"Лист-підсумок (аналіз відгуків, резюме, проблеми-успіхи)",role:"coord"},
 ];
@@ -866,14 +869,14 @@ function App(){
     const sorted=sortTasks(t);
     setTasks(sorted);localStorage.setItem("cppr_tasks",JSON.stringify(sorted));
     if(config.sheetsApiUrl){
-      // Зберігаємо задачі частинами (GET має ліміт URL ~2кБ)
-      // Спочатку очищаємо аркуш
+      // Передаємо всі задачі одним POST-подібним GET через окремі рядки
+      // Кожна задача окремим рядком через saveOneTask, але спочатку clearTasks
+      // Використовуємо новий action saveAllTasksJson — один запит з усіма задачами у JSON чанках
+      const chunkSize=10;
       await sheetsRequest(config.sheetsApiUrl,"clearTasks",{});
-      // Записуємо по одній задачі
-      for(let i=0;i<sorted.length;i++){
-        const task=sorted[i];
-        const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row});
+      for(let i=0;i<sorted.length;i+=chunkSize){
+        const chunk=sorted.slice(i,i+chunkSize);
+        await sheetsRequest(config.sheetsApiUrl,"saveTasksChunk",{offset:i,tasks:JSON.stringify(chunk)});
       }
     }
   };
@@ -1058,7 +1061,7 @@ function App(){
         </div>
         <div style={{display:"flex",gap:8,marginTop:10}}>
           <button className="btn-ghost"onClick={()=>{const newTask={g:"Нова група",d:7,t:"Нова задача",role:"coord"};const ts=[...tasks,newTask].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
-          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 74 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
+          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 80 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
         </div>
       </div>}
 

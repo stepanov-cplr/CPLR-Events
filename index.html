@@ -169,6 +169,9 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 // ║  КОНФІГУРАЦІЯ — змініть тут якщо URL таблиці зміниться      ║
 // ╚══════════════════════════════════════════════════════════════╝
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
+// При зміні DEFAULT_TASKS або DEFAULT_TEAM — збільш цю цифру на 1
+// Програма автоматично скине кеш у всіх користувачів
+const DATA_VERSION = "2";
 // ──────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
@@ -734,6 +737,12 @@ function App(){
   const [sending,setSending]=useState(false);
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
+  // Якщо версія даних змінилась — скидаємо кеш задач і команди (не заявок)
+  if(localStorage.getItem("cppr_data_version")!==DATA_VERSION){
+    localStorage.removeItem("cppr_tasks");
+    localStorage.removeItem("cppr_team");
+    localStorage.setItem("cppr_data_version",DATA_VERSION);
+  }
   const [config,setConfig]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;return {...s,sheetsApiUrl:SHEETS_API_URL};}catch{return DEFAULT_CONFIG;}});
   const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
   const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});

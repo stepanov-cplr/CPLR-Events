@@ -168,7 +168,7 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  КОНФІГУРАЦІЯ — змініть тут якщо URL таблиці зміниться      ║
 // ╚══════════════════════════════════════════════════════════════╝
-const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbwQ-BBTYoA-zM8isF9QIA233HXsmzIZ2BToxWq76KBJWU_7_5hQIcX_6nCq7jruCw-y/exec";
+const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
 // ──────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
@@ -730,7 +730,7 @@ function App(){
   const [sending,setSending]=useState(false);
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
-  const [config,setConfig]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;}catch{return DEFAULT_CONFIG;}});
+  const [config,setConfig]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("cppr_config"))||DEFAULT_CONFIG;return {...s,sheetsApiUrl:SHEETS_API_URL};}catch{return DEFAULT_CONFIG;}});
   const [team,setTeam]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_team"))||DEFAULT_TEAM;}catch{return DEFAULT_TEAM;}});
   const [costs,setCosts]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_costs"))||DEFAULT_COSTS;}catch{return DEFAULT_COSTS;}});
   const sortTasks=t=>[...t].sort((a,b)=>b.d-a.d);
@@ -982,9 +982,9 @@ function App(){
 
       {settingsTab==="general"&&<div className="settings-section">
         <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Підключення Google Sheets</div>
-        <F label="URL Google Apps Script"><Inp val={localConfig.sheetsApiUrl}set={v=>setLocalConfig({...localConfig,sheetsApiUrl:v})}ph="https://script.google.com/macros/s/.../exec"/></F>
-        <button className="btn-primary"onClick={()=>{saveConfig(localConfig);showToast("Збережено!");}}>Зберегти</button>
-        <div className="alert-info"style={{marginTop:10}}>Після збереження перезавантажте сторінку щоб підтягнулись дані.</div>
+        <div style={{fontSize:12,color:"var(--text2)",marginBottom:6}}>URL Google Apps Script</div>
+        <div style={{padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-card)",fontSize:11,color:"var(--text2)",wordBreak:"break-all",fontFamily:"monospace"}}>{SHEETS_API_URL}</div>
+        <div className="alert-info"style={{marginTop:10}}>URL підключення вшито в код застосунку. Для зміни зверніться до адміністратора.</div>
       </div>}
 
       {settingsTab==="team"&&<div className="settings-section">

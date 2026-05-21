@@ -179,7 +179,7 @@ const DEFAULT_TEAM=[
   {name:"Захарченко Мар'яна",email:"maryana@pravo.org.ua",role:"other"},
   {name:"Кириченко Юлія",email:"juliakyr@gmail.com",role:"expert"},
   {name:"Коліушко Ігор Борисович",email:"koliushko@pravo.org.ua",role:"expert"},
-  {name:"Коломієць Аліна",email:"kolomiiets@pravo.org.ua",role:"comm"},
+  {name:"Ковальова Інеса",email:"kovalova@pravo.org.ua",role:"comm"},
   {name:"Куйбіда Роман",email:"kuybida@pravo.org.ua",role:"expert"},
   {name:"Мельник Вікторія",email:"melnyk@pravo.org.ua",role:"comm"},
   {name:"Новак Вікторія",email:"novak@pravo.org.ua",role:"comm"},
@@ -194,6 +194,7 @@ const DEFAULT_TEAM=[
   {name:"Хавронюк Микола Іванович",email:"khavronuk@pravo.org.ua",role:"expert"},
   {name:"Чиркін Антон",email:"antonchirkin14@gmail.com",role:"expert"},
   {name:"Школьний Євген",email:"shkolniy@pravo.org.ua",role:"expert"},
+  {name:"Шостак Ірина",email:"irinashostak70@gmail.com",role:"other"},
 ];
 const DEFAULT_EVENT_TYPES=["Пресконференція","Круглий стіл","Координаційна зустріч","Конференція","Тренінг","Виїздне засідання","Стратегічна сесія","Робоча зустріч","Експертна дискусія","Презентація","Інформаційна сесія","Керівний комітет","Конгресові слухання","Інше"];
 const DEFAULT_ACCESS_TYPES=["Вільний для всіх","Лише для тих, хто має посилання","Для запрошених","Лише для підтверджених учасників"];
@@ -753,7 +754,20 @@ function App(){
         if(sRes?.settings){
           const s=sRes.settings;
           if(s.team){setTeam(s.team);localStorage.setItem("cppr_team",JSON.stringify(s.team));}
-          if(s.tasks){const st=sortTasks(s.tasks);setTasks(st);localStorage.setItem("cppr_tasks",JSON.stringify(st));}
+          // Задачі — завжди беремо з таблиці, ігноруємо кеш
+          if(s.tasks&&s.tasks.length){
+            const st=sortTasks(s.tasks);
+            setTasks(st);
+            localStorage.setItem("cppr_tasks",JSON.stringify(st));
+          } else {
+            // getSettings не повернув задачі — запитуємо окремо
+            const tRes=await sheetsRequest(config.sheetsApiUrl,"getTasks",{});
+            if(tRes?.tasks&&tRes.tasks.length){
+              const st=sortTasks(tRes.tasks);
+              setTasks(st);
+              localStorage.setItem("cppr_tasks",JSON.stringify(st));
+            }
+          }
           if(s.costs){setCosts(s.costs);localStorage.setItem("cppr_costs",JSON.stringify(s.costs));}
           if(s.eventTypes){setEventTypesList(s.eventTypes);localStorage.setItem("cppr_event_types",JSON.stringify(s.eventTypes));}
           if(s.accessTypes){setAccessTypesList(s.accessTypes);localStorage.setItem("cppr_access_types",JSON.stringify(s.accessTypes));}
@@ -851,21 +865,14 @@ function App(){
     const sorted=sortTasks(t);
     setTasks(sorted);localStorage.setItem("cppr_tasks",JSON.stringify(sorted));
     if(config.sheetsApiUrl){
-      if(changedIdx!==undefined&&changedIdx>=0){
-        const originalTask=t[changedIdx];
-        const newIdx=sorted.findIndex(task=>task===originalTask||(task.t===originalTask.t&&task.g===originalTask.g&&task.role===originalTask.role&&task.d===originalTask.d));
-        const task=sorted[newIdx>=0?newIdx:0];
+      // Зберігаємо задачі частинами (GET має ліміт URL ~2кБ)
+      // Спочатку очищаємо аркуш
+      await sheetsRequest(config.sheetsApiUrl,"clearTasks",{});
+      // Записуємо по одній задачі
+      for(let i=0;i<sorted.length;i++){
+        const task=sorted[i];
         const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:newIdx>=0?newIdx:0,row});
-      } else {
-        // Спочатку очищаємо аркуш
-        await sheetsRequest(config.sheetsApiUrl,"clearTasks",{});
-        // Потім записуємо послідовно
-        for(let i=0;i<sorted.length;i++){
-          const task=sorted[i];
-          const row=`${encodeURIComponent(task.g||"")}|${encodeURIComponent(task.t||"")}|${encodeURIComponent(task.role||"")}|${task.d||0}|${encodeURIComponent(task.cond||"")}`;
-          await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row});
-        }
+        await sheetsRequest(config.sheetsApiUrl,"saveOneTask",{idx:i,row});
       }
     }
   };

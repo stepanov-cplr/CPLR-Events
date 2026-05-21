@@ -773,15 +773,14 @@ function App(){
     if(config.sheetsApiUrl&&changedId){
       const ev=list.find(e=>e.id===changedId);
       if(ev){
-        // Передаємо без чеклиста — скрипт зберігає старий чеклист з таблиці
+        // Передаємо без чеклиста щоб не перевищити ліміт GET URL
         const evToSend={...ev,checklist:[]};
         await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
-        // Якщо є чеклист — оновлюємо статуси виконання окремо (тільки done/overdue)
+        // Якщо є чеклист — зберігаємо частинами (GET має ліміт ~2кБ)
         if(ev.checklist?.length){
-          const clStatus=ev.checklist.map(t=>({done:t.done||false,overdue:t.overdue||false}));
-          const clStr=JSON.stringify(clStatus);
-          if(clStr.length<6000){
-            await sheetsRequest(config.sheetsApiUrl,"upsertClStatus",{id:ev.id,cls:clStr});
+          const chunkSize=15;
+          for(let i=0;i<ev.checklist.length;i+=chunkSize){
+            await sheetsRequest(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:JSON.stringify(ev.checklist.slice(i,i+chunkSize)),total:ev.checklist.length});
           }
         }
       }

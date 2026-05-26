@@ -171,7 +171,7 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
 // При зміні DEFAULT_TASKS або DEFAULT_TEAM — збільш цю цифру на 1
 // Програма автоматично скине кеш у всіх користувачів
-const DATA_VERSION = "2";
+const DATA_VERSION = "3";
 // ──────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
@@ -234,6 +234,7 @@ const DEFAULT_TASKS=[
   {g:"Комунікації (за 14 днів)",d:14,t:"Запрошення доповідачів. Підтвердження участі",role:"expert"},
   {g:"Комунікації (за 14 днів)",d:14,t:"Надіслати анонс в Укрінформ",role:"comm",cond:"media"},
   {g:"Комунікації (за 14 днів)",d:14,t:"Анонс події на ресурсах ЦППР",role:"comm",cond:"websiteAnnounce"},
+  {g:"Комунікації (за 14 днів)",d:14,t:"Переклад листа-запрошення і програми заходу",role:"coord",cond:"inviteTranslation"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити кейтеринг (кава-паузи)",role:"dmitro",cond:"hasCoffee"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити синхронний переклад",role:"dmitro",cond:"translation"},
   {g:"Підрядники (за 14 днів)",d:14,t:"Замовити технічне обслуговування (IQ Conference)",role:"dmitro",cond:"confService"},
@@ -365,7 +366,8 @@ function genChecklist(f,taskTemplates,team){
     assist:f.assistant||"Асистент",other:"Відповідальний",
   };
   const condMap={
-    registrationForm:!!f.registrationForm,hasDonor:!!(f.donor&&f.donor!=="Без донора"),
+    registrationForm:!!f.registrationForm,
+    hasDonor:!!(f.donors&&f.donors.length>0&&!(f.donors.length===1&&f.donors[0]==="Без донора")),
     websiteAnnounce:!!f.websiteAnnounce,media:!!f.media,hasCoffee:!!(f.coffeeWelcome||f.coffeeBreak||f.coffeeFinal||f.breakfast||f.lunch||f.dinner),
     translation:!!f.translation,confService:!!f.confService,photographer:!!f.photographer,
     videographer:!!f.videographer,donorApproval:!!f.donorApproval,nameplates:!!f.nameplates,
@@ -374,6 +376,7 @@ function genChecklist(f,taskTemplates,team){
     flipchart:!!f.flipchart,folders:!!f.folders,notebooks:!!f.notebooks,badges:!!f.badges,
     hasAccommodation:!!(parseInt(f.accommodation)>0),hasTravel:!!(parseInt(f.travel)>0),
     hasAccommodationOrTravel:!!(parseInt(f.accommodation)>0||parseInt(f.travel)>0),
+    inviteTranslation:!!f.inviteTranslation,
   };
   return(taskTemplates||DEFAULT_TASKS).filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
     const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
@@ -441,6 +444,18 @@ function MultiCheck({options,selected,onChange}){
   const toggle=v=>onChange(sel.includes(v)?sel.filter(x=>x!==v):[...sel,v]);
   return<div className="multi-check">{options.map(o=><div key={o}className={`multi-check-item${sel.includes(o)?" selected":""}`}onClick={()=>toggle(o)}>{o}</div>)}</div>;
 }
+function DonorMultiSelect({donors,selected,onChange}){
+  const sel=selected||[];
+  const noBudget="Без донора";
+  const toggle=v=>{
+    if(v===noBudget){onChange(sel.includes(noBudget)?[]:[noBudget]);}
+    else{const base=sel.filter(x=>x!==noBudget);onChange(base.includes(v)?base.filter(x=>x!==v):[...base,v]);}
+  };
+  return<div className="multi-check">{donors.map(o=>{
+    const active=sel.includes(o);
+    return<div key={o}className={`multi-check-item${active?" selected":""}`}onClick={()=>toggle(o)}>{o}</div>;
+  })}</div>;
+}
 
 // ══ GENERATE DOCUMENT HTML ══════════════════════════════
 function generateDocHTML(ev,budget,blocks,docType){
@@ -457,9 +472,10 @@ function generateDocHTML(ev,budget,blocks,docType){
     <tr><td>Дата закінчення</td><td>${formatDate(f.eventDateEnd)}</td></tr>
     <tr><td>Місто</td><td>${f.city||"—"}</td></tr>
     <tr><td>Клас локації</td><td>${f.venueType||"—"}</td></tr><tr><td>Побажання щодо локації</td><td>${f.venueCustom||"—"}</td></tr>
-    <tr><td>Донор</td><td>${f.donor||"—"}</td></tr>
+    <tr><td>Донор</td><td>${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||"—"}</td></tr>
     <tr><td>Тип доступу</td><td>${f.eventAccess||"—"}</td></tr>
-    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}</td></tr></table>`);
+    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}</td></tr>
+    <tr><td>Час</td><td>${f.timeStart||f.timeEnd?(f.timeStart||"")+(f.timeEnd?" — "+f.timeEnd:""):"—"}</td></tr></table>`);
   }
   if(blocks.includes("team")){
     sections.push(`<h2>Відповідальні</h2>
@@ -595,9 +611,11 @@ function DocModal({ev,budget,onClose}){
       text+=`Дата закінчення: ${fmt(f.eventDateEnd)}\n`;
       text+=`Місто: ${f.city||"—"}\n`;
       text+=`Клас локації: ${f.venueType||"—"}\nПобажання: ${f.venueCustom||"—"}\n`;
-      text+=`Донор: ${f.donor||"—"}\n`;
+      text+=`Донор: ${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||"—"}\n`;
       text+=`Тип доступу: ${f.eventAccess||"—"}\n`;
-      text+=`Тривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\n\n`;
+      text+=`Тривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\n`;
+      if(f.timeStart||f.timeEnd)text+=`Час: ${f.timeStart||""}${f.timeEnd?" — "+f.timeEnd:""}\n`;
+      text+=`\n`;
     }
     if(blocks.includes("team")){
       text+=`ВІДПОВІДАЛЬНІ\n${"-".repeat(40)}\n`;
@@ -839,6 +857,15 @@ function App(){
   const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);};
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
+  const copyEv=(id,e)=>{
+    e.stopPropagation();
+    const src=evs.find(ev=>ev.id===id);if(!src)return;
+    const newId=Date.now().toString();
+    const copy={...src,id:newId,status:"draft",createdAt:new Date().toISOString(),checklist:[],
+      form:{...src.form,eventName:`Копія — ${src.form?.eventName||"захід"}`}};
+    const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
+    showToast("Заявку скопійовано");
+  };
   const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const updateChecklist=()=>{
     const ev=getEv();
@@ -878,6 +905,11 @@ function App(){
   const toggleCL=(idx)=>{
     const ev=getEv();const today=new Date();today.setHours(0,0,0,0);
     const cl=ev.checklist.map((t,i)=>{if(i!==idx)return t;const u={...t,done:!t.done};if(u.dlDate){const dl=new Date(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}return u;});
+    upd({checklist:cl});
+  };
+  const changeTaskAssignee=(idx,who)=>{
+    const ev=getEv();
+    const cl=ev.checklist.map((t,i)=>i===idx?{...t,who}:t);
     upd({checklist:cl});
   };
 
@@ -963,7 +995,7 @@ function App(){
                 </div>
                 <div style={{fontSize:11,color:"var(--text3)",marginTop:3,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {ev.form?.expertName&&<span>Експерт: {ev.form.expertName}</span>}
-                  {ev.form?.donor&&ev.form.donor!=="Без донора"&&<span className="donor-badge">{ev.form.donor}</span>}
+                  {ev.form?.donors&&ev.form.donors.length>0&&!( ev.form.donors.length===1&&ev.form.donors[0]==="Без донора")&&ev.form.donors.filter(d=>d!=="Без донора").map(d=><span key={d}className="donor-badge">{d}</span>)}
                 </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
@@ -972,6 +1004,7 @@ function App(){
                   return<div style={{fontSize:10,color:od>0?"var(--red)":"var(--text3)",fontWeight:od>0?700:400}}>
                     {od>0&&`⚠ ${od} просрочено · `}{ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач</div>;})()}
                 <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
+                <button onClick={e=>copyEv(ev.id,e)}style={{fontSize:10,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:0}}>копіювати</button>
               </div>
             </div>
           ))}
@@ -1170,12 +1203,13 @@ function App(){
           {f.eventFormat&&<span>{f.eventFormat}</span>}
           {f.city&&<span>· {f.city}</span>}
           {f.eventDate&&<span>· {f.eventDate}</span>}
-          {f.donor&&f.donor!=="Без донора"&&<span className="donor-badge">{f.donor}</span>}
+          {f.donors&&f.donors.length>0&&!(f.donors.length===1&&f.donors[0]==="Без донора")&&f.donors.filter(d=>d!=="Без донора").map(d=><span key={d}className="donor-badge">{d}</span>)}
         </div>
       </div>
       <Badge s={ev.status}/>
       {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
       <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs,cid);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
+      <button className="btn-ghost"onClick={e=>copyEv(cid,e)}style={{fontSize:12}}>📋 Копіювати заявку</button>
       <button className="btn-ghost"onClick={sendEmails}disabled={sending}style={{opacity:sending?0.6:1}}>{sending?"Надсилаємо...":"📧 Надіслати задачі"}</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
     </div>
@@ -1213,7 +1247,11 @@ function App(){
         <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
         {f.duration==="Неповний день (вказати кількість годин)"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
-        <F label="Донор"><Sel val={f.donor}set={v=>uf("donor",v)}opts={donorsList}ph="— оберіть —"/></F>
+        <div className="grid2">
+          <F label="Початок (час)"><input type="time"value={f.timeStart||""}onChange={e=>uf("timeStart",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
+          <F label="Кінець (час)"><input type="time"value={f.timeEnd||""}onChange={e=>uf("timeEnd",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
+        </div>
+        <F label="Донор"><DonorMultiSelect donors={donorsList}selected={f.donors||[]}onChange={v=>uf("donors",v)}/></F>
       </div>
       <div className="grid2">
         <F label="Клас локації">
@@ -1361,6 +1399,7 @@ function App(){
         <CB checked={f.pressRelease}set={v=>uf("pressRelease",v)}label="Прес-реліз (для ЗМІ)"/>
         <CB checked={f.publishResearch}set={v=>uf("publishResearch",v)}label="Опублікувати дослідження до заходу"/>
         <CB checked={f.sendMaterials}set={v=>uf("sendMaterials",v)}label="Розсилка учасникам матеріалів за результатами заходу"/>
+        <CB checked={f.inviteTranslation}set={v=>uf("inviteTranslation",v)}label="Переклад листа-запрошення і програми заходу"/>
       </div>
       <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12,marginBottom:10}}>
         <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",marginBottom:8,textTransform:"uppercase",letterSpacing:".06em"}}>Взаємодія з донором</div>
@@ -1411,11 +1450,19 @@ function App(){
               </div>
               {ev.checklist.filter(t=>t.g===g).map(t=>{
                 const idx=ev.checklist.indexOf(t);const isOd=t.overdue&&!t.done;
-                return<div key={idx}className={`checklist-item${isOd?" overdue":""}`}onClick={()=>toggleCL(idx)}style={{opacity:t.done?.5:1}}>
-                  <div className={`chk-box${t.done?" done":""}`}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
+                return<div key={idx}className={`checklist-item${isOd?" overdue":""}`}style={{opacity:t.done?.5:1}}>
+                  <div className={`chk-box${t.done?" done":""}`}onClick={()=>toggleCL(idx)}style={{cursor:"pointer",marginTop:3,flexShrink:0}}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)"}}>{t.t}{isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}</div>
-                    <div style={{fontSize:11,color:isOd?"var(--red)":"var(--text3)",marginTop:2}}>{t.who} · {t.dl||"—"}</div>
+                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>{t.t}{isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}</div>
+                    <div style={{fontSize:11,color:isOd?"var(--red)":"var(--text3)",marginTop:3,display:"flex",alignItems:"center",gap:6}}>
+                      <select value={t.who||""}onChange={e=>{e.stopPropagation();changeTaskAssignee(idx,e.target.value);}}
+                        onClick={e=>e.stopPropagation()}
+                        style={{fontSize:11,padding:"1px 4px",border:"1px solid var(--border)",borderRadius:4,background:"var(--bg-white)",color:isOd?"var(--red)":"var(--text2)",fontFamily:"var(--font)",cursor:"pointer",maxWidth:180}}>
+                        {(team||DEFAULT_TEAM).map(m=><option key={m.name}value={m.name}>{m.name}</option>)}
+                        {t.who&&!(team||DEFAULT_TEAM).find(m=>m.name===t.who)&&<option value={t.who}>{t.who}</option>}
+                      </select>
+                      <span>· {t.dl||"—"}</span>
+                    </div>
                   </div>
                 </div>;
               })}
@@ -1428,7 +1475,7 @@ function App(){
       <div style={{fontSize:13,color:"var(--text2)",marginBottom:14}}>Натисніть «Копіювати» — текст листа скопіюється в буфер. Вставте у Gmail.</div>
       <div style={{background:"var(--bg-card)",borderRadius:"var(--radius-lg)",padding:13,marginBottom:14,border:"1px solid var(--border)"}}>
         <div style={{fontWeight:600,fontSize:13,marginBottom:8}}>Google Calendar — подія заходу</div>
-        {f.eventDate?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nФормат: ${f.eventFormat||""}\nДонор: ${f.donor||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}`)}&location=${encodeURIComponent(f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||f.city||"")}`}target="_blank"rel="noopener noreferrer"style={{fontSize:13}}>Відкрити в Google Calendar →</a>
+        {f.eventDate?<a href={`https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(f.eventName||"Захід ЦППР")}&dates=${(f.eventDate||"").replace(/-/g,"")}/${(f.eventDateEnd||f.eventDate||"").replace(/-/g,"")}&details=${encodeURIComponent(`Тип: ${f.eventType||""}\nФормат: ${f.eventFormat||""}\nДонор: ${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||""}\nУчасники: ${f.participants||""}\nМісто: ${f.city||""}`)}&location=${encodeURIComponent(f.venue&&f.venue!=="Інше"?f.venue:f.venueCustom||f.city||"")}`}target="_blank"rel="noopener noreferrer"style={{fontSize:13}}>Відкрити в Google Calendar →</a>
           :<div style={{fontSize:12,color:"var(--text3)"}}>Вкажіть дату у формі.</div>}
       </div>
       {!ev.checklist?.length?<div style={{fontSize:13,color:"var(--text2)"}}>Спочатку затвердіть заявку.</div>

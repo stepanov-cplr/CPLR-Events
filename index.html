@@ -950,7 +950,16 @@ function App(){
     // Передаємо дані заявки напряму — не залежимо від збереження в таблиці
     const evName=ev?.form?.eventName||"Захід ЦППР";
     const evDate=ev?.form?.eventDate||"";
-    if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"sendStatusNotification",{evId:ev.id,status:newStatus,recipients:JSON.stringify(allRecipients),evName,evDate});
+    const evType=ev?.form?.eventType||"";
+    const evFormat=ev?.form?.eventFormat||"";
+    const evCity=ev?.form?.city||"";
+    const evExpert=ev?.form?.expertName||"";
+    const evDonors=(ev?.form?.donors||[]).filter(d=>d!=="Без донора").join(", ");
+    const evParticipants=ev?.form?.participants||"";
+    if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"sendStatusNotification",{
+      evId:ev.id,status:newStatus,recipients:JSON.stringify(allRecipients),
+      evName,evDate,evType,evFormat,evCity,evExpert,evDonors,evParticipants
+    });
   };
 
   const Header=()=><div className="app-header">

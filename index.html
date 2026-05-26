@@ -872,7 +872,7 @@ function App(){
     const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
     showToast("Заявку скопійовано");
   };
-  const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});triggerStatusNotification(ev,"approved");setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
+  const approve=()=>{const ev=getEv();triggerStatusNotification(ev,"approved");upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const updateChecklist=()=>{
     const ev=getEv();
     const newCl=genChecklist(ev.form,tasks,team);
@@ -947,7 +947,10 @@ function App(){
     if(!rule)return;
     const allRecipients=[...(rule.recipients||[]),...(rule.customEmails?rule.customEmails.split(",").map(e=>e.trim()).filter(Boolean):[])];
     if(!allRecipients.length)return;
-    if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"sendStatusNotification",{evId:ev.id,status:newStatus,recipients:JSON.stringify(allRecipients)});
+    // Передаємо дані заявки напряму — не залежимо від збереження в таблиці
+    const evName=ev?.form?.eventName||"Захід ЦППР";
+    const evDate=ev?.form?.eventDate||"";
+    if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"sendStatusNotification",{evId:ev.id,status:newStatus,recipients:JSON.stringify(allRecipients),evName,evDate});
   };
 
   const Header=()=><div className="app-header">

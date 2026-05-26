@@ -1162,7 +1162,7 @@ function App(){
         </div>
         <div style={{display:"flex",gap:8,marginTop:10}}>
           <button className="btn-ghost"onClick={()=>{const newTask={g:"Нова група",d:7,t:"Нова задача",role:"coord"};const ts=[...tasks,newTask].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
-          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 80 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
+          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 81 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
         </div>
       </div>}
 

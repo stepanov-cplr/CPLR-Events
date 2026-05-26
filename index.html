@@ -1089,7 +1089,17 @@ function App(){
       </div>}
 
       {settingsTab==="team"&&<div className="settings-section">
-        <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Команда ({team.length} осіб)</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div style={{fontWeight:600,fontSize:14}}>Команда ({team.length} осіб)</div>
+          <button className="btn-ghost"style={{fontSize:11,padding:"4px 10px"}}onClick={()=>{
+            const sorted=[...team].sort((a,b)=>{
+              const lastA=(a.name||"").trim().split(" ")[0];
+              const lastB=(b.name||"").trim().split(" ")[0];
+              return lastA.localeCompare(lastB,"uk");
+            });
+            saveTeam(sorted);setTeam(sorted);showToast("Сортування збережено");
+          }}>Сортувати А→Я</button>
+        </div>
         <div style={{maxHeight:320,overflowY:"auto",marginBottom:12}}>
           {team.map((m,i)=>(
             <div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--bg-card)",fontSize:13}}>

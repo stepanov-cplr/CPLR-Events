@@ -942,26 +942,27 @@ function App(){
   const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"accessTypes",value:JSON.stringify(l)});};
   const saveDonors=l=>{setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"donors",value:JSON.stringify(l)});};
   const saveNotifications=n=>{setNotifications(n);localStorage.setItem("cppr_notifications",JSON.stringify(n));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"notifications",value:JSON.stringify(n)});};
-  const triggerStatusNotification=(ev,newStatus)=>{
+  const triggerStatusNotification=(srcEv,newStatus)=>{
     const rule=notifications.find(n=>n.event===newStatus);
     if(!rule)return;
     const allRecipients=[...(rule.recipients||[]),...(rule.customEmails?rule.customEmails.split(",").map(e=>e.trim()).filter(Boolean):[])];
     if(!allRecipients.length)return;
     // Передаємо дані заявки напряму — не залежимо від збереження в таблиці
-    const evName=ev?.form?.eventName||"Захід ЦППР";
-    const evDate=ev?.form?.eventDate||"";
-    const evType=ev?.form?.eventType||"";
-    const evFormat=ev?.form?.eventFormat||"";
-    const evCity=ev?.form?.city||"";
-    const evExpert=ev?.form?.expertName||"";
-    const evDonors=(ev?.form?.donors||[]).filter(d=>d!=="Без донора").join(", ");
-     const evParticipants=ev?.form?.participants||"";
-     const evCoordinator=ev?.form?.coordinator||"";
-     const evComment=ev?.form?.comments||"";
+    const evName=srcEv?.form?.eventName||"Захід ЦППР";
+    const evDate=srcEv?.form?.eventDate||"";
+    const evType=srcEv?.form?.eventType||"";
+    const evFormat=srcEv?.form?.eventFormat||"";
+    const evCity=srcEv?.form?.city||"";
+    const evExpert=srcEv?.form?.expertName||"";
+    const evDonors=(srcEv?.form?.donors||[]).filter(d=>d!=="Без донора").join(", ");
+     const evParticipants=srcEv?.form?.participants||"";
+     const evCoordinator=srcEv?.form?.coordinator||"";
+     const evComment=srcEv?.form?.comments||"";
      if(config.sheetsApiUrl)sheetsPost(config.sheetsApiUrl,"sendStatusNotification",{
-       evId:ev.id,status:newStatus,recipients:allRecipients,
+       evId:srcEv.id,status:newStatus,recipients:allRecipients,
        evName,evDate,evType,evFormat,evCity,evExpert,evCoordinator,evDonors,evParticipants,evComment
      });
+  };
 
   const Header=()=><div className="app-header">
     <div className="header-inner">

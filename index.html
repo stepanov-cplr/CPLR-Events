@@ -474,8 +474,7 @@ function generateDocHTML(ev,budget,blocks,docType){
     <tr><td>Клас локації</td><td>${f.venueType||"—"}</td></tr><tr><td>Побажання щодо локації</td><td>${f.venueCustom||"—"}</td></tr>
     <tr><td>Донор</td><td>${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||"—"}</td></tr>
     <tr><td>Тип доступу</td><td>${f.eventAccess||"—"}</td></tr>
-    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}</td></tr>
-    <tr><td>Час</td><td>${f.timeStart||f.timeEnd?(f.timeStart||"")+(f.timeEnd?" — "+f.timeEnd:""):"—"}</td></tr></table>`);
+    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?" ("+f.durationHours+" год)":""}</td></tr><tr><td>Час</td><td>${f.timeStart||f.timeEnd?(f.timeStart||"")+(f.timeEnd?" — "+f.timeEnd:""):"—"}</td></tr></table>`);
   }
   if(blocks.includes("team")){
     sections.push(`<h2>Відповідальні</h2>
@@ -782,6 +781,12 @@ function App(){
   const [eventTypesList,setEventTypesList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_event_types"))||DEFAULT_EVENT_TYPES;}catch{return DEFAULT_EVENT_TYPES;}});
   const [accessTypesList,setAccessTypesList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_access_types"))||DEFAULT_ACCESS_TYPES;}catch{return DEFAULT_ACCESS_TYPES;}});
   const [donorsList,setDonorsList]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_donors"))||DEFAULT_DONORS;}catch{return DEFAULT_DONORS;}});
+  const DEFAULT_NOTIFICATIONS=[
+    {event:"review",label:"🟡 На розгляді",recipients:[],customEmails:""},
+    {event:"approved",label:"🔵 Затверджено",recipients:[],customEmails:""},
+    {event:"cancelled",label:"🔴 Скасовано",recipients:[],customEmails:""},
+  ];
+  const [notifications,setNotifications]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_notifications"))||DEFAULT_NOTIFICATIONS;}catch{return DEFAULT_NOTIFICATIONS;}});
   const [newListItem,setNewListItem]=useState("");
 
   useEffect(()=>{
@@ -800,6 +805,7 @@ function App(){
           if(s.eventTypes){setEventTypesList(s.eventTypes);localStorage.setItem("cppr_event_types",JSON.stringify(s.eventTypes));}
           if(s.accessTypes){setAccessTypesList(s.accessTypes);localStorage.setItem("cppr_access_types",JSON.stringify(s.accessTypes));}
           if(s.donors){setDonorsList(s.donors);localStorage.setItem("cppr_donors",JSON.stringify(s.donors));}
+          if(s.notifications){setNotifications(s.notifications);localStorage.setItem("cppr_notifications",JSON.stringify(s.notifications));}
         }
         // Задачі — окремий запит, завжди актуальні
         const tRes=await sheetsRequest(SHEETS_API_URL,"getTasks",{});
@@ -866,7 +872,7 @@ function App(){
     const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
     showToast("Заявку скопійовано");
   };
-  const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
+  const approve=()=>{const ev=getEv();upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});triggerStatusNotification(ev,"approved");setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const updateChecklist=()=>{
     const ev=getEv();
     const newCl=genChecklist(ev.form,tasks,team);
@@ -935,6 +941,14 @@ function App(){
   const saveEventTypes=l=>{setEventTypesList(l);localStorage.setItem("cppr_event_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"eventTypes",value:JSON.stringify(l)});};
   const saveAccessTypes=l=>{setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"accessTypes",value:JSON.stringify(l)});};
   const saveDonors=l=>{setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"donors",value:JSON.stringify(l)});};
+  const saveNotifications=n=>{setNotifications(n);localStorage.setItem("cppr_notifications",JSON.stringify(n));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"notifications",value:JSON.stringify(n)});};
+  const triggerStatusNotification=(ev,newStatus)=>{
+    const rule=notifications.find(n=>n.event===newStatus);
+    if(!rule)return;
+    const allRecipients=[...(rule.recipients||[]),...(rule.customEmails?rule.customEmails.split(",").map(e=>e.trim()).filter(Boolean):[])];
+    if(!allRecipients.length)return;
+    if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"sendStatusNotification",{evId:ev.id,status:newStatus,recipients:JSON.stringify(allRecipients)});
+  };
 
   const Header=()=><div className="app-header">
     <div className="header-inner">
@@ -1015,7 +1029,7 @@ function App(){
 
   // ══ SETTINGS ══
   if(view==="settings"){
-    const stabs=[{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"general",l:"Підключення"}];
+    const stabs=[{id:"team",l:"Команда"},{id:"lists",l:"Довідники"},{id:"tasks",l:"Задачі"},{id:"costs",l:"Вартості"},{id:"notify",l:"Сповіщення"},{id:"general",l:"Підключення"}];
     const EditableList=({items,onSave})=>{
       const [list,setList]=useState([...items]);
       const [newItem,setNewItem]=useState("");
@@ -1040,6 +1054,32 @@ function App(){
     return<><Header/><div className="app">
       <div style={{fontSize:18,fontWeight:700,marginBottom:16}}>Налаштування</div>
       <div className="tabs"style={{marginBottom:20}}>{stabs.map(t=><button key={t.id}className={`tab${settingsTab===t.id?" active":""}`}onClick={()=>setSettingsTab(t.id)}>{t.l}</button>)}</div>
+
+      {settingsTab==="notify"&&<div className="settings-section">
+        <div style={{fontWeight:600,fontSize:14,marginBottom:4}}>Сповіщення при зміні статусу</div>
+        <div style={{fontSize:12,color:"var(--text2)",marginBottom:16}}>При зміні статусу заявки система надішле лист зазначеним отримувачам.</div>
+        {notifications.map((rule,ri)=>{
+          const updateRule=(patch)=>{
+            const n=notifications.map((r,i)=>i===ri?{...r,...patch}:r);
+            saveNotifications(n);
+          };
+          return<div key={rule.event}style={{border:"1.5px solid var(--border)",borderRadius:"var(--radius)",padding:14,marginBottom:12}}>
+            <div style={{fontWeight:600,fontSize:13,marginBottom:10}}>{rule.label}</div>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:6}}>Отримувачі з команди:</div>
+            <div className="multi-check"style={{marginBottom:10}}>
+              {(team||DEFAULT_TEAM).filter(m=>m.email).map(m=>{
+                const sel=(rule.recipients||[]).includes(m.email);
+                const toggle=()=>updateRule({recipients:sel?(rule.recipients||[]).filter(e=>e!==m.email):[...(rule.recipients||[]),m.email]});
+                return<div key={m.email}className={`multi-check-item${sel?" selected":""}`}onClick={toggle}style={{fontSize:11}}>{m.name}</div>;
+              })}
+            </div>
+            <div style={{fontSize:12,color:"var(--text2)",marginBottom:4}}>Додаткові email (через кому):</div>
+            <input value={rule.customEmails||""}onChange={e=>updateRule({customEmails:e.target.value})}
+              placeholder="example@gmail.com, another@org.ua"
+              style={{width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)",boxSizing:"border-box"}}/>
+          </div>;
+        })}
+      </div>}
 
       {settingsTab==="general"&&<div className="settings-section">
         <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Підключення Google Sheets</div>
@@ -1216,7 +1256,7 @@ function App(){
 
     <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {Object.entries(SL).map(([k,v])=>(
-        <button key={k}onClick={()=>upd({status:k})}className="status-btn"
+        <button key={k}onClick={()=>{const ev=getEv();upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);}}className="status-btn"
           style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)"}}>
           {v}
         </button>

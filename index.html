@@ -1033,7 +1033,7 @@ function ReportModal({ev,onClose,team,config}){
 
       {!sendMode&&<div style={{display:'flex',gap:8}}>
         <button className="btn-primary"style={{flex:1}}onClick={openReport}>Відкрити PDF</button>
-        {isAfterEvent&&<button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(true)}>📧 Надіслати звіт</button>}
+        <button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(true)}>📧 Надіслати звіт</button>
       </div>}
 
       {sendMode&&<div>
@@ -1654,9 +1654,11 @@ function App(){
       {!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
         <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12}}>✓ Затвердити + чеклист</button>
       )}
-      {!!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
+      {!!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(<>
         <button onClick={updateChecklist}className="btn-ghost"style={{marginLeft:"auto",fontSize:12}}>🔄 Оновити чеклист</button>
-      )}
+        <button onClick={()=>{if(confirm("Позначити захід як завершений (Архів)? Цю дію можна скасувати.")){const ev=getEv();upd({status:"done"});}}}className="btn-ghost"
+          style={{fontSize:12,color:"#00916E",borderColor:"#00916E"}}>✓ Завершити захід</button>
+      </>)}
     </div>
 
     <div className="tabs">{tabs.map(t=><button key={t.id}className={`tab${tab===t.id?" active":""}`}onClick={()=>setTab(t.id)}>{t.l}</button>)}</div>

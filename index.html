@@ -171,7 +171,7 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
 // При зміні DEFAULT_TASKS або DEFAULT_TEAM — збільш цю цифру на 1
 // Програма автоматично скине кеш у всіх користувачів
-const DATA_VERSION = "3";
+const DATA_VERSION = "4";
 // ──────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
@@ -250,19 +250,21 @@ const DEFAULT_TASKS=[
   {g:"За 7 днів",d:7,t:"Підготовка прес-анонсу",role:"comm",cond:"media"},
   {g:"За 7 днів",d:7,t:"Поширення прес-анонсу",role:"comm",cond:"media"},
   {g:"За 6 днів",d:6,t:"Запрошення ЗМІ",role:"comm",cond:"media"},
-  {g:"За 6 днів",d:6,t:"Формування остаточного пакету роздаткових матеріалів (>20 стор.)",role:"assist"},
+  {g:"За 6 днів",d:6,t:"Формування остаточного пакету роздаткових матеріалів (>20 стор.)",role:"assist",cond:"printLarge"},
   {g:"За 5 днів",d:5,t:"Формування остаточної програми заходу",role:"expert"},
   {g:"За 5 днів",d:5,t:"Розсилка програми учасникам",role:"assist"},
   {g:"За 5 днів",d:5,t:"Погодження з донором новин, постів тощо",role:"comm",cond:"donorApproval"},
   {g:"За 5 днів",d:5,t:"Опублікувати дослідження на ресурсах до заходу",role:"comm",cond:"publishResearch"},
-  {g:"За 5 днів",d:5,t:"Друк роздаткових матеріалів (>20 стор.)",role:"assist"},
-  {g:"За 5 днів",d:5,t:"Кольоровий друк матеріалів",role:"assist"},
+  {g:"За 5 днів",d:5,t:"Друк роздаткових матеріалів (додатково до програми), якщо >20 стор.",role:"assist",cond:"printLarge"},
+  {g:"За 5 днів",d:5,t:"Кольоровий друк програми (за потреби). Видалити, якщо потрібні тільки ч/б",role:"assist",cond:"printedPrograms"},
   {g:"За 4 дні",d:4,t:"Надіслати Дмитру Українському кількість учасників офлайн",role:"coord"},
   {g:"За 3 дні",d:3,t:"Формування і відправка готових видань",role:"assist",cond:"publishResearch"},
-  {g:"За 3 дні",d:3,t:"Формування остаточного пакету роздаткових матеріалів (<20 стор.)",role:"assist"},
+  {g:"За 3 дні",d:3,t:"Формування остаточного пакету роздаткових матеріалів (<20 стор.)",role:"assist",cond:"printSmall"},
   {g:"За 3 дні",d:3,t:"Отримати цитату для новини від донора",role:"comm",cond:"hasDonor"},
   {g:"За 2 дні",d:2,t:"Надати цитату комунікаційницям для новини ДО заходу",role:"expert"},
-  {g:"За 2 дні",d:2,t:"Друк роздаткових матеріалів (<20 стор.)",role:"assist"},
+  {g:"За 2 дні",d:2,t:"Друк роздаткових матеріалів (додатково до програми), якщо <20 стор.",role:"assist",cond:"printSmall"},
+  {g:"За 2 дні",d:2,t:"Друк програми ч/б",role:"assist",cond:"printedPrograms"},
+  {g:"За 2 дні",d:2,t:"Кольоровий друк програми (за потреби). Видалити, якщо потрібні тільки ч/б",role:"assist",cond:"printedPrograms"},
   {g:"За 2 дні",d:2,t:"Нагадати учасникам про захід та надіслати інформацію",role:"assist"},
   {g:"За 2 дні",d:2,t:"Формування списку табличок на столи, надіслати Українському",role:"coord",cond:"nameplates"},
   {g:"За 2 дні",d:2,t:"Формування остаточного списку реєстрації учасників",role:"coord"},
@@ -299,8 +301,8 @@ const DEFAULT_TASKS=[
   {g:"Після заходу",d:-2,t:"Підготовка та розсилка матеріалів заходу, листів-подяки",role:"coord"},
   {g:"Після заходу",d:-5,t:"Моніторинг ЗМІ",role:"comm",cond:"media"},
   {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами заходу",role:"coord"},
-  {g:"Документи (після заходу)",d:-7,t:"Отримання оригіналів документів від контрагентів",role:"assist"},
-  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами — фінансові",role:"assist"},
+  {g:"Документи (після заходу)",d:-7,t:"Отримання оригіналів документів від контрагентів",role:"fin"},
+  {g:"Документи (після заходу)",d:-7,t:"Формування теки з документами — фінансові",role:"fin"},
   {g:"Аналіз (після заходу)",d:-10,t:"Організація аналізу результатів заходу",role:"expert"},
   {g:"Аналіз (після заходу)",d:-12,t:"Лист-підсумок (аналіз відгуків, резюме, проблеми-успіхи)",role:"coord"},
 ];
@@ -364,6 +366,7 @@ function genChecklist(f,taskTemplates,team){
     expert:f.expertName||"Експерт",coord:f.coordinator||"Координатор",
     comm:f.commManager||"Комунікаційник",dmitro:"Дмитро Український",
     assist:f.assistant||"Асистент",other:"Відповідальний",
+    fin:f.coordinator||f.assistant||"Фінансовий координатор",
   };
   const condMap={
     registrationForm:!!f.registrationForm,
@@ -377,6 +380,8 @@ function genChecklist(f,taskTemplates,team){
     hasAccommodation:!!(parseInt(f.accommodation)>0),hasTravel:!!(parseInt(f.travel)>0),
     hasAccommodationOrTravel:!!(parseInt(f.accommodation)>0||parseInt(f.travel)>0),
     inviteTranslation:!!f.inviteTranslation,
+    printSmall:!!f.printSmall,
+    printLarge:!!f.printLarge,
   };
   return(taskTemplates||DEFAULT_TASKS).filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
     const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
@@ -1539,7 +1544,7 @@ function App(){
         </div>
         <div style={{display:"flex",gap:8,marginTop:10}}>
           <button className="btn-ghost"onClick={()=>{const newTask={g:"Нова група",d:7,t:"Нова задача",role:"coord"};const ts=[...tasks,newTask].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
-          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 81 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
+          <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 84 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
         </div>
       </div>}
 
@@ -1803,6 +1808,8 @@ function App(){
         <CB checked={f.notebooks}set={v=>uf("notebooks",v)}label="Блокноти і ручки"/>
         <CB checked={f.nameplates}set={v=>uf("nameplates",v)}label="Таблички на стіл"/>
         <CB checked={f.banner}set={v=>uf("banner",v)}label="Банер"/>
+        <CB checked={f.printSmall}set={v=>uf("printSmall",v)}label="Друк роздаткових (<20 стор.)"/>
+        <CB checked={f.printLarge}set={v=>uf("printLarge",v)}label="Друк роздаткових (>20 стор.)"/>
       </div>
 
       <ST icon="🔒">Безпека</ST>

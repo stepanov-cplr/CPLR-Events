@@ -1011,62 +1011,117 @@ function ReportModal({ev,onClose,team,config}){
 
   const allTeamEmails=(team||DEFAULT_TEAM).filter(m=>m.email);
 
-  return<div className="modal-overlay"onClick={onClose}style={{background:"rgba(15,23,42,0.85)",backdropFilter:"blur(2px)"}}>
-    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:520,boxShadow:"0 12px 48px rgba(0,0,0,0.5)",background:"var(--bg-white)"}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-        <div>
-          <div style={{fontWeight:700,fontSize:15,color:'var(--dark)'}}>
-            {isAfterEvent?'📊 Підсумковий звіт':'📊 Звіт у процесі підготовки'}
+  const statCards=[
+    {l:"Всього",v:total,bg:"var(--bg-card)",tc:"var(--blue)"},
+    {l:"Виконано",v:done,bg:"#F0FDF4",tc:"#3B6D11"},
+    {l:"Прострочено",v:overdue,bg:overdue>0?"#FCEBEB":"var(--bg-card)",tc:overdue>0?"#A32D2D":"var(--text2)"},
+    {l:"Із запізн.",v:late,bg:late>0?"#FAEEDA":"var(--bg-card)",tc:late>0?"#854F0B":"var(--text2)"},
+    {l:"З випер.",v:early,bg:early>0?"#F0FDF4":"var(--bg-card)",tc:early>0?"#3B6D11":"var(--text2)"},
+  ];
+  return<div className="modal-overlay"onClick={onClose}style={{background:"rgba(15,23,42,0.82)",backdropFilter:"blur(3px)"}}>
+    <div onClick={e=>e.stopPropagation()}style={{
+      maxWidth:530,width:"100%",borderRadius:16,overflow:"hidden",
+      boxShadow:"0 20px 60px rgba(0,0,0,0.45)",background:"var(--bg-white)"
+    }}>
+
+      {/* ── Шапка з градієнтом ── */}
+      <div style={{background:"linear-gradient(135deg,#1C75BC 0%,#252868 100%)",padding:"20px 20px 16px"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+          <div style={{flex:1}}>
+            <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.15)",borderRadius:20,padding:"3px 10px",marginBottom:10}}>
+              <span style={{fontSize:11,color:"rgba(255,255,255,0.92)",letterSpacing:".04em"}}>
+                {isAfterEvent?"Підсумковий звіт":"Звіт у процесі підготовки"}
+              </span>
+            </div>
+            <div style={{fontSize:14,fontWeight:500,color:"#fff",lineHeight:1.4}}>{f.eventName}</div>
+            {(f.eventDate||f.city)&&<div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginTop:4}}>
+              {f.eventDate?f.eventDate.slice(0,10).split("-").reverse().join("."):""}{f.city?" · "+f.city:""}
+            </div>}
           </div>
-          <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{f.eventName}</div>
+          <button onClick={onClose}style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"rgba(255,255,255,0.8)",fontSize:16}}>✕</button>
         </div>
-        <button onClick={onClose}style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}}>✕</button>
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginBottom:12}}>
-        {[['Всього',total,'var(--blue)'],['Виконано',done,'#00916E'],['Прострочено',overdue,'var(--red)'],['Із запізн',late,'#D97706'],['З випер.',early,'#00916E']].map(([l,v,c])=>(
-          <div key={l}style={{textAlign:'center',padding:'8px 2px',borderRadius:'var(--radius)',border:'1.5px solid '+c+'33',background:c+'11'}}>
-            <div style={{fontSize:20,fontWeight:700,color:c}}>{v}</div>
-            <div style={{fontSize:9,color:'var(--text2)',marginTop:1}}>{l}</div>
+      {/* ── Тіло ── */}
+      <div style={{padding:"16px 20px 20px"}}>
+
+        {/* Статистичні картки */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:14}}>
+          {statCards.map(({l,v,bg,tc})=>(
+            <div key={l}style={{background:bg,borderRadius:8,padding:"10px 4px",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:500,color:tc,lineHeight:1}}>{v}</div>
+              <div style={{fontSize:10,color:tc,opacity:.75,marginTop:3,lineHeight:1.2}}>{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Прогрес */}
+        <div style={{marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:12,color:"var(--text2)"}}>Прогрес виконання</span>
+            <span style={{fontSize:13,fontWeight:500,color:barColor}}>{pct}%</span>
           </div>
-        ))}
-      </div>
-      <div style={{fontSize:11,color:'var(--text2)',marginBottom:3}}>Прогрес: <b style={{color:barColor}}>{pct}%</b></div>
-      <div style={{background:'var(--border)',borderRadius:6,height:7,marginBottom:16}}>
-        <div style={{width:pct+'%',height:'100%',borderRadius:6,background:barColor}}></div>
-      </div>
-
-      {!sendMode&&<div style={{display:'flex',gap:8}}>
-        <button className="btn-primary"style={{flex:1}}onClick={openReport}>Відкрити PDF</button>
-        <button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(true)}>📧 Надіслати звіт</button>
-      </div>}
-
-      {sendMode&&<div>
-        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'var(--dark)'}}>Надіслати фінальний звіт</div>
-        <div style={{fontSize:11,color:'var(--text2)',marginBottom:6}}>Відповідальні особи заходу:</div>
-        <div className="multi-check"style={{marginBottom:12}}>
-          {allTeamEmails.map(m=>{
-            const sel=selRecipients.includes(m.email);
-            const isDefault=defaultRecipients.includes(m.email);
-            return<div key={m.email}className={`multi-check-item${sel?' selected':''}`}
-              onClick={()=>toggleRecipient(m.email)}
-              style={{fontSize:11,border:isDefault&&!sel?'1.5px dashed var(--blue)':undefined}}>
-              {m.name}{isDefault&&!sel&&<span style={{fontSize:9,color:'var(--blue)',marginLeft:3}}>рек.</span>}
-            </div>;
-          })}
+          <div style={{background:"var(--bg-card)",borderRadius:20,height:6,overflow:"hidden"}}>
+            <div style={{width:pct+"%",height:"100%",borderRadius:20,background:barColor,transition:"width .3s"}}></div>
+          </div>
         </div>
-        <div style={{fontSize:11,color:'var(--text2)',marginBottom:4}}>Додаткові email (через кому):</div>
-        <input value={customEmails}onChange={e=>setCustomEmails(e.target.value)}
-          placeholder="example@gmail.com, another@org.ua"
-          style={{width:'100%',padding:'7px 10px',border:'1.5px solid var(--border)',borderRadius:'var(--radius)',
-          fontSize:12,fontFamily:'var(--font)',boxSizing:'border-box',marginBottom:12}}/>
-        <div style={{display:'flex',gap:8}}>
-          <button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(false)}>← Назад</button>
-          <button className="btn-primary"style={{flex:2}}onClick={sendReport}disabled={isSending}>
-            {isSending?'Надсилаємо...':'📧 Надіслати ('+(selRecipients.length+(customEmails.split(',').filter(e=>e.trim()).length))+' отримувачів)'}
+
+        {/* Інфо-рядок */}
+        {!sendMode&&<div style={{fontSize:12,color:"var(--text2)",padding:"9px 12px",background:"var(--bg-card)",borderRadius:8,marginBottom:14,lineHeight:1.5}}>
+          Звіт містить: статистику, зведення по виконавцях, прострочені{isAfterEvent?" та невиконані задачі":""}, повна хронологія.
+        </div>}
+
+        {/* Кнопки — основний режим */}
+        {!sendMode&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <button onClick={openReport}style={{
+            background:"#1C75BC",border:"none",borderRadius:8,padding:"11px 16px",
+            cursor:"pointer",color:"#fff",fontSize:13,fontWeight:500,
+            display:"flex",alignItems:"center",justifyContent:"center",gap:7
+          }}>
+            <span style={{fontSize:16}}>📄</span> Відкрити PDF
           </button>
-        </div>
-      </div>}
+          <button onClick={()=>setSendMode(true)}style={{
+            background:"var(--bg-white)",border:"1.5px solid var(--border)",borderRadius:8,padding:"11px 16px",
+            cursor:"pointer",color:"var(--text)",fontSize:13,fontWeight:500,
+            display:"flex",alignItems:"center",justifyContent:"center",gap:7
+          }}>
+            <span style={{fontSize:16,color:"#1C75BC"}}>📧</span> Надіслати звіт
+          </button>
+        </div>}
+
+        {/* Режим надсилання */}
+        {sendMode&&<div>
+          <div style={{fontWeight:500,fontSize:13,marginBottom:8,color:"var(--dark)",paddingBottom:8,borderBottom:"1px solid var(--border)"}}>Надіслати звіт</div>
+          <div style={{fontSize:11,color:"var(--text2)",marginBottom:6}}>Отримувачі (зі списку команди):</div>
+          <div className="multi-check"style={{marginBottom:12}}>
+            {allTeamEmails.map(m=>{
+              const sel=selRecipients.includes(m.email);
+              const isDefault=defaultRecipients.includes(m.email);
+              return<div key={m.email}className={`multi-check-item${sel?" selected":""}`}
+                onClick={()=>toggleRecipient(m.email)}
+                style={{fontSize:11,border:isDefault&&!sel?"1.5px dashed var(--blue)":undefined}}>
+                {m.name}{isDefault&&!sel&&<span style={{fontSize:9,color:"var(--blue)",marginLeft:3}}>рек.</span>}
+              </div>;
+            })}
+          </div>
+          <div style={{fontSize:11,color:"var(--text2)",marginBottom:4}}>Додаткові email (через кому):</div>
+          <input value={customEmails}onChange={e=>setCustomEmails(e.target.value)}
+            placeholder="example@gmail.com, another@org.ua"
+            style={{width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",
+            fontSize:12,fontFamily:"var(--font)",boxSizing:"border-box",marginBottom:12}}/>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(false)}>← Назад</button>
+            <button style={{
+              flex:2,background:isSending?"#aaa":"#1C75BC",border:"none",borderRadius:8,
+              padding:"10px 16px",cursor:isSending?"not-allowed":"pointer",
+              color:"#fff",fontSize:13,fontWeight:500
+            }}onClick={sendReport}disabled={isSending}>
+              {isSending?"Надсилаємо...":"📧 Надіслати ("+(selRecipients.length+(customEmails.split(",").filter(e=>e.trim()).length))+" отр.)"}
+            </button>
+          </div>
+        </div>}
+
+      </div>
     </div>
   </div>;
 }

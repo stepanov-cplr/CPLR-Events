@@ -383,7 +383,7 @@ function genChecklist(f,taskTemplates,team){
     printSmall:!!f.printSmall,
     printLarge:!!f.printLarge,
   };
-  const allTasks=taskTemplates||DEFAULT_TASKS;
+  const allTasks=mergeTaskDeps(taskTemplates||DEFAULT_TASKS, window.__taskDeps||{deps:[],independent:[]});
   const blocksMap=calcBlocksCount(allTasks);
   return allTasks.filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
     const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
@@ -1128,6 +1128,23 @@ function ReportModal({ev,onClose,team,config}){
   </div>;
 }
 
+// Мерджить залежності з аркушу "Залежності" в список задач
+function mergeTaskDeps(taskList, depsData) {
+  if (!depsData || !depsData.deps) return taskList;
+  // Будуємо: назва задачі -> масив залежностей
+  const depsMap = {};
+  (depsData.deps || []).forEach(([task, dep]) => {
+    if (!depsMap[task]) depsMap[task] = [];
+    depsMap[task].push(dep);
+  });
+  const indepSet = new Set(depsData.independent || []);
+  return taskList.map(t => ({
+    ...t,
+    deps: depsMap[t.t] || t.deps || [],
+    independent: indepSet.has(t.t) || t.independent || false
+  }));
+}
+
 // Розраховує транзитивний вплив кожної задачі (скільки інших блокує)
 function calcBlocksCount(taskList){
   // Будуємо граф: task.t -> задачі що від неї залежать
@@ -1190,6 +1207,7 @@ function App(){
     {event:"approved",label:"🔵 Затверджено",recipients:[],customEmails:""},
     {event:"cancelled",label:"🔴 Скасовано",recipients:[],customEmails:""},
   ];
+  const [taskDeps,setTaskDeps]=useState({deps:[],independent:[]});
   const [notifications,setNotifications]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_notifications"))||DEFAULT_NOTIFICATIONS;}catch{return DEFAULT_NOTIFICATIONS;}});
   const [newListItem,setNewListItem]=useState("");
 
@@ -1198,7 +1216,11 @@ function App(){
       setLoading(true);
       if(SHEETS_API_URL){
         // Завантажуємо налаштування з таблиці
-        const sRes=await sheetsRequest(SHEETS_API_URL,"getSettings",{});
+        const [sRes, depsRes] = await Promise.all([
+          sheetsRequest(SHEETS_API_URL,"getSettings",{}),
+          sheetsRequest(SHEETS_API_URL,"getDeps",{})
+        ]);
+        if(depsRes?.deps){setTaskDeps(depsRes);window.__taskDeps=depsRes;}
         if(sRes===null){
           showToast("⚠️ Не вдалось підключитись до таблиці","error");
         }

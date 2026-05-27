@@ -473,8 +473,18 @@ function generateReportHTML(ev) {
   const notDone = total - done;
   const overdue = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
   const lateExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate);
+  const earlyExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate);
   const onTime = cl.filter(t=>t.done&&(!t.dlDate||!t.doneAt||t.doneAt<=t.dlDate)).length;
   const pct = total ? Math.round(done/total*100) : 0;
+
+  // Рядки early birds
+  const earlyRows = earlyExec.sort((a,b)=>daysDiff(a.doneAt,a.dlDate)>daysDiff(b.doneAt,b.dlDate)?1:-1)
+    .map(t=>`<tr style="background:#F0FDF4">
+      <td>${t.t}</td><td>${t.who||'—'}</td>
+      <td style="color:#666">${fmt(t.dlDate)}</td>
+      <td style="color:#00916E;font-weight:500">${fmt(t.doneAt)}</td>
+      <td style="color:#00916E">-${Math.abs(daysDiff(t.doneAt,t.dlDate))} дн.</td>
+    </tr>`).join('');
 
   // По виконавцях
   const byWho = {};
@@ -553,7 +563,7 @@ function generateReportHTML(ev) {
     table{width:100%;border-collapse:collapse;margin-bottom:12px}
     td,th{padding:7px 10px;border:1px solid #E5E7EB;font-size:12px;vertical-align:top}
     th{background:#F0F4F8;font-weight:600;color:#374151}
-    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+    .stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}
     .stat-card{padding:14px;border-radius:8px;border:1px solid #E5E7EB;text-align:center}
     .stat-num{font-size:28px;font-weight:700;line-height:1}
     .stat-lbl{font-size:11px;color:#6B7A90;margin-top:4px}
@@ -587,7 +597,11 @@ function generateReportHTML(ev) {
     </div>
     <div class="stat-card" style="border-color:#D9770622;background:#FFFBEB">
       <div class="stat-num" style="color:#D97706">${lateExec.length}</div>
-      <div class="stat-lbl">Виконано із запізненням</div>
+      <div class="stat-lbl">Із запізненням</div>
+    </div>
+    <div class="stat-card" style="border-color:#00916E22;background:#F0FDF4">
+      <div class="stat-num" style="color:#00916E">${earlyExec.length}</div>
+      <div class="stat-lbl">З випередженням</div>
     </div>
   </div>
   <div style="font-size:12px;color:#666;margin-bottom:4px">Прогрес виконання: <b>${pct}%</b> (${done} з ${total})</div>
@@ -604,6 +618,10 @@ function generateReportHTML(ev) {
   ${lateRows?`<h2>⏱ Виконані із запізненням (${lateExec.length})</h2>
   <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th><th>Виконано</th><th>Запізнення</th></tr></thead>
   <tbody>${lateRows}</tbody></table>`:''}
+
+  ${earlyRows?`<h2>⚡ Виконані з випередженням (${earlyExec.length})</h2>
+  <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th><th>Виконано</th><th>Випередження</th></tr></thead>
+  <tbody>${earlyRows}</tbody></table>`:''}
 
   ${isAfterEvent&&notDone>0?`<h2>✗ Невиконані задачі (${notDone})</h2>
   <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th></tr></thead>
@@ -939,9 +957,10 @@ function ReportModal({ev,onClose}){
   const done=cl.filter(t=>t.done).length;
   const overdue=cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
   const late=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate).length;
+  const early=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate).length;
   const pct=total?Math.round(done/total*100):0;
-  return<div className="modal-overlay"onClick={onClose}>
-    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:480}}>
+  return<div className="modal-overlay"onClick={onClose}style={{background:"rgba(0,0,0,0.65)"}}>
+    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:480,boxShadow:"0 8px 40px rgba(0,0,0,0.35)"}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
         <div>
           <div style={{fontWeight:700,fontSize:15,color:'var(--dark)'}}>
@@ -952,7 +971,7 @@ function ReportModal({ev,onClose}){
         <button onClick={onClose}style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}}>✕</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:16}}>
-        {[['Всього',total,'var(--blue)'],['Виконано',done,'#00916E'],['Прострочено',overdue,'var(--red)'],['Із запізн',late,'#D97706']].map(([l,v,c])=>(
+        {[['Всього',total,'var(--blue)'],['Виконано',done,'#00916E'],['Прострочено',overdue,'var(--red)'],['Із запізн',late,'#D97706'],['З випер.',early,'#00916E']].map(([l,v,c])=>(
           <div key={l}style={{textAlign:'center',padding:'10px 4px',borderRadius:'var(--radius)',border:'1.5px solid '+c+'33',background:c+'11'}}>
             <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
             <div style={{fontSize:10,color:'var(--text2)',marginTop:2}}>{l}</div>

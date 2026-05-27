@@ -383,9 +383,11 @@ function genChecklist(f,taskTemplates,team){
     printSmall:!!f.printSmall,
     printLarge:!!f.printLarge,
   };
-  return(taskTemplates||DEFAULT_TASKS).filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
+  const allTasks=taskTemplates||DEFAULT_TASKS;
+  const blocksMap=calcBlocksCount(allTasks);
+  return allTasks.filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
     const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
-    return{...t,who:roleMap[t.role]||t.role,dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue};
+    return{...t,who:roleMap[t.role]||t.role,dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue,blocksCount:blocksMap[t.t]||0};
   });
 }
 
@@ -1126,6 +1128,34 @@ function ReportModal({ev,onClose,team,config}){
   </div>;
 }
 
+// Розраховує транзитивний вплив кожної задачі (скільки інших блокує)
+function calcBlocksCount(taskList){
+  // Будуємо граф: task.t -> задачі що від неї залежать
+  const blocks={};
+  taskList.forEach(t=>{
+    if(!t.deps||t.independent)return;
+    t.deps.forEach(depText=>{
+      if(!blocks[depText])blocks[depText]=new Set();
+      blocks[depText].add(t.t);
+    });
+  });
+  // Транзитивний обхід для кожної задачі
+  function countBlocked(taskText){
+    const visited=new Set();
+    const queue=[taskText];
+    while(queue.length){
+      const curr=queue.shift();
+      (blocks[curr]||new Set()).forEach(b=>{
+        if(!visited.has(b)){visited.add(b);queue.push(b);}
+      });
+    }
+    return visited.size;
+  }
+  const result={};
+  taskList.forEach(t=>{ result[t.t]=countBlocked(t.t); });
+  return result;
+}
+
 function App(){
   const [view,setView]=useState("list");
   const [evs,setEvs]=useState([]);
@@ -1585,24 +1615,63 @@ function App(){
 
       {settingsTab==="tasks"&&<div className="settings-section">
         <div style={{fontWeight:600,fontSize:14,marginBottom:4}}>Шаблони задач ({tasks.length})</div>
-        <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, assist, dmitro, other</div>
-        <div style={{maxHeight:420,overflowY:"auto"}}>
-          {tasks.map((t,i)=>(
-            <div key={i}style={{display:"grid",gridTemplateColumns:"140px 1fr 80px 60px 30px",gap:6,marginBottom:6,alignItems:"center",padding:"7px",background:"var(--bg-card)",borderRadius:"var(--radius)"}}>
-              <input value={t.g}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],g:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="група"/>
-              <input value={t.t}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],t:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
-              <input value={t.role}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],role:e.target.value};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
-              <input type="number"value={t.d}onChange={e=>{const ts=[...tasks];ts[i]={...ts[i],d:parseInt(e.target.value)||0};saveTasks(ts,i);setTasks(ts);}}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>
-              <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
-            </div>
-          ))}
+        <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, assist, fin, dmitro, other · 🔗 = блокує N задач · ✴ = незалежна</div>
+        <div style={{maxHeight:500,overflowY:"auto"}}>
+          {tasks.map((t,i)=>{
+            const depOptions=tasks.filter((_,j)=>j!==i&&!tasks[j].independent);
+            const blocksThis=calcBlocksCount(tasks)[t.t]||0;
+            const updateTask=(patch)=>{const ts=[...tasks];ts[i]={...ts[i],...patch};saveTasks(ts,i);setTasks(ts);};
+            return<div key={i}style={{marginBottom:8,padding:"8px 10px",
+              background:t.independent?"var(--bg-white)":"var(--bg-card)",
+              borderRadius:"var(--radius)",
+              border:t.independent?"1.5px dashed var(--border)":"1.5px solid transparent"
+            }}>
+              <div style={{display:"grid",gridTemplateColumns:"130px 1fr 75px 55px auto 28px",gap:5,alignItems:"center",marginBottom:t.independent?0:6}}>
+                <input value={t.g}onChange={e=>updateTask({g:e.target.value})}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="група"/>
+                <div style={{display:"flex",alignItems:"center",gap:4}}>
+                  <input value={t.t}onChange={e=>updateTask({t:e.target.value})}style={{fontSize:12,padding:"4px 8px",border:"1px solid var(--border)",borderRadius:5,width:"100%",fontFamily:"var(--font)"}}/>
+                  {blocksThis>0&&!t.independent&&<span style={{fontSize:10,fontWeight:600,padding:"1px 5px",borderRadius:10,flexShrink:0,
+                    background:blocksThis>=10?"#FCEBEB":blocksThis>=4?"#FAEEDA":"#EBF4FB",
+                    color:blocksThis>=10?"#A32D2D":blocksThis>=4?"#854F0B":"#185FA5"
+                  }}>🔗{blocksThis}</span>}
+                </div>
+                <input value={t.role||""}onChange={e=>updateTask({role:e.target.value})}style={{fontSize:11,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}placeholder="роль"/>
+                <input type="number"value={t.d}onChange={e=>updateTask({d:parseInt(e.target.value)||0})}style={{fontSize:12,padding:"4px 6px",border:"1px solid var(--border)",borderRadius:5,fontFamily:"var(--font)"}}/>
+                <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:11,color:"var(--text2)",whiteSpace:"nowrap"}}>
+                  <input type="checkbox"checked={!!t.independent}onChange={e=>updateTask({independent:e.target.checked,deps:e.target.checked?[]:t.deps})}style={{cursor:"pointer"}}/>
+                  ✴ Незалежна
+                </label>
+                <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
+              </div>
+              {!t.independent&&<div>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3}}>🔗 Залежить від (виберіть задачі без яких ця не може початись):</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:3,maxHeight:72,overflowY:"auto"}}>
+                  {depOptions.length===0
+                    ?<span style={{fontSize:10,color:"var(--text3)",fontStyle:"italic"}}>Всі інші задачі позначені як незалежні</span>
+                    :depOptions.map((dep,di)=>{
+                      const sel=(t.deps||[]).includes(dep.t);
+                      return<div key={di}onClick={()=>{
+                        const deps=sel?(t.deps||[]).filter(d=>d!==dep.t):[...(t.deps||[]),dep.t];
+                        updateTask({deps});
+                      }}title={dep.t}style={{
+                        fontSize:10,padding:"2px 7px",borderRadius:10,cursor:"pointer",
+                        background:sel?"#1C75BC":"var(--bg-white)",
+                        color:sel?"#fff":"var(--text2)",
+                        border:"1px solid "+(sel?"#1C75BC":"var(--border)"),
+                        maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
+                      }}>{dep.t}</div>;
+                    })
+                  }
+                </div>
+              </div>}
+            </div>;
+          })}
         </div>
         <div style={{display:"flex",gap:8,marginTop:10}}>
-          <button className="btn-ghost"onClick={()=>{const newTask={g:"Нова група",d:7,t:"Нова задача",role:"coord"};const ts=[...tasks,newTask].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
+          <button className="btn-ghost"onClick={()=>{const nt={g:"Нова група",d:7,t:"Нова задача",role:"coord",independent:false,deps:[]};const ts=[...tasks,nt].sort((a,b)=>b.d-a.d);saveTasks(ts);setTasks(ts);}}>+ Задача</button>
           <button className="btn-outline"style={{color:"var(--red)",borderColor:"#fca5a5",fontSize:11}}onClick={()=>{if(confirm("Скинути до стандартних 84 задач?")){saveTasks(DEFAULT_TASKS);setTasks(DEFAULT_TASKS);showToast("Скинуто!");}}}>Скинути</button>
         </div>
       </div>}
-
       {settingsTab==="costs"&&<div>
         {["Київ","Львів","def"].map(city=>(
           <div key={city}className="settings-section">
@@ -1972,7 +2041,18 @@ function App(){
                 return<div key={idx}className={`checklist-item${isOd?" overdue":""}`}style={{opacity:t.done?.5:1}}>
                   <div className={`chk-box${t.done?" done":""}`}onClick={()=>toggleCL(idx)}style={{cursor:"pointer",marginTop:3,flexShrink:0}}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>{t.t}{isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}</div>
+                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>
+                      {t.t}
+                      {isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}
+                      {!t.done&&(t.blocksCount||0)>0&&(
+                        <span title={"Блокує "+t.blocksCount+" задач"+(t.deps?.length?" · Залежить від: "+t.deps.join(", "):"")} style={{
+                          fontSize:10,fontWeight:600,marginLeft:6,padding:"1px 6px",borderRadius:10,
+                          background:(t.blocksCount||0)>=10?"#FCEBEB":(t.blocksCount||0)>=4?"#FAEEDA":"#EBF4FB",
+                          color:(t.blocksCount||0)>=10?"#A32D2D":(t.blocksCount||0)>=4?"#854F0B":"#185FA5",
+                          cursor:"help"
+                        }}>🔗 {t.blocksCount}</span>
+                      )}
+                    </div>
                     {t.done&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Виконано:</span>
                       <input type="date" value={t.doneAt||""}

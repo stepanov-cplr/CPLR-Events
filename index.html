@@ -457,6 +457,165 @@ function DonorMultiSelect({donors,selected,onChange}){
   })}</div>;
 }
 
+
+function generateReportHTML(ev) {
+  const f = ev.form || {};
+  const cl = (ev.checklist || []).filter(t => !t.manualDelete);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const eventDate = f.eventDate ? new Date(f.eventDate) : null;
+  const isAfterEvent = eventDate && today > eventDate;
+  const fmt = d => { if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+  const daysDiff = (a,b) => Math.round((new Date(a)-new Date(b))/(1000*60*60*24));
+
+  // Статистика
+  const total = cl.length;
+  const done = cl.filter(t=>t.done).length;
+  const notDone = total - done;
+  const overdue = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
+  const lateExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate);
+  const onTime = cl.filter(t=>t.done&&(!t.dlDate||!t.doneAt||t.doneAt<=t.dlDate)).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  // По виконавцях
+  const byWho = {};
+  cl.forEach(t=>{
+    const w=t.who||'—';
+    if(!byWho[w])byWho[w]={total:0,done:0,late:0,overdue:0,lateSum:0};
+    byWho[w].total++;
+    if(t.done)byWho[w].done++;
+    if(t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate){byWho[w].late++;byWho[w].lateSum+=daysDiff(t.doneAt,t.dlDate);}
+    if(!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0)byWho[w].overdue++;
+  });
+  const whoRows = Object.entries(byWho).sort((a,b)=>b[1].total-a[1].total).map(([who,s])=>{
+    const pct=Math.round(s.done/s.total*100);
+    const bar=`<div style="background:#e5e7eb;border-radius:4px;height:6px;width:80px;display:inline-block;vertical-align:middle;margin-left:6px"><div style="background:${pct>=80?'#00916E':pct>=50?'#1C75BC':'#DC2626'};width:${pct}%;height:100%;border-radius:4px"></div></div>`;
+    return `<tr>
+      <td style="font-weight:500">${who}</td>
+      <td style="text-align:center">${s.total}</td>
+      <td style="text-align:center;color:${s.done===s.total?'#00916E':'#1C75BC'}">${s.done}</td>
+      <td style="text-align:center;color:${s.overdue>0?'#DC2626':'#666'}">${s.overdue||'—'}</td>
+      <td style="text-align:center;color:${s.late>0?'#D97706':'#666'}">${s.late||'—'}${s.late?` <span style="font-size:10px;color:#999">(~${Math.round(s.lateSum/s.late)} дн.)</span>`:''}</td>
+      <td>${bar} <span style="font-size:11px;color:#666">${pct}%</span></td>
+    </tr>`;
+  }).join('');
+
+  // Прострочені
+  const overdueRows = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0)
+    .sort((a,b)=>a.dlDate>b.dlDate?1:-1)
+    .map(t=>`<tr style="background:#FEF2F2">
+      <td>${t.t}</td><td>${t.who||'—'}</td><td style="color:#DC2626;font-weight:500">${fmt(t.dlDate)}</td>
+      <td style="color:#DC2626">+${daysDiff(today.toISOString().slice(0,10),t.dlDate)} дн.</td>
+    </tr>`).join('');
+
+  // Виконані із запізненням
+  const lateRows = lateExec.sort((a,b)=>daysDiff(a.doneAt,a.dlDate)<daysDiff(b.doneAt,b.dlDate)?1:-1)
+    .map(t=>`<tr style="background:#FFFBEB">
+      <td>${t.t}</td><td>${t.who||'—'}</td>
+      <td style="color:#666">${fmt(t.dlDate)}</td>
+      <td style="color:#D97706;font-weight:500">${fmt(t.doneAt)}</td>
+      <td style="color:#D97706">+${daysDiff(t.doneAt,t.dlDate)} дн.</td>
+    </tr>`).join('');
+
+  // Всі задачі
+  const groups=[...new Set(cl.map(t=>t.g))];
+  const allTasksHTML = groups.map(g=>{
+    const tasks=cl.filter(t=>t.g===g);
+    const rows=tasks.map(t=>{
+      const isLate=t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate;
+      const isOvd=!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0;
+      const bg=isOvd?'#FEF2F2':isLate?'#FFFBEB':t.done?'#F0FDF4':'#fff';
+      const status=t.done?(isLate?`<span style="color:#D97706">✓ запізн. ${daysDiff(t.doneAt,t.dlDate)} дн.</span>`:`<span style="color:#00916E">✓ вчасно</span>`)
+        :(isOvd?`<span style="color:#DC2626">⚠ прострочено</span>`:`<span style="color:#666">очікує</span>`);
+      return `<tr style="background:${bg}">
+        <td style="text-decoration:${t.done?'line-through':''};color:${t.done?'#999':'#1A2535'}">${t.t}</td>
+        <td>${t.who||'—'}</td>
+        <td>${fmt(t.dlDate)}</td>
+        <td>${t.done&&t.doneAt?fmt(t.doneAt):'—'}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+    return `<h3>${g}</h3><table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th><th>Виконано</th><th>Статус</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }).join('');
+
+  const mode = isAfterEvent ? 'Підсумковий звіт' : 'Звіт у процесі підготовки';
+  const modeColor = isAfterEvent ? '#252868' : '#1C75BC';
+
+  return `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+  <title>Звіт — ${f.eventName||'Захід ЦППР'}</title>
+  <style>
+    body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#1A2535;font-size:13px}
+    .rpt-header{display:flex;align-items:center;gap:16px;border-bottom:3px solid ${modeColor};padding-bottom:16px;margin-bottom:24px}
+    .rpt-header img{width:48px;height:48px;object-fit:contain}
+    .mode-badge{display:inline-block;background:${modeColor};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:4px}
+    h1{font-size:18px;color:#252868;margin:0}
+    h2{font-size:14px;color:${modeColor};border-bottom:2px solid ${modeColor}22;padding-bottom:6px;margin:28px 0 12px}
+    h3{font-size:11px;color:#6B7A90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.08em}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px}
+    td,th{padding:7px 10px;border:1px solid #E5E7EB;font-size:12px;vertical-align:top}
+    th{background:#F0F4F8;font-weight:600;color:#374151}
+    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+    .stat-card{padding:14px;border-radius:8px;border:1px solid #E5E7EB;text-align:center}
+    .stat-num{font-size:28px;font-weight:700;line-height:1}
+    .stat-lbl{font-size:11px;color:#6B7A90;margin-top:4px}
+    .progress-bar{background:#E5E7EB;border-radius:8px;height:10px;margin:12px 0}
+    .progress-fill{height:100%;border-radius:8px;background:${pct>=80?'#00916E':pct>=50?'#1C75BC':'#DC2626'};width:${pct}%}
+    .footer{margin-top:40px;padding-top:16px;border-top:1px solid #E5E7EB;font-size:11px;color:#9AAABB;text-align:center}
+    @media print{.no-print{display:none}}
+  </style></head><body>
+  <div class="rpt-header">
+    <img src="${LOGO_B64}" alt="ЦППР"/>
+    <div>
+      <div class="mode-badge">${mode}</div>
+      <h1>${f.eventName||'Захід ЦППР'}</h1>
+      <div style="font-size:11px;color:#6B7A90">${f.eventDate?fmt(f.eventDate):''} · ${f.city||''} · Сформовано: ${new Date().toLocaleDateString('uk-UA')}</div>
+    </div>
+  </div>
+
+  <h2>Загальна статистика</h2>
+  <div class="stat-grid">
+    <div class="stat-card" style="border-color:#1C75BC22;background:#EBF4FB">
+      <div class="stat-num" style="color:#1C75BC">${total}</div>
+      <div class="stat-lbl">Всього задач</div>
+    </div>
+    <div class="stat-card" style="border-color:#00916E22;background:#F0FDF4">
+      <div class="stat-num" style="color:#00916E">${done}</div>
+      <div class="stat-lbl">Виконано</div>
+    </div>
+    <div class="stat-card" style="border-color:#DC262622;background:#FEF2F2">
+      <div class="stat-num" style="color:#DC2626">${overdue}</div>
+      <div class="stat-lbl">Прострочено</div>
+    </div>
+    <div class="stat-card" style="border-color:#D9770622;background:#FFFBEB">
+      <div class="stat-num" style="color:#D97706">${lateExec.length}</div>
+      <div class="stat-lbl">Виконано із запізненням</div>
+    </div>
+  </div>
+  <div style="font-size:12px;color:#666;margin-bottom:4px">Прогрес виконання: <b>${pct}%</b> (${done} з ${total})</div>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+
+  <h2>Зведення по виконавцях</h2>
+  <table><thead><tr><th>Виконавець</th><th>Всього</th><th>Виконано</th><th>Прострочено</th><th>Із запізненням</th><th>Прогрес</th></tr></thead>
+  <tbody>${whoRows}</tbody></table>
+
+  ${overdueRows?`<h2>⚠ Прострочені задачі (${overdue})</h2>
+  <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th><th>Запізнення</th></tr></thead>
+  <tbody>${overdueRows}</tbody></table>`:''}
+
+  ${lateRows?`<h2>⏱ Виконані із запізненням (${lateExec.length})</h2>
+  <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th><th>Виконано</th><th>Запізнення</th></tr></thead>
+  <tbody>${lateRows}</tbody></table>`:''}
+
+  ${isAfterEvent&&notDone>0?`<h2>✗ Невиконані задачі (${notDone})</h2>
+  <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th></tr></thead>
+  <tbody>${cl.filter(t=>!t.done).map(t=>`<tr style="background:#FEF2F2"><td>${t.t}</td><td>${t.who||'—'}</td><td>${fmt(t.dlDate)}</td></tr>`).join('')}</tbody></table>`:''}
+
+  <h2>Повна хронологія задач</h2>
+  ${allTasksHTML}
+
+  <div class="footer">ЦППР — Центр політико-правових реформ · pravo.org.ua · Звіт сформовано: ${new Date().toLocaleString('uk-UA')}</div>
+  </body></html>`;
+}
+
 // ══ GENERATE DOCUMENT HTML ══════════════════════════════
 function generateDocHTML(ev,budget,blocks,docType){
   const f=ev.form||{};
@@ -761,6 +920,57 @@ function parseDlDate(dlDate){
   const dt=new Date(dlDate);dt.setHours(0,0,0,0);return dt;
 }
 
+function ReportModal({ev,onClose}){
+  const f=ev.form||{};
+  const today=new Date();today.setHours(0,0,0,0);
+  const eventDate=f.eventDate?new Date(f.eventDate+'T00:00:00'):null;
+  const isAfterEvent=eventDate&&today>eventDate;
+  const openReport=()=>{
+    const html=generateReportHTML(ev);
+    const blob=new Blob([html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    showToast('Звіт відкрито — Ctrl+P → «Зберегти як PDF»');
+  };
+  const cl=ev.checklist?.filter(t=>!t.manualDelete)||[];
+  const total=cl.length;
+  const done=cl.filter(t=>t.done).length;
+  const overdue=cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
+  const late=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate).length;
+  const pct=total?Math.round(done/total*100):0;
+  return<div className="modal-overlay"onClick={onClose}>
+    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:480}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:15,color:'var(--dark)'}}>
+            {isAfterEvent?'📊 Підсумковий звіт':' 📊 Звіт у процесі підготовки'}
+          </div>
+          <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{f.eventName}</div>
+        </div>
+        <button onClick={onClose}style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}}>✕</button>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:16}}>
+        {[['Всього',total,'var(--blue)'],['Виконано',done,'#00916E'],['Прострочено',overdue,'var(--red)'],['Із запізн',late,'#D97706']].map(([l,v,c])=>(
+          <div key={l}style={{textAlign:'center',padding:'10px 4px',borderRadius:'var(--radius)',border:'1.5px solid '+c+'33',background:c+'11'}}>
+            <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
+            <div style={{fontSize:10,color:'var(--text2)',marginTop:2}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{fontSize:12,color:'var(--text2)',marginBottom:4}}>Прогрес: <b style={{color:pct>=80?'#00916E':pct>=50?'var(--blue)':' var(--red)'}}>{pct}%</b></div>
+      <div style={{background:'var(--border)',borderRadius:6,height:8,marginBottom:16}}>
+        <div style={{width:pct+'%',height:'100%',borderRadius:6,background:pct>=80?'#00916E':pct>=50?'var(--blue)':' var(--red)'}}></div>
+      </div>
+      <div style={{fontSize:12,color:'var(--text2)',marginBottom:12,padding:'10px 12px',background:'var(--bg-card)',borderRadius:'var(--radius)'}}>
+        Звіт містить: статистику по завданнях, зведення по виконавцях, прострочені та запізнілі задачі{isAfterEvent?', невиконані задачі':''}, повна хронологія.
+      </div>
+      <button className="btn-primary"style={{width:'100%'}}onClick={openReport}>Відкрити звіт (PDF)</button>
+    </div>
+  </div>;
+}
+
 function App(){
   const [view,setView]=useState("list");
   const [evs,setEvs]=useState([]);
@@ -771,6 +981,7 @@ function App(){
   const [showDeleted,setShowDeleted]=useState(false);
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
+  const [showReportModal,setShowReportModal]=useState(false);
   // Якщо версія даних змінилась — скидаємо кеш задач і команди (не заявок)
   if(localStorage.getItem("cppr_data_version")!==DATA_VERSION){
     localStorage.removeItem("cppr_tasks");
@@ -925,12 +1136,25 @@ function App(){
   };
   const toggleCL=(idx)=>{
     const ev=getEv();const today=new Date();today.setHours(0,0,0,0);
-    const cl=ev.checklist.map((t,i)=>{if(i!==idx)return t;const u={...t,done:!t.done};if(u.dlDate){const dl=new Date(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}return u;});
+    const todayStr=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+    const cl=ev.checklist.map((t,i)=>{
+      if(i!==idx)return t;
+      const u={...t,done:!t.done};
+      if(u.done){if(!u.doneAt)u.doneAt=todayStr;}
+      else{u.doneAt=null;}
+      if(u.dlDate){const dl=parseDlDate(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}
+      return u;
+    });
     upd({checklist:cl});
   };
   const changeTaskAssignee=(idx,who)=>{
     const ev=getEv();
     const cl=ev.checklist.map((t,i)=>i===idx?{...t,who,manualWho:true}:t);
+    upd({checklist:cl});
+  };
+  const changeDoneAt=(idx,dateStr)=>{
+    const ev=getEv();
+    const cl=ev.checklist.map((t,i)=>i===idx?{...t,doneAt:dateStr||null}:t);
     upd({checklist:cl});
   };
   const changeTaskDate=(idx,dateStr)=>{
@@ -1303,6 +1527,7 @@ function App(){
 
   return<><Header/>
   {showDocModal&&<DocModal ev={ev}budget={budget}onClose={()=>setShowDocModal(false)}/>}
+  {showReportModal&&<ReportModal ev={ev}onClose={()=>setShowReportModal(false)}/>}
   <div className="app">
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1.5px solid var(--border)"}}>
       <div style={{flex:1,minWidth:0}}>
@@ -1320,6 +1545,8 @@ function App(){
       <button className="btn-ghost"onClick={e=>copyEv(cid,e)}style={{fontSize:12}}>📋 Копіювати заявку</button>
       <button className="btn-ghost"onClick={sendEmails}disabled={sending}style={{opacity:sending?0.6:1}}>{sending?"Надсилаємо...":"📧 Надіслати задачі"}</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
+      {ev.checklist?.filter(t=>!t.manualDelete).length>0&&
+        <button className="btn-ghost"onClick={()=>setShowReportModal(true)}>📊 Звіт</button>}
     </div>
 
     <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
@@ -1587,6 +1814,18 @@ function App(){
                   <div className={`chk-box${t.done?" done":""}`}onClick={()=>toggleCL(idx)}style={{cursor:"pointer",marginTop:3,flexShrink:0}}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>{t.t}{isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}</div>
+                    {t.done&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+                      <span style={{fontSize:10,color:"var(--text3)"}}>Виконано:</span>
+                      <input type="date" value={t.doneAt||""}
+                        onChange={e=>{e.stopPropagation();changeDoneAt(idx,e.target.value);}}
+                        onClick={e=>e.stopPropagation()}
+                        style={{fontSize:10,padding:"1px 3px",border:"1px solid var(--border)",borderRadius:3,
+                        background:t.doneAt&&t.dlDate&&t.doneAt>t.dlDate?"#FEF2F2":"#F0FDF4",
+                        color:t.doneAt&&t.dlDate&&t.doneAt>t.dlDate?"var(--red)":"var(--green)",
+                        fontFamily:"var(--font)",cursor:"pointer"}}/>
+                      {t.doneAt&&t.dlDate&&t.doneAt>t.dlDate&&
+                        <span style={{fontSize:10,color:"var(--red)"}}>(запізнення {Math.round((new Date(t.doneAt)-parseDlDate(t.dlDate))/(1000*60*60*24))} дн.)</span>}
+                    </div>}
                     <div style={{fontSize:11,color:isOd?"var(--red)":"var(--text3)",marginTop:3,display:"flex",alignItems:"center",gap:6}}>
                       <select value={t.who||""}onChange={e=>{e.stopPropagation();changeTaskAssignee(idx,e.target.value);}}
                         onClick={e=>e.stopPropagation()}

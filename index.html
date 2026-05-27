@@ -918,6 +918,22 @@ function App(){
     const cl=ev.checklist.map((t,i)=>i===idx?{...t,who}:t);
     upd({checklist:cl});
   };
+  const changeTaskDate=(idx,dateStr)=>{
+    const ev=getEv();
+    const cl=ev.checklist.map((t,i)=>{
+      if(i!==idx)return t;
+      const d=new Date(dateStr+"T00:00:00");
+      const dl=dateStr?d.toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
+      return{...t,dlDate:dateStr?d.toISOString():null,dl};
+    });
+    upd({checklist:cl});
+  };
+  const removeTask=(idx)=>{
+    if(!confirm("Видалити задачу з чеклиста?"))return;
+    const ev=getEv();
+    const cl=ev.checklist.filter((_,i)=>i!==idx);
+    upd({checklist:cl});
+  };
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
@@ -1527,7 +1543,15 @@ function App(){
                         {(team||DEFAULT_TEAM).map(m=><option key={m.name}value={m.name}>{m.name}</option>)}
                         {t.who&&!(team||DEFAULT_TEAM).find(m=>m.name===t.who)&&<option value={t.who}>{t.who}</option>}
                       </select>
-                      <span>· {t.dl||"—"}</span>
+                      <span style={{color:"var(--text3)",fontSize:11,margin:"0 2px"}}>·</span>
+                      <input type="date"
+                        value={t.dlDate?t.dlDate.slice(0,10):""}
+                        onChange={e=>{e.stopPropagation();changeTaskDate(idx,e.target.value);}}
+                        onClick={e=>e.stopPropagation()}
+                        style={{fontSize:11,padding:"1px 4px",border:"1px solid var(--border)",borderRadius:4,background:"var(--bg-white)",color:isOd?"var(--red)":"var(--text2)",fontFamily:"var(--font)",cursor:"pointer"}}/>
+                      <button onClick={e=>{e.stopPropagation();removeTask(idx);}}
+                        style={{fontSize:11,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px",marginLeft:"auto",flexShrink:0,lineHeight:1}}
+                        title="Видалити задачу">✕</button>
                     </div>
                   </div>
                 </div>;

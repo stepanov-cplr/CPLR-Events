@@ -944,11 +944,29 @@ function parseDlDate(dlDate){
   const dt=new Date(dlDate);dt.setHours(0,0,0,0);return dt;
 }
 
-function ReportModal({ev,onClose}){
+function ReportModal({ev,onClose,team,config}){
   const f=ev.form||{};
   const today=new Date();today.setHours(0,0,0,0);
   const eventDate=f.eventDate?new Date(f.eventDate+'T00:00:00'):null;
   const isAfterEvent=eventDate&&today>eventDate;
+  const [sendMode,setSendMode]=React.useState(false);
+  const [selRecipients,setSelRecipients]=React.useState([]);
+  const [customEmails,setCustomEmails]=React.useState('');
+  const [isSending,setIsSending]=React.useState(false);
+
+  // За замовчуванням — відповідальні особи заходу
+  const defaultRecipients=React.useMemo(()=>{
+    const r=new Set();
+    const addEmail=name=>{const m=(team||DEFAULT_TEAM).find(t=>t.name===name);if(m?.email)r.add(m.email);};
+    if(f.expertName)addEmail(f.expertName);
+    if(f.coordinator)addEmail(f.coordinator);
+    if(f.commManager)addEmail(f.commManager);
+    if(f.assistant)addEmail(f.assistant);
+    return[...r];
+  },[f,team]);
+
+  React.useEffect(()=>{setSendMode(false);setSelRecipients(defaultRecipients);setCustomEmails('');},[ev.id]);
+
   const openReport=()=>{
     const html=generateReportHTML(ev);
     const blob=new Blob([html],{type:'text/html'});
@@ -958,6 +976,25 @@ function ReportModal({ev,onClose}){
     setTimeout(()=>URL.revokeObjectURL(url),10000);
     showToast('Звіт відкрито — Ctrl+P → «Зберегти як PDF»');
   };
+
+  const sendReport=async()=>{
+    const extras=customEmails.split(',').map(e=>e.trim()).filter(Boolean);
+    const all=[...new Set([...selRecipients,...extras])];
+    if(!all.length){showToast('Оберіть хоча б одного отримувача');return;}
+    setIsSending(true);
+    try{
+      await sheetsPost(config.sheetsApiUrl,'sendFinalReport',{
+        evId:ev.id,recipients:all,
+        evName:f.eventName||'',evDate:f.eventDate||'',evCity:f.city||''
+      });
+      showToast('✓ Звіт надіслано '+all.length+' отримувачам');
+      onClose();
+    }catch(e){showToast('Помилка надсилання');}
+    finally{setIsSending(false);}
+  };
+
+  const toggleRecipient=email=>setSelRecipients(prev=>prev.includes(email)?prev.filter(e=>e!==email):[...prev,email]);
+
   const cl=ev.checklist?.filter(t=>!t.manualDelete)||[];
   const total=cl.length;
   const done=cl.filter(t=>t.done).length;
@@ -965,33 +1002,66 @@ function ReportModal({ev,onClose}){
   const late=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate).length;
   const early=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate).length;
   const pct=total?Math.round(done/total*100):0;
+  const barColor=pct>=80?'#00916E':pct>=50?'var(--blue)':'var(--red)';
+
+  const allTeamEmails=(team||DEFAULT_TEAM).filter(m=>m.email);
+
   return<div className="modal-overlay"onClick={onClose}style={{background:"rgba(15,23,42,0.85)",backdropFilter:"blur(2px)"}}>
-    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:480,boxShadow:"0 12px 48px rgba(0,0,0,0.5)",background:"var(--bg-white)"}}>
+    <div className="modal-box"onClick={e=>e.stopPropagation()}style={{maxWidth:520,boxShadow:"0 12px 48px rgba(0,0,0,0.5)",background:"var(--bg-white)"}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
         <div>
           <div style={{fontWeight:700,fontSize:15,color:'var(--dark)'}}>
-            {isAfterEvent?'📊 Підсумковий звіт':' 📊 Звіт у процесі підготовки'}
+            {isAfterEvent?'📊 Підсумковий звіт':'📊 Звіт у процесі підготовки'}
           </div>
           <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{f.eventName}</div>
         </div>
         <button onClick={onClose}style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'}}>✕</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:16}}>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginBottom:12}}>
         {[['Всього',total,'var(--blue)'],['Виконано',done,'#00916E'],['Прострочено',overdue,'var(--red)'],['Із запізн',late,'#D97706'],['З випер.',early,'#00916E']].map(([l,v,c])=>(
-          <div key={l}style={{textAlign:'center',padding:'10px 4px',borderRadius:'var(--radius)',border:'1.5px solid '+c+'33',background:c+'11'}}>
-            <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
-            <div style={{fontSize:10,color:'var(--text2)',marginTop:2}}>{l}</div>
+          <div key={l}style={{textAlign:'center',padding:'8px 2px',borderRadius:'var(--radius)',border:'1.5px solid '+c+'33',background:c+'11'}}>
+            <div style={{fontSize:20,fontWeight:700,color:c}}>{v}</div>
+            <div style={{fontSize:9,color:'var(--text2)',marginTop:1}}>{l}</div>
           </div>
         ))}
       </div>
-      <div style={{fontSize:12,color:'var(--text2)',marginBottom:4}}>Прогрес: <b style={{color:pct>=80?'#00916E':pct>=50?'var(--blue)':' var(--red)'}}>{pct}%</b></div>
-      <div style={{background:'var(--border)',borderRadius:6,height:8,marginBottom:16}}>
-        <div style={{width:pct+'%',height:'100%',borderRadius:6,background:pct>=80?'#00916E':pct>=50?'var(--blue)':' var(--red)'}}></div>
+      <div style={{fontSize:11,color:'var(--text2)',marginBottom:3}}>Прогрес: <b style={{color:barColor}}>{pct}%</b></div>
+      <div style={{background:'var(--border)',borderRadius:6,height:7,marginBottom:16}}>
+        <div style={{width:pct+'%',height:'100%',borderRadius:6,background:barColor}}></div>
       </div>
-      <div style={{fontSize:12,color:'var(--text2)',marginBottom:12,padding:'10px 12px',background:'var(--bg-card)',borderRadius:'var(--radius)'}}>
-        Звіт містить: статистику по завданнях, зведення по виконавцях, прострочені та запізнілі задачі{isAfterEvent?', невиконані задачі':''}, повна хронологія.
-      </div>
-      <button className="btn-primary"style={{width:'100%'}}onClick={openReport}>Відкрити звіт (PDF)</button>
+
+      {!sendMode&&<div style={{display:'flex',gap:8}}>
+        <button className="btn-primary"style={{flex:1}}onClick={openReport}>Відкрити PDF</button>
+        {isAfterEvent&&<button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(true)}>📧 Надіслати звіт</button>}
+      </div>}
+
+      {sendMode&&<div>
+        <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:'var(--dark)'}}>Надіслати фінальний звіт</div>
+        <div style={{fontSize:11,color:'var(--text2)',marginBottom:6}}>Відповідальні особи заходу:</div>
+        <div className="multi-check"style={{marginBottom:12}}>
+          {allTeamEmails.map(m=>{
+            const sel=selRecipients.includes(m.email);
+            const isDefault=defaultRecipients.includes(m.email);
+            return<div key={m.email}className={`multi-check-item${sel?' selected':''}`}
+              onClick={()=>toggleRecipient(m.email)}
+              style={{fontSize:11,border:isDefault&&!sel?'1.5px dashed var(--blue)':undefined}}>
+              {m.name}{isDefault&&!sel&&<span style={{fontSize:9,color:'var(--blue)',marginLeft:3}}>рек.</span>}
+            </div>;
+          })}
+        </div>
+        <div style={{fontSize:11,color:'var(--text2)',marginBottom:4}}>Додаткові email (через кому):</div>
+        <input value={customEmails}onChange={e=>setCustomEmails(e.target.value)}
+          placeholder="example@gmail.com, another@org.ua"
+          style={{width:'100%',padding:'7px 10px',border:'1.5px solid var(--border)',borderRadius:'var(--radius)',
+          fontSize:12,fontFamily:'var(--font)',boxSizing:'border-box',marginBottom:12}}/>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn-ghost"style={{flex:1}}onClick={()=>setSendMode(false)}>← Назад</button>
+          <button className="btn-primary"style={{flex:2}}onClick={sendReport}disabled={isSending}>
+            {isSending?'Надсилаємо...':'📧 Надіслати ('+(selRecipients.length+(customEmails.split(',').filter(e=>e.trim()).length))+' отримувачів)'}
+          </button>
+        </div>
+      </div>}
     </div>
   </div>;
 }
@@ -1552,7 +1622,7 @@ function App(){
 
   return<><Header/>
   {showDocModal&&<DocModal ev={ev}budget={budget}onClose={()=>setShowDocModal(false)}/>}
-  {showReportModal&&<ReportModal ev={ev}onClose={()=>setShowReportModal(false)}/>}
+  {showReportModal&&<ReportModal ev={ev}team={team}config={config}onClose={()=>setShowReportModal(false)}/>}
   <div className="app">
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1.5px solid var(--border)"}}>
       <div style={{flex:1,minWidth:0}}>

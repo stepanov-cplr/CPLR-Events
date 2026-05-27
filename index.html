@@ -1640,7 +1640,6 @@ function App(){
         <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>Ролі: expert, coord, comm, assist, fin, dmitro, other · 🔗 = блокує N задач · ✴ = незалежна</div>
         <div style={{maxHeight:500,overflowY:"auto"}}>
           {tasks.map((t,i)=>{
-            const depOptions=tasks.filter((_,j)=>j!==i&&!tasks[j].independent);
             const blocksThis=calcBlocksCount(tasks)[t.t]||0;
             const updateTask=(patch)=>{const ts=[...tasks];ts[i]={...ts[i],...patch};saveTasks(ts,i);setTasks(ts);};
             return<div key={i}style={{marginBottom:8,padding:"8px 10px",
@@ -1665,26 +1664,9 @@ function App(){
                 </label>
                 <button onClick={()=>{const ts=tasks.filter((_,j)=>j!==i);saveTasks(ts);setTasks(ts);}}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
               </div>
-              {!t.independent&&<div>
-                <div style={{fontSize:10,color:"var(--text3)",marginBottom:3}}>🔗 Залежить від (виберіть задачі без яких ця не може початись):</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:3,maxHeight:72,overflowY:"auto"}}>
-                  {depOptions.length===0
-                    ?<span style={{fontSize:10,color:"var(--text3)",fontStyle:"italic"}}>Всі інші задачі позначені як незалежні</span>
-                    :depOptions.map((dep,di)=>{
-                      const sel=(t.deps||[]).includes(dep.t);
-                      return<div key={di}onClick={()=>{
-                        const deps=sel?(t.deps||[]).filter(d=>d!==dep.t):[...(t.deps||[]),dep.t];
-                        updateTask({deps});
-                      }}title={dep.t}style={{
-                        fontSize:10,padding:"2px 7px",borderRadius:10,cursor:"pointer",
-                        background:sel?"#1C75BC":"var(--bg-white)",
-                        color:sel?"#fff":"var(--text2)",
-                        border:"1px solid "+(sel?"#1C75BC":"var(--border)"),
-                        maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
-                      }}>{dep.t}</div>;
-                    })
-                  }
-                </div>
+              {!t.independent&&(t.deps||[]).length>0&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic"}}>
+                🔗 Залежить від: {(t.deps||[]).join(", ").slice(0,120)}{(t.deps||[]).join(", ").length>120?"...":""}
+                <span style={{marginLeft:6,color:"var(--blue)"}}>(редагуй в Google Таблиці → аркуш «Залежності»)</span>
               </div>}
             </div>;
           })}

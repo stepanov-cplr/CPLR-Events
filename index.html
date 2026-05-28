@@ -193,7 +193,7 @@ const DEFAULT_TEAM=[
   {name:"Тибінка Христина",email:"tybinka@pravo.org.ua",role:"expert"},
   {name:"Тимощук Віктор",email:"vtymoschuk@gmail.com",role:"expert"},
   {name:"Дроздов Денис",email:"denys.v.drozdov@gmail.com",role:"expert"},
-  {name:"Дмитро Український",email:"dmitro@pravo.org.ua",role:"other"},
+  {name:"Український Дмитро",email:"dmitro@pravo.org.ua",role:"other"},
   {name:"Хавронюк Микола Іванович",email:"khavronuk@pravo.org.ua",role:"expert"},
   {name:"Чиркін Антон",email:"antonchirkin14@gmail.com",role:"expert"},
   {name:"Школьний Євген",email:"shkolniy@pravo.org.ua",role:"expert"},
@@ -364,7 +364,7 @@ function genChecklist(f,taskTemplates,team){
   };
   const roleMap={
     expert:f.expertName||"Експерт",coord:f.coordinator||"Координатор",
-    comm:f.commManager||"Комунікаційник",dmitro:"Дмитро Український",
+    comm:f.commManager||"Комунікаційник",dmitro:"Український Дмитро",
     assist:f.assistant||"Асистент",other:"Відповідальний",
     fin:f.coordinator||f.assistant||"Фінансовий координатор",
   };
@@ -1078,18 +1078,27 @@ function SendEmailsModal({ev, team, config, onClose}){
       map[w].total++;
       if(t.done) map[w].done++;
     });
-    // Знаходимо email з команди
-    (team||DEFAULT_TEAM).forEach(m=>{ if(map[m.name]) map[m.name].email = m.email; });
+    // Знаходимо email з команди — нормалізуємо пробіли і регістр для надійного збігу
+    const norm = s => s?.trim().toLowerCase().replace(/\s+/g," ");
+    (team||DEFAULT_TEAM).forEach(m=>{
+      const mNorm = norm(m.name);
+      Object.keys(map).forEach(who=>{
+        if(norm(who) === mNorm) map[who].email = m.email;
+      });
+    });
     return Object.values(map).sort((a,b)=>b.total-a.total);
   }, [cl, team]);
 
-  const [selected, setSelected] = React.useState(()=>new Set(
-    assignees.filter(a=>a.email).map(a=>a.email)
-  ));
+  const [selected, setSelected] = React.useState(new Set());
   const [customEmail, setCustomEmail] = React.useState("");
   const [customList, setCustomList] = React.useState([]);
   const [isSending, setIsSending] = React.useState(false);
   const [sent, setSent] = React.useState(null);
+
+  // Ініціалізуємо selected після того як assignees розраховані
+  React.useEffect(()=>{
+    setSelected(new Set(assignees.filter(a=>a.email).map(a=>a.email)));
+  }, [assignees]);
 
   const toggleAssignee = email => setSelected(prev=>{
     const s = new Set(prev);
@@ -1210,6 +1219,39 @@ function SendEmailsModal({ev, team, config, onClose}){
             </div>;
           })}
         </div>
+
+        {/* Інші члени команди */}
+        {(()=>{
+          const assigneeNames = new Set(assignees.map(a=>a.name));
+          const norm = s => s?.trim().toLowerCase().replace(/\s+/g," ");
+          const others = (team||DEFAULT_TEAM).filter(m=>
+            !assignees.some(a=>norm(a.name)===norm(m.name)) && m.email
+          );
+          if(!others.length) return null;
+          return <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:600,color:"var(--dark)",marginBottom:6}}>
+              Інші члени команди
+              <span style={{fontWeight:400,color:"var(--text2)",marginLeft:6,fontSize:11}}>не мають задач у чеклисті — отримають повний список</span>
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {others.map(m=>{
+                const isSel = selected.has(m.email);
+                return <div key={m.email}
+                  onClick={()=>toggleAssignee(m.email)}
+                  style={{
+                    display:"flex",alignItems:"center",gap:5,padding:"5px 11px",
+                    borderRadius:20,border:`1.5px solid ${isSel?"var(--blue)":"var(--border)"}`,
+                    background:isSel?"var(--blue-light)":"var(--bg-white)",
+                    color:isSel?"var(--blue)":"var(--text2)",
+                    fontSize:11,cursor:"pointer",transition:"all .15s"
+                  }}>
+                  {isSel&&<span style={{fontSize:10,color:"var(--blue)"}}>✓</span>}
+                  {m.name}
+                </div>;
+              })}
+            </div>
+          </div>;
+        })()}
 
         {/* Окремі email */}
         <div style={{fontSize:12,fontWeight:600,color:"var(--dark)",marginBottom:6}}>Додати email вручну</div>

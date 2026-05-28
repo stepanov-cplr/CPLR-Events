@@ -545,15 +545,22 @@ function generateReportHTML(ev) {
     const tasks=cl.filter(t=>t.g===g);
     const rows=tasks.map(t=>{
       const isLate=t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate;
-      const isOvd=!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0;
-      const bg=isOvd?'#FEF2F2':isLate?'#FFFBEB':t.done?'#F0FDF4':'#fff';
-      const status=t.done?(isLate?`<span style="color:#D97706">✓ запізн. ${daysDiff(t.doneAt,t.dlDate)} дн.</span>`:`<span style="color:#00916E">✓ вчасно</span>`)
-        :(isOvd?`<span style="color:#DC2626">⚠ прострочено</span>`:`<span style="color:#666">очікує</span>`);
+      const dlP=parseDlDate(t.dlDate);
+      const isOvd=!t.done&&dlP&&dlP<today;
+      const isProblem=isLate||isOvd;
+      const bg=isProblem?'#FEF2F2':t.done?'#F0FDF4':'#fff';
+      const nameColor=isProblem?'#B91C1C':t.done?'#999':'#1A2535';
+      const nameWeight=isProblem?'font-weight:600;':'';
+      const dlColor=isOvd?'#B91C1C':isLate?'#D97706':'inherit';
+      const doneColor=isLate?'#D97706':'#166534';
+      const lateSuffix=isLate?` <span style="font-size:10px;color:#D97706">+${daysDiff(t.doneAt,t.dlDate)} дн.</span>`:'';
+      const status=t.done?(isLate?`<span style="color:#D97706;font-weight:600">запізнення</span>`:`<span style="color:#00916E;font-weight:500">вчасно</span>`)
+        :(isOvd?`<span style="color:#DC2626;font-weight:600">прострочено</span>`:`<span style="color:#166534;font-weight:500">очікує</span>`);
       return `<tr style="background:${bg}">
-        <td style="text-decoration:${t.done?'line-through':''};color:${t.done?'#999':'#1A2535'}">${t.t}</td>
+        <td style="color:${nameColor};${nameWeight}${t.done&&!isProblem?'text-decoration:line-through;':''}">${t.t}</td>
         <td>${t.who||'—'}</td>
-        <td>${fmt(t.dlDate)}</td>
-        <td>${t.done&&t.doneAt?fmt(t.doneAt):'—'}</td>
+        <td style="color:${dlColor};white-space:nowrap">${fmt(t.dlDate)}</td>
+        <td style="color:${t.done?doneColor:'inherit'};white-space:nowrap">${t.done&&t.doneAt?fmt(t.doneAt):'—'}${lateSuffix}</td>
         <td>${status}</td>
       </tr>`;
     }).join('');
@@ -661,29 +668,59 @@ function generateReportHTML(ev) {
     const aarItems=problematic.map(pt=>{
       const isLate=pt.done&&pt.doneAt&&pt.dlDate&&pt.doneAt>pt.dlDate;
       const lateDays=isLate?daysDiff(pt.doneAt,pt.dlDate):null;
+      const ptDl=parseDlDate(pt.dlDate);
+      const ptOverdue=!pt.done&&ptDl&&ptDl<today;
+      const ptDaysOver=ptOverdue?Math.round((today-ptDl)/(1000*60*60*24)):null;
       const allBlocked=getAllBlockedFront(pt.t,bbMap);
       if(!allBlocked.length)return'';
       const affected=allBlocked.map(bName=>{
         const bt=cl.find(x=>x.t===bName);
         if(!bt)return null;
         const btLate=bt.done&&bt.doneAt&&bt.dlDate&&bt.doneAt>bt.dlDate;
-        return{t:bt.t,who:bt.who,done:bt.done,late:btLate,lateDays:btLate?daysDiff(bt.doneAt,bt.dlDate):null,notDone:!bt.done,dlDate:bt.dlDate};
+        const btDl=parseDlDate(bt.dlDate);
+        const btOverdue=!bt.done&&btDl&&btDl<today;
+        const btDaysLeft=btDl?Math.round((btDl-today)/(1000*60*60*24)):null;
+        return{t:bt.t,who:bt.who,done:bt.done,late:btLate,lateDays:btLate?daysDiff(bt.doneAt,bt.dlDate):null,notDone:!bt.done,overdue:btOverdue,daysLeft:btDaysLeft,dlDate:bt.dlDate};
       }).filter(Boolean);
-      const impacted=affected.filter(x=>x.late||x.notDone);
+      const impacted=affected.filter(x=>x.late||x.overdue);
+      const pending=affected.filter(x=>x.notDone&&!x.overdue);
       const okTasks=affected.filter(x=>!x.late&&!x.notDone);
+      // Заголовок
+      const dlBadge=isLate
+        ?`<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px">дедлайн: ${fmt(pt.dlDate)}</span>`
+        :ptOverdue
+          ?`<span style="background:#FEE2E2;color:#B91C1C;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px">дедлайн: ${fmt(pt.dlDate)} · прострочено ${ptDaysOver} дн.</span>`
+          :'';
       const titleText=isLate
-        ?`⏱ <b>${pt.t}</b> — виконано із запізненням <b style="color:#D97706">+${lateDays} дн.</b> (${pt.who||'—'})`
-        :`✗ <b>${pt.t}</b> — <span style="color:#DC2626">не виконано</span> (${pt.who||'—'})`;
+        ?`⏱ <b>${pt.t}</b> — запізнення <b style="color:#D97706">+${lateDays} дн.</b> (${pt.who||'—'}) ${dlBadge}`
+        :`✗ <b>${pt.t}</b> — не виконано (${pt.who||'—'}) ${dlBadge}`;
+      // Таблиця: прострочені + запізнілі
       const impactedHtml=impacted.length?`
         <div style="font-size:10px;font-weight:700;color:#B91C1C;margin:6px 0 3px">Можливий вплив на ${impacted.length} задач${impacted.length===1?'у':''}:</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
-          <tr style="background:#FEE2E2"><th style="padding:4px 7px;border:1px solid #FECACA;text-align:left">Задача</th><th style="padding:4px 7px;border:1px solid #FECACA">Виконавець</th><th style="padding:4px 7px;border:1px solid #FECACA">Дедлайн</th><th style="padding:4px 7px;border:1px solid #FECACA">Результат</th></tr>
-          ${impacted.map(x=>`<tr style="background:#FFF5F5"><td style="padding:4px 7px;border:1px solid #FECACA">${x.t}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:#666">${x.who||'—'}</td><td style="padding:4px 7px;border:1px solid #FECACA">${fmt(x.dlDate)}</td><td style="padding:4px 7px;border:1px solid #FECACA">${x.notDone?'<span style="color:#DC2626;font-weight:600">Не виконано</span>':`<span style="color:#D97706;font-weight:600">+${x.lateDays} дн. запізн.</span>`}</td></tr>`).join('')}
+          <tr style="background:#FEE2E2"><th style="padding:4px 7px;border:1px solid #FECACA;text-align:left">Задача</th><th style="padding:4px 7px;border:1px solid #FECACA">Виконавець</th><th style="padding:4px 7px;border:1px solid #FECACA">Дедлайн</th><th style="padding:4px 7px;border:1px solid #FECACA">Стан</th></tr>
+          ${impacted.map(x=>{
+            const dlColor=x.overdue?'#B91C1C':'#D97706';
+            const dlSub=x.overdue?`<br><span style="font-size:10px">прострочено ${Math.abs(x.daysLeft)} дн.</span>`:(x.late?`<br><span style="font-size:10px">+${x.lateDays} дн. запізн.</span>`:'');
+            const stText=x.overdue?'Не виконано':`+${x.lateDays} дн. запізн.`;
+            return`<tr style="background:#FFF5F5"><td style="padding:4px 7px;border:1px solid #FECACA">${x.t}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:#666">${x.who||'—'}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:500;white-space:nowrap">${fmt(x.dlDate)}${dlSub}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:600">${stText}</td></tr>`;}).join('')}
         </table>`:'';
-      const okHtml=okTasks.length?`<div style="font-size:10px;color:#6B7A90;margin-top:2px">Виконано вчасно попри залежність: ${okTasks.map(x=>x.t).join(', ')}</div>`:'';
+      // Таблиця: очікують (дедлайн попереду)
+      const pendingHtml=pending.length?`
+        <div style="font-size:10px;font-weight:700;color:#166534;margin:6px 0 3px">Дедлайн ще не настав (${pending.length}):</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
+          <tr style="background:#F0FAF4"><th style="padding:4px 7px;border:1px solid #BBE0CC;text-align:left">Задача</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Виконавець</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Дедлайн</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Стан</th></tr>
+          ${pending.map(x=>`<tr style="background:#F0FAF4"><td style="padding:4px 7px;border:1px solid #BBE0CC">${x.t}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#666">${x.who||'—'}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500;white-space:nowrap">${fmt(x.dlDate)}<br><span style="font-size:10px">залишилось ${x.daysLeft} дн.</span></td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500">Очікує</td></tr>`).join('')}
+        </table>`:'';
+      // Варіант C: міні-таблиця для вчасно виконаних
+      const okHtml=okTasks.length?`
+        <div style="font-size:10px;font-weight:500;color:#6B7A90;margin:6px 0 3px">Залежні задачі:</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
+          ${okTasks.map(x=>`<tr style="background:#F0FAF4"><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534"><span style="font-size:12px">✓</span> ${x.t}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;text-align:center;width:80px;font-weight:500">вчасно</td></tr>`).join('')}
+        </table>`:'';
       return`<div style="margin-bottom:12px;padding:10px 14px;border:1px solid #FCA5A5;border-radius:6px;background:#fff">
         <div style="font-size:12px;color:${isLate?'#D97706':'#DC2626'};margin-bottom:6px">${titleText}</div>
-        ${impactedHtml}${okHtml}
+        ${impactedHtml}${pendingHtml}${okHtml}
       </div>`;
     }).filter(Boolean).join('');
     if(!aarItems)return'';

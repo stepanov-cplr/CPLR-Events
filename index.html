@@ -1134,7 +1134,7 @@ function SendEmailsModal({ev, team, config, onClose}){
         await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:clData.slice(i,i+chunkSize),total:clData.length});
       }
       // Передаємо список отримувачів в скрипт
-      const res = await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:JSON.stringify(allRecipients)});
+      const res = await sheetsPost(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:allRecipients});
       if(res?.ok){ setSent(res.sent||allRecipients.length); }
       else showToast("Помилка: "+(res?.error||"невідома"));
     }catch(e){ showToast("Помилка надсилання"); }
@@ -1714,7 +1714,7 @@ function App(){
         await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:cl.slice(i,i+chunkSize),total:cl.length});
       }
       // Надсилаємо листи — команда читається скриптом з аркушу "Налаштування"
-      const res=await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id});
+      const res=await sheetsPost(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:[]});
       if(res?.ok)showToast(`✓ Надіслано листів: ${res.sent}`);
       else showToast("Помилка: "+(res?.error||"невідома"));
     }catch(e){showToast("Помилка надсилання");}

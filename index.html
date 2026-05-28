@@ -1092,7 +1092,7 @@ function SendEmailsModal({ev, team, config, onClose}){
     return Object.values(map).sort((a,b)=>b.total-a.total);
   }, [cl, team]);
 
-  const [selected, setSelected] = React.useState(new Set());
+  const [selected, setSelected] = React.useState([]);
   const [customEmail, setCustomEmail] = React.useState("");
   const [customList, setCustomList] = React.useState([]);
   const [isSending, setIsSending] = React.useState(false);
@@ -1100,14 +1100,12 @@ function SendEmailsModal({ev, team, config, onClose}){
 
   // Ініціалізуємо selected після того як assignees розраховані
   React.useEffect(()=>{
-    setSelected(new Set(assignees.filter(a=>a.email).map(a=>a.email)));
+    setSelected(assignees.filter(a=>a.email).map(a=>a.email));
   }, [assignees]);
 
-  const toggleAssignee = email => setSelected(prev=>{
-    const s = new Set(prev);
-    s.has(email) ? s.delete(email) : s.add(email);
-    return s;
-  });
+  const toggleAssignee = email => setSelected(prev=>
+    prev.includes(email) ? prev.filter(e=>e!==email) : [...prev, email]
+  );
 
   const addCustom = ()=>{
     const emails = customEmail.split(/[,;\s]+/).map(e=>e.trim()).filter(e=>e.includes("@"));
@@ -1118,7 +1116,7 @@ function SendEmailsModal({ev, team, config, onClose}){
 
   const removeCustom = email => setCustomList(prev=>prev.filter(e=>e!==email));
 
-  const allRecipients = [...selected, ...customList];
+  const allRecipients = [...selected, ...customList.filter(e=>!selected.includes(e))];
 
   const doSend = async()=>{
     if(!allRecipients.length){ showToast("Оберіть хоча б одного отримувача"); return; }
@@ -1175,17 +1173,17 @@ function SendEmailsModal({ev, team, config, onClose}){
         {/* Виконавці з чеклиста */}
         <div style={{fontSize:12,fontWeight:600,color:"var(--dark)",marginBottom:6}}>
           Виконавці із чеклиста
-          <span style={{fontWeight:400,color:"var(--text2)",marginLeft:6,fontSize:11}}>({selected.size} обрано)</span>
-          <button onClick={()=>setSelected(new Set(assignees.filter(a=>a.email).map(a=>a.email)))}
+          <span style={{fontWeight:400,color:"var(--text2)",marginLeft:6,fontSize:11}}>({selected.length} обрано)</span>
+          <button onClick={()=>setSelected(assignees.filter(a=>a.email).map(a=>a.email))}
             style={{fontSize:10,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",marginLeft:8}}>всі</button>
-          <button onClick={()=>setSelected(new Set())}
+          <button onClick={()=>setSelected([])}
             style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",marginLeft:2}}>жодного</button>
         </div>
 
         <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:16}}>
           {assignees.map(a=>{
             const hasMail = !!a.email;
-            const isSel = hasMail && selected.has(a.email);
+            const isSel = hasMail && selected.includes(a.email);
             const pct = a.total ? Math.round(a.done/a.total*100) : 0;
             const barC = pct>=80?"#00916E":pct>=50?"#1C75BC":"#DC2626";
             return <div key={a.name}
@@ -1238,7 +1236,7 @@ function SendEmailsModal({ev, team, config, onClose}){
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
               {others.map(m=>{
-                const isSel = selected.has(m.email);
+                const isSel = selected.includes(m.email);
                 return <div key={m.email}
                   onClick={()=>toggleAssignee(m.email)}
                   style={{

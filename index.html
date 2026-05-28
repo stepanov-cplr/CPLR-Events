@@ -728,7 +728,69 @@ function generateDocHTML(ev,budget,blocks,docType){
   }
   if(blocks.includes("checklist")&&ev.checklist?.length){
     const groups=[...new Set(ev.checklist.map(t=>t.g))];
-    sections.push(`<h2>Чеклист задач</h2>${groups.map(g=>`<h3>${g}</h3><ul>${ev.checklist.filter(t=>t.g===g).map(t=>`<li${t.done?' style="text-decoration:line-through;color:#999"':''}><b>${t.who}</b> — ${t.t} <span style="color:#999">(${t.dl||"—"})</span></li>`).join("")}</ul>`).join("")}`);
+    const fmtDl=d=>{if(!d)return"—";const s=d.slice(0,10).split("-");return s[2]+"."+s[1]+"."+s[0];};
+    const today=new Date();today.setHours(0,0,0,0);
+    const parseDl=d=>{if(!d)return null;return new Date(d.slice(0,10)+"T00:00:00");};
+    // Бейдж важливості (blocksCount — скільки задач блокує)
+    const impBadge=(n,done)=>{
+      if(!n||n===0)return"";
+      const [bg,c,lbl]=n>=10?["#FEE2E2","#B91C1C","Критична"]:n>=4?["#FEF3C7","#D97706","Висока"]:["#EBF4FF","#1C75BC","Середня"];
+      return`<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;opacity:${done?0.5:1}">${lbl} 🔗${n}</span>`;
+    };
+    const clRows=groups.map(g=>{
+      const tasks=ev.checklist.filter(t=>t.g===g&&!t.manualDelete);
+      if(!tasks.length)return"";
+      const rows=tasks.map(t=>{
+        const dl=parseDl(t.dlDate||t.dl);
+        const isOverdue=!t.done&&dl&&dl<today;
+        const isLate=t.done&&t.doneAt&&t.dlDate&&t.doneAt.slice(0,10)>t.dlDate.slice(0,10);
+        const rowBg=t.done?"#F9FAFB":isOverdue?"#FEF2F2":"#fff";
+        const statusCell=t.done
+          ?(isLate?`<span style="color:#D97706;font-weight:600">✓ запізн.</span>`:`<span style="color:#00916E;font-weight:600">✓ вчасно</span>`)
+          :(isOverdue?`<span style="color:#DC2626;font-weight:600">⚠ прострочено</span>`:`<span style="color:#6B7A90">очікує</span>`);
+        const blk=t.blocksCount||0;
+        return`<tr style="background:${rowBg}">
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:${t.done?"#9CA3AF":"#1A2535"};text-decoration:${t.done?"line-through":"none"}">${t.t}</td>
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:#374151;white-space:nowrap">${t.who||"—"}</td>
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:${isOverdue?"#DC2626":"#374151"};white-space:nowrap;font-weight:${isOverdue?700:400}">${fmtDl(t.dlDate||t.dl)}</td>
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;text-align:center">${statusCell}</td>
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;text-align:center">${blk>0?impBadge(blk,t.done):"<span style='color:#D1D5DB;font-size:10px'>—</span>"}</td>
+        </tr>`;
+      }).join("");
+      const doneN=tasks.filter(t=>t.done).length;
+      return`<h3 style="font-size:11px;color:#6B7A90;margin:16px 0 5px;text-transform:uppercase;letter-spacing:.06em">${g} <span style="font-weight:400;text-transform:none;letter-spacing:0">(${doneN}/${tasks.length})</span></h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
+        <thead><tr style="background:#F0F4F8">
+          <th style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;text-align:left;font-weight:600">Задача</th>
+          <th style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;font-weight:600;white-space:nowrap">Виконавець</th>
+          <th style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;font-weight:600;white-space:nowrap">Дедлайн</th>
+          <th style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;font-weight:600">Статус</th>
+          <th style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;font-weight:600;white-space:nowrap">Важливість</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }).join("");
+    // Легенда бейджів
+    const legend=`<div style="margin-top:10px;font-size:10px;color:#9CA3AF;line-height:1.8">
+      🔗N — кількість задач, що залежать від цієї (транзитивно) &nbsp;·&nbsp;
+      <span style="background:#FEE2E2;color:#B91C1C;padding:1px 6px;border-radius:8px;font-weight:700">Критична 🔗N</span> 10+ задач &nbsp;·&nbsp;
+      <span style="background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:8px;font-weight:700">Висока 🔗N</span> 4–9 задач &nbsp;·&nbsp;
+      <span style="background:#EBF4FF;color:#1C75BC;padding:1px 6px;border-radius:8px;font-weight:700">Середня 🔗N</span> 1–3 задачі
+    </div>`;
+    const doneTotal=ev.checklist.filter(t=>t.done&&!t.manualDelete).length;
+    const allTotal=ev.checklist.filter(t=>!t.manualDelete).length;
+    const pctDoc=allTotal?Math.round(doneTotal/allTotal*100):0;
+    const barC=pctDoc>=80?"#00916E":pctDoc>=50?"#1C75BC":"#DC2626";
+    const summary=`<div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;flex-wrap:wrap">
+      <span>Всього задач: <b style="color:#1C75BC">${allTotal}</b></span>
+      <span>Виконано: <b style="color:#00916E">${doneTotal}</b></span>
+      <span>Залишилось: <b>${allTotal-doneTotal}</b></span>
+      <span>Прогрес: <b style="color:${barC}">${pctDoc}%</b></span>
+    </div>
+    <div style="background:#E5E7EB;border-radius:6px;height:6px;margin-bottom:16px">
+      <div style="width:${pctDoc}%;height:100%;border-radius:6px;background:${barC}"></div>
+    </div>`;
+    sections.push(`<h2>Чеклист задач</h2>${summary}${clRows}${legend}`);
   }
   return`<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
   <title>${f.eventName||"Захід ЦППР"}</title>
@@ -903,7 +965,12 @@ function DocModal({ev,budget,onClose}){
       const groups=[...new Set(ev.checklist.map(t=>t.g))];
       groups.forEach(g=>{
         text+=`\n${g}:\n`;
-        ev.checklist.filter(t=>t.g===g).forEach(t=>text+=`  ${t.done?"[✓]":"[ ]"} ${t.t} (${t.who}, ${t.dl||"—"})\n`);
+        ev.checklist.filter(t=>t.g===g&&!t.manualDelete).forEach(t=>{
+          const blk=t.blocksCount||0;
+          const imp=blk>=10?"[КРИТИЧНА]":blk>=4?"[ВИСОКА]":blk>=1?"[СЕРЕДНЯ]":"";
+          const blkStr=blk>0?` 🔗${blk} залежних`:"";
+          text+=`  ${t.done?"[✓]":"[ ]"} ${t.t} (${t.who}, ${t.dl||"—"})${imp?` ${imp}`:""}${blkStr}\n`;
+        });
       });
     }
     if(f.notes)text+=`\nКОМЕНТАРІ\n${"-".repeat(40)}\n${f.notes}\n`;

@@ -1066,10 +1066,10 @@ function parseDlDate(dlDate){
 
 function SendEmailsModal({ev, team, config, onClose}){
   const f = ev.form || {};
-  const cl = ev.checklist?.filter(t=>!t.manualDelete) || [];
 
-  // Унікальні виконавці з чеклиста + кількість їх задач
-  const assignees = React.useMemo(()=>{
+  // Рахуємо виконавців один раз — стабільна функція без useMemo щоб уникнути циклів
+  const buildAssignees = ()=>{
+    const cl = ev.checklist?.filter(t=>!t.manualDelete) || [];
     const map = {};
     cl.forEach(t=>{
       const w = t.who;
@@ -1078,7 +1078,6 @@ function SendEmailsModal({ev, team, config, onClose}){
       map[w].total++;
       if(t.done) map[w].done++;
     });
-    // Знаходимо email з команди — нормалізуємо + пробуємо перевернути "Ім'я Прізвище" ↔ "Прізвище Ім'я"
     const norm = s => s?.trim().toLowerCase().replace(/\s+/g," ");
     const flip = s => { const p = s.split(" "); return p.length===2 ? p[1]+" "+p[0] : s; };
     (team||DEFAULT_TEAM).forEach(m=>{
@@ -1090,18 +1089,23 @@ function SendEmailsModal({ev, team, config, onClose}){
       });
     });
     return Object.values(map).sort((a,b)=>b.total-a.total);
-  }, [cl, team]);
+  };
 
-  const [selected, setSelected] = React.useState([]);
+  // Розраховуємо один раз при монтуванні — ref щоб не змінювався
+  const assigneesRef = React.useRef(null);
+  if(!assigneesRef.current) assigneesRef.current = buildAssignees();
+  const assignees = assigneesRef.current;
+
+  const cl = ev.checklist?.filter(t=>!t.manualDelete) || [];
+
+  // selected — масив email, ініціалізується одразу з правильними значеннями
+  const [selected, setSelected] = React.useState(
+    ()=> assignees.filter(a=>a.email).map(a=>a.email)
+  );
   const [customEmail, setCustomEmail] = React.useState("");
   const [customList, setCustomList] = React.useState([]);
   const [isSending, setIsSending] = React.useState(false);
   const [sent, setSent] = React.useState(null);
-
-  // Ініціалізуємо selected після того як assignees розраховані
-  React.useEffect(()=>{
-    setSelected(assignees.filter(a=>a.email).map(a=>a.email));
-  }, [assignees]);
 
   const toggleAssignee = email => setSelected(prev=>
     prev.includes(email) ? prev.filter(e=>e!==email) : [...prev, email]

@@ -1064,6 +1064,199 @@ function parseDlDate(dlDate){
   const dt=new Date(dlDate);dt.setHours(0,0,0,0);return dt;
 }
 
+function SendEmailsModal({ev, team, config, onClose}){
+  const f = ev.form || {};
+  const cl = ev.checklist?.filter(t=>!t.manualDelete) || [];
+
+  // Унікальні виконавці з чеклиста + кількість їх задач
+  const assignees = React.useMemo(()=>{
+    const map = {};
+    cl.forEach(t=>{
+      const w = t.who;
+      if(!w) return;
+      if(!map[w]) map[w] = {name:w, total:0, done:0, email:null};
+      map[w].total++;
+      if(t.done) map[w].done++;
+    });
+    // Знаходимо email з команди
+    (team||DEFAULT_TEAM).forEach(m=>{ if(map[m.name]) map[m.name].email = m.email; });
+    return Object.values(map).sort((a,b)=>b.total-a.total);
+  }, [cl, team]);
+
+  const [selected, setSelected] = React.useState(()=>new Set(
+    assignees.filter(a=>a.email).map(a=>a.email)
+  ));
+  const [customEmail, setCustomEmail] = React.useState("");
+  const [customList, setCustomList] = React.useState([]);
+  const [isSending, setIsSending] = React.useState(false);
+  const [sent, setSent] = React.useState(null);
+
+  const toggleAssignee = email => setSelected(prev=>{
+    const s = new Set(prev);
+    s.has(email) ? s.delete(email) : s.add(email);
+    return s;
+  });
+
+  const addCustom = ()=>{
+    const emails = customEmail.split(/[,;\s]+/).map(e=>e.trim()).filter(e=>e.includes("@"));
+    if(!emails.length) return;
+    setCustomList(prev=>[...new Set([...prev, ...emails])]);
+    setCustomEmail("");
+  };
+
+  const removeCustom = email => setCustomList(prev=>prev.filter(e=>e!==email));
+
+  const allRecipients = [...selected, ...customList];
+
+  const doSend = async()=>{
+    if(!allRecipients.length){ showToast("Оберіть хоча б одного отримувача"); return; }
+    if(!config.sheetsApiUrl){ showToast("Немає підключення"); return; }
+    setIsSending(true);
+    try{
+      // Зберігаємо чеклист
+      const clData = cl.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false,dlDate:t.dlDate,deps:t.deps,blocksCount:t.blocksCount}));
+      const chunkSize=10;
+      for(let i=0;i<clData.length;i+=chunkSize){
+        await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:clData.slice(i,i+chunkSize),total:clData.length});
+      }
+      // Передаємо список отримувачів в скрипт
+      const res = await sheetsRequest(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:JSON.stringify(allRecipients)});
+      if(res?.ok){ setSent(res.sent||allRecipients.length); }
+      else showToast("Помилка: "+(res?.error||"невідома"));
+    }catch(e){ showToast("Помилка надсилання"); }
+    setIsSending(false);
+  };
+
+  if(sent!==null) return <div className="modal-overlay" onClick={onClose} style={{background:"rgba(15,23,42,0.82)",backdropFilter:"blur(3px)"}}>
+    <div onClick={e=>e.stopPropagation()} style={{maxWidth:420,width:"100%",borderRadius:16,background:"var(--bg-white)",boxShadow:"0 20px 60px rgba(0,0,0,0.4)",padding:"32px 28px",textAlign:"center"}}>
+      <div style={{fontSize:40,marginBottom:12}}>✅</div>
+      <div style={{fontSize:16,fontWeight:700,color:"var(--dark)",marginBottom:6}}>Надіслано!</div>
+      <div style={{fontSize:13,color:"var(--text2)",marginBottom:20}}>Листи з задачами отримали <b>{sent}</b> виконавців</div>
+      <button className="btn-primary" onClick={onClose}>Закрити</button>
+    </div>
+  </div>;
+
+  return <div className="modal-overlay" onClick={onClose} style={{background:"rgba(15,23,42,0.82)",backdropFilter:"blur(3px)"}}>
+    <div onClick={e=>e.stopPropagation()} style={{
+      maxWidth:520, width:"100%", borderRadius:16, overflow:"hidden",
+      boxShadow:"0 20px 60px rgba(0,0,0,0.45)", background:"var(--bg-white)",
+      maxHeight:"90vh", display:"flex", flexDirection:"column"
+    }}>
+
+      {/* Шапка */}
+      <div style={{background:"linear-gradient(135deg,#1C75BC 0%,#252868 100%)",padding:"18px 20px 14px",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+          <div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginBottom:6,letterSpacing:".04em"}}>НАДІСЛАТИ ЗАДАЧІ</div>
+            <div style={{fontSize:14,fontWeight:600,color:"#fff",lineHeight:1.3}}>{f.eventName||"Захід"}</div>
+            {f.eventDate&&<div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginTop:3}}>
+              {new Date(f.eventDate+"T00:00:00").toLocaleDateString("uk-UA")}{f.city?" · "+f.city:""}
+            </div>}
+          </div>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",color:"rgba(255,255,255,0.8)",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+        </div>
+      </div>
+
+      {/* Тіло */}
+      <div style={{padding:"16px 20px 20px",overflowY:"auto",flex:1}}>
+
+        {/* Виконавці з чеклиста */}
+        <div style={{fontSize:12,fontWeight:600,color:"var(--dark)",marginBottom:6}}>
+          Виконавці із чеклиста
+          <span style={{fontWeight:400,color:"var(--text2)",marginLeft:6,fontSize:11}}>({selected.size} обрано)</span>
+          <button onClick={()=>setSelected(new Set(assignees.filter(a=>a.email).map(a=>a.email)))}
+            style={{fontSize:10,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",marginLeft:8}}>всі</button>
+          <button onClick={()=>setSelected(new Set())}
+            style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",marginLeft:2}}>жодного</button>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:16}}>
+          {assignees.map(a=>{
+            const hasMail = !!a.email;
+            const isSel = hasMail && selected.has(a.email);
+            const pct = a.total ? Math.round(a.done/a.total*100) : 0;
+            const barC = pct>=80?"#00916E":pct>=50?"#1C75BC":"#DC2626";
+            return <div key={a.name}
+              onClick={()=>hasMail&&toggleAssignee(a.email)}
+              style={{
+                display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+                borderRadius:8,border:`1.5px solid ${isSel?"var(--blue)":hasMail?"var(--border)":"#F3F4F6"}`,
+                background:isSel?"var(--blue-light)":hasMail?"var(--bg-white)":"var(--bg-card)",
+                cursor:hasMail?"pointer":"default",transition:"all .15s"
+              }}>
+              {/* Чекбокс */}
+              <div style={{
+                width:16,height:16,borderRadius:4,border:`1.5px solid ${isSel?"var(--blue)":hasMail?"var(--border)":"#D1D5DB"}`,
+                background:isSel?"var(--blue)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
+              }}>
+                {isSel&&<span style={{color:"#fff",fontSize:11,lineHeight:1}}>✓</span>}
+              </div>
+              {/* Ім'я і email */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:hasMail?"var(--dark)":"var(--text3)"}}>{a.name}</div>
+                {hasMail
+                  ? <div style={{fontSize:10,color:"var(--text3)"}}>{a.email}</div>
+                  : <div style={{fontSize:10,color:"#EF4444"}}>⚠ немає email у команді</div>}
+              </div>
+              {/* Задачі + прогрес */}
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:11,color:isSel?"var(--blue)":"var(--text2)",fontWeight:600}}>
+                  {a.done}/{a.total} задач
+                </div>
+                <div style={{width:60,height:4,background:"#E5E7EB",borderRadius:4,marginTop:3}}>
+                  <div style={{width:pct+"%",height:"100%",borderRadius:4,background:barC}}></div>
+                </div>
+              </div>
+            </div>;
+          })}
+        </div>
+
+        {/* Окремі email */}
+        <div style={{fontSize:12,fontWeight:600,color:"var(--dark)",marginBottom:6}}>Додати email вручну</div>
+        <div style={{display:"flex",gap:7,marginBottom:8}}>
+          <input
+            value={customEmail}
+            onChange={e=>setCustomEmail(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addCustom();}}}
+            placeholder="email@example.com"
+            style={{flex:1,padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:12,fontFamily:"var(--font)"}}
+          />
+          <button className="btn-outline" onClick={addCustom} style={{fontSize:12,whiteSpace:"nowrap"}}>+ Додати</button>
+        </div>
+        {customList.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:14}}>
+          {customList.map(e=><div key={e} style={{
+            display:"flex",alignItems:"center",gap:5,background:"#EBF4FF",border:"1px solid #BAD4F3",
+            borderRadius:20,padding:"3px 10px",fontSize:11,color:"#1C75BC"
+          }}>
+            {e}
+            <button onClick={()=>removeCustom(e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6B7A90",fontSize:13,padding:0,lineHeight:1}}>×</button>
+          </div>)}
+        </div>}
+
+        {/* Підсумок + кнопка */}
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:14,marginTop:4}}>
+          {allRecipients.length>0
+            ? <div style={{fontSize:11,color:"var(--text2)",marginBottom:10}}>
+                Буде надіслано <b style={{color:"var(--dark)"}}>{allRecipients.length}</b> листів: {allRecipients.join(", ")}
+              </div>
+            : <div style={{fontSize:11,color:"var(--red)",marginBottom:10}}>Оберіть хоча б одного отримувача</div>}
+          <button
+            onClick={doSend}
+            disabled={isSending||allRecipients.length===0}
+            style={{
+              width:"100%",padding:"11px",background:allRecipients.length===0?"#aaa":"#1C75BC",
+              border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,
+              cursor:isSending||allRecipients.length===0?"not-allowed":"pointer"
+            }}>
+            {isSending?"⏳ Надсилаємо...":"📧 Надіслати листи ("+allRecipients.length+")"}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>;
+}
+
 function ReportModal({ev,onClose,team,config}){
   const f=ev.form||{};
   const today=new Date();today.setHours(0,0,0,0);
@@ -1322,6 +1515,7 @@ function App(){
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
   const [showReportModal,setShowReportModal]=useState(false);
+  const [showSendEmailsModal,setShowSendEmailsModal]=useState(false);
   // Якщо версія даних змінилась — скидаємо кеш задач і команди (не заявок)
   if(localStorage.getItem("cppr_data_version")!==DATA_VERSION){
     localStorage.removeItem("cppr_tasks");
@@ -1893,7 +2087,8 @@ function App(){
   ];
 
   return<><Header/>
-  {showDocModal&&<DocModal ev={ev}budget={budget}onClose={()=>setShowDocModal(false)}/>}
+  {showDocModal&&<DocModal ev={ev}budget={budget}onClose={()=>setShowDocModal(false)}/>
+  }{showSendEmailsModal&&<SendEmailsModal ev={ev}team={team}config={config}onClose={()=>setShowSendEmailsModal(false)}/>}
   {showReportModal&&<ReportModal ev={ev}team={team}config={config}onClose={()=>setShowReportModal(false)}/>}
   <div className="app">
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:12,borderBottom:"1.5px solid var(--border)"}}>
@@ -1911,7 +2106,7 @@ function App(){
       {saving&&<span style={{fontSize:10,color:"var(--text3)"}}>збер…</span>}
       <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs,cid);showToast("✓ Заявку збережено");}}>💾 Зберегти заявку</button>
       <button className="btn-ghost"onClick={e=>copyEv(cid,e)}style={{fontSize:12}}>📋 Копіювати заявку</button>
-      <button className="btn-ghost"onClick={sendEmails}disabled={sending}style={{opacity:sending?0.6:1}}>{sending?"Надсилаємо...":"📧 Надіслати задачі"}</button>
+      <button className="btn-ghost"onClick={()=>setShowSendEmailsModal(true)}style={{}}>📧 Надіслати задачі</button>
       <button className="btn-ghost"onClick={()=>setShowDocModal(true)}>📄 Документ</button>
       {ev.checklist?.filter(t=>!t.manualDelete).length>0&&
         <button className="btn-ghost"onClick={()=>setShowReportModal(true)}>📊 Звіт</button>}

@@ -1432,7 +1432,7 @@ function App(){
     const evDonors=(srcEv?.form?.donors||[]).filter(d=>d!=="Без донора").join(", ");
      const evParticipants=srcEv?.form?.participants||"";
      const evCoordinator=srcEv?.form?.coordinator||"";
-     const evComment=srcEv?.form?.comments||"";
+     const evComment=srcEv?.form?.notes||"";
      if(config.sheetsApiUrl)sheetsPost(config.sheetsApiUrl,"sendStatusNotification",{
        evId:srcEv.id,status:newStatus,recipients:allRecipients,
        evName,evDate,evType,evFormat,evCity,evExpert,evCoordinator,evDonors,evParticipants,evComment

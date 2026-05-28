@@ -1078,12 +1078,15 @@ function SendEmailsModal({ev, team, config, onClose}){
       map[w].total++;
       if(t.done) map[w].done++;
     });
-    // Знаходимо email з команди — нормалізуємо пробіли і регістр для надійного збігу
+    // Знаходимо email з команди — нормалізуємо + пробуємо перевернути "Ім'я Прізвище" ↔ "Прізвище Ім'я"
     const norm = s => s?.trim().toLowerCase().replace(/\s+/g," ");
+    const flip = s => { const p = s.split(" "); return p.length===2 ? p[1]+" "+p[0] : s; };
     (team||DEFAULT_TEAM).forEach(m=>{
       const mNorm = norm(m.name);
+      const mFlip = flip(mNorm);
       Object.keys(map).forEach(who=>{
-        if(norm(who) === mNorm) map[who].email = m.email;
+        const wNorm = norm(who);
+        if(wNorm === mNorm || wNorm === mFlip) map[who].email = m.email;
       });
     });
     return Object.values(map).sort((a,b)=>b.total-a.total);

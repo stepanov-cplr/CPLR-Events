@@ -105,6 +105,7 @@ button{font-family:var(--font);cursor:pointer}
 /* CHECKLIST */
 .checklist-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--bg-card);cursor:pointer;transition:opacity .15s}
 .checklist-item.overdue{background:#fff8f8;border-left:3px solid var(--red);padding-left:8px;margin-left:-8px;border-radius:0 var(--radius) var(--radius) 0}
+.checklist-item.blocked{background:#FFFBEB;border-left:3px solid #D97706;padding-left:8px;margin-left:-8px;border-radius:0 var(--radius) var(--radius) 0}
 .chk-box{width:18px;height:18px;border-radius:5px;border:2px solid var(--border);background:var(--bg-white);
   flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
 .chk-box.done{border-color:var(--green);background:var(--green-light)}
@@ -554,10 +555,16 @@ function generateReportHTML(ev) {
       const dlColor=isOvd?'#B91C1C':isLate?'#D97706':'inherit';
       const doneColor=isLate?'#D97706':'#166534';
       const lateSuffix=isLate?` <span style="font-size:10px;color:#D97706">+${daysDiff(t.doneAt,t.dlDate)} дн.</span>`:'';
+      // Перевіряємо чи задача заблокована
+      const _blockers=!t.done&&t.deps?.length?t.deps.filter(dn=>cl.some(x=>x.t===dn&&!x.done&&!x.manualDelete)):[];
+      const isBlocked=_blockers.length>0&&!isOvd;
+      const blockedBg=isBlocked&&!isProblem?'#FFFBEB':bg;
+      const blockedNameColor=isBlocked&&!isProblem?'#92400E':nameColor;
       const status=t.done?(isLate?`<span style="color:#D97706;font-weight:600">запізнення</span>`:`<span style="color:#00916E;font-weight:500">вчасно</span>`)
-        :(isOvd?`<span style="color:#DC2626;font-weight:600">прострочено</span>`:`<span style="color:#166534;font-weight:500">очікує</span>`);
-      return `<tr style="background:${bg}">
-        <td style="color:${nameColor};${nameWeight}${t.done&&!isProblem?'text-decoration:line-through;':''}">${t.t}</td>
+        :(isOvd?`<span style="color:#DC2626;font-weight:600">прострочено</span>`:isBlocked?`<span style="color:#92400E;font-weight:500">🔒 заблоковано</span>`:`<span style="color:#166534;font-weight:500">очікує</span>`);
+      const blockerInfo=isBlocked?`<div style="font-size:9px;color:#92400E;margin-top:2px">Чекає: ${_blockers.join(', ')}</div>`:'';
+      return `<tr style="background:${blockedBg}">
+        <td style="color:${blockedNameColor};${nameWeight}${t.done&&!isProblem?'text-decoration:line-through;':''}">${t.t}${blockerInfo}</td>
         <td>${t.who||'—'}</td>
         <td style="color:${dlColor};white-space:nowrap">${fmt(t.dlDate)}</td>
         <td style="color:${t.done?doneColor:'inherit'};white-space:nowrap">${t.done&&t.doneAt?fmt(t.doneAt):'—'}${lateSuffix}</td>
@@ -2481,10 +2488,17 @@ function App(){
                 const idx=ev.checklist.indexOf(t);
                 const _today=new Date();_today.setHours(0,0,0,0);
                 const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_today&&t.d>=0;
-                return<div key={idx}className={`checklist-item${isOd?" overdue":""}`}style={{opacity:t.done?.5:1}}>
+                // Перевіряємо чи задача заблокована (є невиконані блокери)
+                const blockers=!t.done&&t.deps?.length
+                  ? t.deps.map(depName=>{const dt=ev.checklist.find(x=>x.t===depName&&!x.manualDelete);return dt&&!dt.done?dt:null;}).filter(Boolean)
+                  : [];
+                const isBlocked=blockers.length>0;
+                const itemClass=`checklist-item${isOd?" overdue":isBlocked?" blocked":""}`;
+                return<div key={idx}className={itemClass}style={{opacity:t.done?.5:1}}>
                   <div className={`chk-box${t.done?" done":""}`}onClick={()=>toggleCL(idx)}style={{cursor:"pointer",marginTop:3,flexShrink:0}}>{t.done&&<span style={{fontSize:11,color:"var(--green)",fontWeight:700}}>✓</span>}</div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>
+                    <div style={{fontSize:13,textDecoration:t.done?"line-through":"none",color:isOd?"var(--red)":isBlocked?"#92400E":"var(--text)",cursor:"pointer"}}onClick={()=>toggleCL(idx)}>
+                      {isBlocked&&<span style={{fontSize:11,marginRight:4}}>🔒</span>}
                       {t.t}
                       {isOd&&<span style={{fontSize:10,color:"var(--red)",fontWeight:700,marginLeft:6}}>ПРОСТРОЧЕНО</span>}
                       {!t.done&&(t.blocksCount||0)>0&&(
@@ -2496,6 +2510,10 @@ function App(){
                         }}>🔗 {t.blocksCount}</span>
                       )}
                     </div>
+                    {isBlocked&&<div style={{fontSize:10,color:"#92400E",marginTop:2,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
+                      <span style={{fontWeight:600}}>🔒 Чекає на:</span>
+                      {blockers.map((b,bi)=><span key={bi} style={{background:"#FEF3C7",color:"#92400E",padding:"0px 6px",borderRadius:8,fontSize:10}}>{b.t} ({b.who||'—'})</span>)}
+                    </div>}
                     {t.done&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Виконано:</span>
                       <input type="date" value={t.doneAt||""}

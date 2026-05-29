@@ -387,7 +387,7 @@ function genChecklist(f,taskTemplates,team){
   const allTasks=mergeTaskDeps(taskTemplates||DEFAULT_TASKS, window.__taskDeps||{deps:[],independent:[]});
   const blocksMap=calcBlocksCount(allTasks);
   return allTasks.filter(t=>!t.cond||condMap[t.cond]!==false&&condMap[t.cond]!==undefined?!t.cond||!!condMap[t.cond]:false).map(t=>{
-    const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today&&t.d>=0;
+    const dl=dd(t.d);const isOverdue=dl.date&&dl.date<today;
     return{...t,who:roleMap[t.role]||t.role,dl:dl.label,dlDate:dl.date?.toISOString(),done:false,overdue:isOverdue,blocksCount:blocksMap[t.t]||0};
   });
 }
@@ -485,7 +485,7 @@ function generateReportHTML(ev) {
   const total = cl.length;
   const done = cl.filter(t=>t.done).length;
   const notDone = total - done;
-  const overdue = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
+  const overdue = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today).length;
   const lateExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate);
   const earlyExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate);
   const onTime = cl.filter(t=>t.done&&(!t.dlDate||!t.doneAt||t.doneAt<=t.dlDate)).length;
@@ -508,7 +508,7 @@ function generateReportHTML(ev) {
     byWho[w].total++;
     if(t.done)byWho[w].done++;
     if(t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate){byWho[w].late++;byWho[w].lateSum+=daysDiff(t.doneAt,t.dlDate);}
-    if(!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0)byWho[w].overdue++;
+    if(!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)byWho[w].overdue++;
   });
   const whoRows = Object.entries(byWho).sort((a,b)=>b[1].total-a[1].total).map(([who,s])=>{
     const pct=Math.round(s.done/s.total*100);
@@ -524,7 +524,7 @@ function generateReportHTML(ev) {
   }).join('');
 
   // Прострочені
-  const overdueRows = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0)
+  const overdueRows = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)
     .sort((a,b)=>a.dlDate>b.dlDate?1:-1)
     .map(t=>`<tr style="background:#FEF2F2">
       <td>${t.t}</td><td>${t.who||'—'}</td><td style="color:#DC2626;font-weight:500">${fmt(t.dlDate)}</td>
@@ -556,13 +556,13 @@ function generateReportHTML(ev) {
       const doneColor=isLate?'#D97706':'#166534';
       const lateSuffix=isLate?` <span style="font-size:10px;color:#D97706">+${daysDiff(t.doneAt,t.dlDate)} дн.</span>`:'';
       // Перевіряємо чи задача заблокована
-      const _blockers=!t.done&&t.deps?.length?t.deps.filter(dn=>cl.some(x=>x.t===dn&&!x.done&&!x.manualDelete)):[];
+      const _blockers=!t.done&&t.deps?.length?t.deps.map(dn=>{const dt=cl.find(x=>x.t===dn&&!x.done&&!x.manualDelete);return dt?dt:null;}).filter(Boolean):[];
       const isBlocked=_blockers.length>0&&!isOvd;
       const blockedBg=isBlocked&&!isProblem?'#FFFBEB':bg;
       const blockedNameColor=isBlocked&&!isProblem?'#92400E':nameColor;
       const status=t.done?(isLate?`<span style="color:#D97706;font-weight:600">запізнення</span>`:`<span style="color:#00916E;font-weight:500">вчасно</span>`)
         :(isOvd?`<span style="color:#DC2626;font-weight:600">прострочено</span>`:isBlocked?`<span style="color:#92400E;font-weight:500">🔒 заблоковано</span>`:`<span style="color:#166534;font-weight:500">очікує</span>`);
-      const blockerInfo=isBlocked?`<div style="font-size:9px;color:#92400E;margin-top:2px">Чекає: ${_blockers.join(', ')}</div>`:'';
+      const blockerInfo=isBlocked?`<div style="font-size:9px;color:#92400E;margin-top:2px">Чекає: ${_blockers.map(b=>b.t+' ('+( b.who||'—')+')').join(', ')}</div>`:'';
       return `<tr style="background:${blockedBg}">
         <td style="color:${blockedNameColor};${nameWeight}${t.done&&!isProblem?'text-decoration:line-through;':''}">${t.t}${blockerInfo}</td>
         <td>${t.who||'—'}</td>
@@ -1182,7 +1182,7 @@ function SendEmailsModal({ev, team, config, onClose}){
     setIsSending(true);
     try{
       // Зберігаємо чеклист
-      const clData = cl.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false,dlDate:t.dlDate,deps:t.deps,blocksCount:t.blocksCount}));
+      const clData = cl.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,d:t.d,done:t.done||false,doneAt:t.doneAt,dlDate:t.dlDate,deps:t.deps,blocksCount:t.blocksCount,manualWho:t.manualWho,manualDate:t.manualDate,manualDelete:t.manualDelete}));
       const chunkSize=10;
       for(let i=0;i<clData.length;i+=chunkSize){
         await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:clData.slice(i,i+chunkSize),total:clData.length});
@@ -1412,7 +1412,7 @@ function ReportModal({ev,onClose,team,config}){
   const cl=ev.checklist?.filter(t=>!t.manualDelete)||[];
   const total=cl.length;
   const done=cl.filter(t=>t.done).length;
-  const overdue=cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today&&t.d>=0).length;
+  const overdue=cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today).length;
   const late=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate).length;
   const early=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate).length;
   const pct=total?Math.round(done/total*100):0;
@@ -1782,7 +1782,7 @@ function App(){
       const u={...t,done:!t.done};
       if(u.done){if(!u.doneAt)u.doneAt=todayStr;}
       else{u.doneAt=null;}
-      if(u.dlDate){const dl=parseDlDate(u.dlDate);u.overdue=!u.done&&dl<today&&t.d>=0;}
+      if(u.dlDate){const dl=parseDlDate(u.dlDate);u.overdue=!u.done&&dl<today;}
       return u;
     });
     upd({checklist:cl});
@@ -1937,7 +1937,7 @@ function App(){
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                 <Badge s={ev.status}/>
-                {ev.checklist?.length>0&&(()=>{const _td=new Date();_td.setHours(0,0,0,0);const od=ev.checklist.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td&&t.d>=0).length;
+                {ev.checklist?.length>0&&(()=>{const _td=new Date();_td.setHours(0,0,0,0);const od=ev.checklist.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td).length;
                   return<div style={{fontSize:10,color:od>0?"var(--red)":"var(--text3)",fontWeight:od>0?700:400}}>
                     {od>0&&`⚠ ${od} просрочено · `}{ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач</div>;})()}
                 <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
@@ -2176,7 +2176,7 @@ function App(){
   const budget=calcBudget(f,costs);
   const clDone=ev.checklist?.filter(t=>t.done&&!t.manualDelete).length||0;
   const clTotal=ev.checklist?.filter(t=>!t.manualDelete).length||0;
-  const _td2=new Date();_td2.setHours(0,0,0,0);const clOverdue=ev.checklist?.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td2&&t.d>=0).length||0;
+  const _td2=new Date();_td2.setHours(0,0,0,0);const clOverdue=ev.checklist?.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td2).length||0;
   // venues now use type-based selection
   const photoPrice=gc(costs,"tech","ph",f.city||"Київ");
 
@@ -2487,7 +2487,7 @@ function App(){
               {ev.checklist.filter(t=>t.g===g&&!t.hidden&&!t.manualDelete).map(t=>{
                 const idx=ev.checklist.indexOf(t);
                 const _today=new Date();_today.setHours(0,0,0,0);
-                const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_today&&t.d>=0;
+                const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_today;
                 // Перевіряємо чи задача заблокована (є невиконані блокери)
                 const blockers=!t.done&&t.deps?.length
                   ? t.deps.map(depName=>{const dt=ev.checklist.find(x=>x.t===depName&&!x.manualDelete);return dt&&!dt.done?dt:null;}).filter(Boolean)
@@ -2575,7 +2575,7 @@ function App(){
               </div>
               <div className="task-card-body">
                 {wtasks.map((t,i)=><div key={i}className="task-line">
-                  {(()=>{const _td3=new Date();_td3.setHours(0,0,0,0);const _od=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td3&&t.d>=0;return<>
+                  {(()=>{const _td3=new Date();_td3.setHours(0,0,0,0);const _od=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td3;return<>
                   <span style={{color:_od?"var(--red)":"var(--blue)",flexShrink:0}}>•</span>
                   <span style={{color:_od?"var(--red)":"var(--text)"}}>{t.t}</span></>;})()} 
                   <span style={{color:"var(--text3)",whiteSpace:"nowrap",marginLeft:"auto"}}>({t.dl||"—"})</span>

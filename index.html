@@ -1129,6 +1129,7 @@ function GanttChart({ev}){
   const [hover,setHover]=React.useState(null);
   const [filterWho,setFilterWho]=React.useState("");
   const [hideAfter,setHideAfter]=React.useState(true);
+  const [colorMode,setColorMode]=React.useState("importance"); // importance | who
 
   const today=new Date();today.setHours(0,0,0,0);
 
@@ -1137,6 +1138,12 @@ function GanttChart({ev}){
   const whoList=[...new Set(cl.map(t=>t.who).filter(Boolean))];
   const whoColor={};whoList.forEach((w,i)=>{whoColor[w]=palette[i%palette.length];});
 
+  // Будуємо зворотній граф залежностей (хто від кого залежить) — для підсвічування ланцюга
+  const blockedByMap={}; // задача -> [задачі що від неї прямо залежать]
+  cl.forEach(t=>{(t.deps||[]).forEach(dep=>{if(!blockedByMap[dep])blockedByMap[dep]=[];blockedByMap[dep].push(t.t);});});
+  // Транзитивний список усіх заблокованих
+  const allBlockedBy=name=>{const seen=new Set();const q=[name];while(q.length){const c=q.shift();(blockedByMap[c]||[]).forEach(b=>{if(!seen.has(b)){seen.add(b);q.push(b);}});}return seen;};
+
   // Готуємо задачі з датами
   let tasks=cl.map((t,idx)=>{
     const dl=parseDlDate(t.dlDate);
@@ -1144,7 +1151,7 @@ function GanttChart({ev}){
     const isOvd=!t.done&&dl&&dl<today;
     const blockers=!t.done&&t.deps?.length?t.deps.filter(dn=>cl.some(x=>x.t===dn&&!x.done&&!x.manualDelete)):[];
     const isBlocked=blockers.length>0&&!isOvd;
-    return{...t,idx,dl,isLate,isOvd,isBlocked,d:t.d!=null?t.d:99};
+    return{...t,idx,dl,isLate,isOvd,isBlocked,d:t.d!=null?t.d:99,blocksCount:t.blocksCount||0};
   }).filter(t=>t.dl);
 
   // Фільтри
@@ -1156,7 +1163,7 @@ function GanttChart({ev}){
 
   if(!tasks.length)return<div style={{padding:20,textAlign:"center",color:"var(--text2)"}}>Немає задач з дедлайнами для відображення.</div>;
 
-  // Часова шкала: від мінімального до максимального дедлайну
+  // Часова шкала
   const allDates=tasks.map(t=>t.dl.getTime());
   const minD=Math.min(...allDates),maxD=Math.max(...allDates);
   const evDate=f.eventDate?parseDlDate(f.eventDate.slice(0,10)):null;
@@ -1164,13 +1171,21 @@ function GanttChart({ev}){
   const totalDays=Math.max(1,Math.round((spanEnd-minD)/(1000*60*60*24)));
 
   // Геометрія
-  const rowH=26,labelW=240,chartW=440,padTop=44,padBottom=20;
+  const rowH=28,labelW=240,chartW=440,padTop=44,padBottom=20;
   const svgW=labelW+chartW+20;
   const svgH=padTop+tasks.length*rowH+padBottom;
   const xFor=ms=>labelW+((ms-minD)/(1000*60*60*24)/totalDays)*chartW;
   const taskY={};tasks.forEach((t,i)=>{taskY[t.t]=padTop+i*rowH+rowH/2;});
 
-  // Вертикальні лінії-орієнтири (тижні)
+  // Розмір маркера за важливістю
+  const sizeFor=n=>n>=10?22:n>=4?17:n>=1?13:9;
+  // Колір за важливістю
+  const impColor=n=>n>=10?"#A32D2D":n>=4?"#BA7517":n>=1?"#378ADD":"#B4B2A9";
+
+  // Підсвічений ланцюг (при hover на задачу — всі що від неї залежать)
+  const chain=hover?allBlockedBy(hover.t):new Set();
+
+  // Вертикальні лінії-орієнтири
   const gridLines=[];
   for(let dd=0;dd<=totalDays;dd+=7){
     const x=labelW+(dd/totalDays)*chartW;
@@ -1180,20 +1195,26 @@ function GanttChart({ev}){
   const evX=evDate?xFor(evDate.getTime()):null;
   const todayX=(today.getTime()>=minD&&today.getTime()<=spanEnd)?xFor(today.getTime()):null;
 
-  // Лінії залежностей (від блокера до задачі)
+  // Лінії залежностей
   const depLines=[];
   tasks.forEach(t=>{
     if(t.deps?.length){
       t.deps.forEach(dn=>{
         const src=tasks.find(x=>x.t===dn);
         if(src&&taskY[dn]!=null&&taskY[t.t]!=null){
-          depLines.push({x1:xFor(src.dl.getTime())+8,y1:taskY[dn],x2:xFor(t.dl.getTime())-4,y2:taskY[t.t],active:t.isBlocked});
+          // лінія активна якщо в підсвіченому ланцюзі hover-задачі
+          const inChain=hover&&(hover.t===dn||hover.t===t.t||(chain.has(t.t)&&(chain.has(dn)||hover.t===dn)));
+          depLines.push({x1:xFor(src.dl.getTime())+8,y1:taskY[dn],x2:xFor(t.dl.getTime())-4,y2:taskY[t.t],active:t.isBlocked,inChain});
         }
       });
     }
   });
 
-  const barColor=t=>t.done?"#B4B2A9":whoColor[t.who]||"#888780";
+  const barColor=t=>{
+    if(t.done)return"#B4B2A9";
+    if(colorMode==="who")return whoColor[t.who]||"#888780";
+    return impColor(t.blocksCount);
+  };
   const strokeFor=t=>t.isOvd?"#E24B4A":t.isBlocked?"#BA7517":"none";
 
   const printGantt=()=>{
@@ -1202,7 +1223,7 @@ function GanttChart({ev}){
     w.document.write(`<html><head><title>Діаграма Ганта — ${f.eventName||"захід"}</title>
       <style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#1C75BC}.meta{font-size:12px;color:#666;margin-bottom:16px}@media print{button{display:none}}</style></head>
       <body><h1>📊 Діаграма Ганта — ${f.eventName||"Захід"}</h1>
-      <div class="meta">Дата заходу: ${f.eventDate?parseDlDate(f.eventDate.slice(0,10)).toLocaleDateString("uk-UA"):"—"} · Сформовано: ${new Date().toLocaleDateString("uk-UA")}</div>
+      <div class="meta">Дата заходу: ${f.eventDate?parseDlDate(f.eventDate.slice(0,10)).toLocaleDateString("uk-UA"):"—"} · Сформовано: ${new Date().toLocaleDateString("uk-UA")}<br>Розмір маркера = важливість (скільки задач залежить). Число всередині — кількість залежних.</div>
       <button onclick="window.print()" style="margin-bottom:16px;padding:8px 16px;background:#1C75BC;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Друк / PDF</button>
       ${svgEl.outerHTML}</body></html>`);
     w.document.close();
@@ -1214,6 +1235,10 @@ function GanttChart({ev}){
         <option value="">Всі виконавці</option>
         {whoList.map(w=><option key={w}value={w}>{w}</option>)}
       </select>
+      <div style={{display:"flex",gap:0,border:"1px solid var(--border)",borderRadius:6,overflow:"hidden"}}>
+        <button onClick={()=>setColorMode("importance")}style={{fontSize:11,padding:"5px 10px",border:"none",cursor:"pointer",background:colorMode==="importance"?"#1C75BC":"#fff",color:colorMode==="importance"?"#fff":"var(--text2)",fontFamily:"var(--font)"}}>За важливістю</button>
+        <button onClick={()=>setColorMode("who")}style={{fontSize:11,padding:"5px 10px",border:"none",cursor:"pointer",background:colorMode==="who"?"#1C75BC":"#fff",color:colorMode==="who"?"#fff":"var(--text2)",fontFamily:"var(--font)"}}>За виконавцем</button>
+      </div>
       <label style={{fontSize:12,display:"flex",alignItems:"center",gap:5,cursor:"pointer"}}>
         <input type="checkbox"checked={hideAfter}onChange={e=>setHideAfter(e.target.checked)}/>
         Сховати задачі після заходу
@@ -1222,67 +1247,83 @@ function GanttChart({ev}){
     </div>
 
     {/* Легенда */}
+    <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:11,color:"var(--text2)",marginBottom:6,alignItems:"center"}}>
+      <span style={{fontWeight:600,color:"var(--text)"}}>Розмір = важливість:</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:20,height:20,borderRadius:4,background:colorMode==="importance"?"#A32D2D":"#888",display:"inline-block"}}></span>🔗10+ критична</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:16,height:16,borderRadius:4,background:colorMode==="importance"?"#BA7517":"#888",display:"inline-block"}}></span>🔗4-9 висока</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:12,height:12,borderRadius:3,background:colorMode==="importance"?"#378ADD":"#888",display:"inline-block"}}></span>🔗1-3 середня</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:9,height:9,borderRadius:2,background:"#B4B2A9",display:"inline-block"}}></span>не блокує</span>
+    </div>
     <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:11,color:"var(--text2)",marginBottom:10}}>
-      {whoList.filter(w=>!filterWho||w===filterWho).map(w=>
-        <span key={w}style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:12,height:12,borderRadius:3,background:whoColor[w]}}></span>{w}</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:11,height:11,borderRadius:3,border:"2px solid #E24B4A",display:"inline-block"}}></span>прострочено</span>
+      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:11,height:11,borderRadius:3,border:"2px solid #BA7517",display:"inline-block"}}></span>заблоковано</span>
+      {colorMode==="who"&&whoList.filter(w=>!filterWho||w===filterWho).map(w=>
+        <span key={w}style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:11,height:11,borderRadius:3,background:whoColor[w],display:"inline-block"}}></span>{w}</span>
       )}
-      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:11,height:11,borderRadius:3,border:"2px solid #E24B4A"}}></span>прострочено</span>
-      <span style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:11,height:11,borderRadius:3,border:"2px solid #BA7517"}}></span>заблоковано</span>
     </div>
 
     <div style={{overflowX:"auto",border:"1px solid var(--border)",borderRadius:8,background:"#fff",position:"relative"}}>
       <svg id="gantt-svg"viewBox={`0 0 ${svgW} ${svgH}`}width={svgW}style={{minWidth:svgW,display:"block"}}>
-        {/* Вертикальна сітка */}
         {gridLines.map((g,i)=><g key={i}>
           <line x1={g.x}y1={padTop-8}x2={g.x}y2={svgH-padBottom}stroke="#EEE"strokeWidth="1"/>
           <text x={g.x}y={padTop-14}fontSize="9"fill="#AAA"textAnchor="middle">{g.label}</text>
         </g>)}
-        {/* Сьогодні */}
         {todayX!=null&&<g>
           <line x1={todayX}y1={padTop-8}x2={todayX}y2={svgH-padBottom}stroke="#1C75BC"strokeWidth="1.5"strokeDasharray="3,2"/>
           <text x={todayX}y={padTop-26}fontSize="9"fill="#1C75BC"textAnchor="middle"fontWeight="700">сьогодні</text>
         </g>}
-        {/* День заходу */}
         {evX!=null&&<g>
           <line x1={evX}y1={padTop-8}x2={evX}y2={svgH-padBottom}stroke="#A32D2D"strokeWidth="1.5"/>
           <text x={evX}y={padTop-26}fontSize="9"fill="#A32D2D"textAnchor="middle"fontWeight="700">захід</text>
         </g>}
         {/* Лінії залежностей */}
-        {depLines.map((l,i)=><path key={i}d={`M${l.x1},${l.y1} C${l.x1+20},${l.y1} ${l.x2-20},${l.y2} ${l.x2},${l.y2}`}
-          fill="none"stroke={l.active?"#BA7517":"#D5D5D5"}strokeWidth={l.active?1.3:0.8}strokeDasharray={l.active?"none":"2,2"}/>)}
+        {depLines.map((l,i)=>{
+          const hl=l.inChain;
+          return<path key={i}d={`M${l.x1},${l.y1} C${l.x1+20},${l.y1} ${l.x2-20},${l.y2} ${l.x2},${l.y2}`}
+            fill="none"stroke={hl?"#A32D2D":l.active?"#BA7517":"#E0E0E0"}
+            strokeWidth={hl?1.8:l.active?1.3:0.7}
+            strokeDasharray={hl?"none":l.active?"none":"2,2"}
+            opacity={hover&&!hl?0.25:1}/>;
+        })}
         {/* Задачі */}
         {tasks.map((t,i)=>{
           const y=padTop+i*rowH;
           const cx=xFor(t.dl.getTime());
-          return<g key={i}onMouseEnter={()=>setHover(t)}onMouseLeave={()=>setHover(null)}style={{cursor:"pointer"}}>
-            <rect x="0"y={y}width={svgW}height={rowH}fill={i%2?"#FAFBFC":"#fff"}/>
-            <text x="8"y={y+rowH/2+3}fontSize="10.5"fill={t.isOvd?"#A32D2D":t.isBlocked?"#854F0B":t.done?"#999":"#1A2535"}
+          const sz=sizeFor(t.blocksCount);
+          const inChain=hover&&chain.has(t.t);
+          const isHovered=hover&&hover.t===t.t;
+          const dimmed=hover&&!inChain&&!isHovered;
+          return<g key={i}onMouseEnter={()=>setHover(t)}onMouseLeave={()=>setHover(null)}style={{cursor:"pointer"}}opacity={dimmed?0.35:1}>
+            <rect x="0"y={y}width={svgW}height={rowH}fill={isHovered?"#FFF7E6":inChain?"#FEF2F2":i%2?"#FAFBFC":"#fff"}/>
+            <text x="8"y={y+rowH/2+3}fontSize="10.5"fill={inChain?"#A32D2D":t.isOvd?"#A32D2D":t.isBlocked?"#854F0B":t.done?"#999":"#1A2535"}
+              fontWeight={isHovered||inChain?"600":"400"}
               style={{textDecoration:t.done?"line-through":"none"}}>
               {(t.isOvd?"⚠ ":t.isBlocked?"🔒 ":t.done?"✓ ":"")+(t.t.length>30?t.t.slice(0,29)+"…":t.t)}
             </text>
-            {/* Маркер задачі */}
-            <rect x={cx-7}y={y+rowH/2-7}width="14"height="14"rx="3"
+            {/* Маркер задачі — розмір за важливістю */}
+            <rect x={cx-sz/2}y={y+rowH/2-sz/2}width={sz}height={sz}rx={sz>=17?4:3}
               fill={barColor(t)}stroke={strokeFor(t)}strokeWidth={strokeFor(t)!=="none"?2:0}
               strokeDasharray={t.isBlocked&&!t.isOvd?"3,2":"none"}/>
+            {t.blocksCount>=4&&!t.done&&<text x={cx}y={y+rowH/2+3}fontSize={sz>=22?9:8}fill="#fff"textAnchor="middle"fontWeight="700">{t.blocksCount}</text>}
             {t.done&&<text x={cx}y={y+rowH/2+3}fontSize="9"fill="#fff"textAnchor="middle">✓</text>}
           </g>;
         })}
       </svg>
 
-      {/* Tooltip */}
-      {hover&&<div style={{position:"absolute",top:8,right:8,background:"#252868",color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:11,maxWidth:280,boxShadow:"0 4px 12px rgba(0,0,0,0.3)",pointerEvents:"none",zIndex:10}}>
+      {hover&&<div style={{position:"absolute",top:8,right:8,background:"#252868",color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:11,maxWidth:300,boxShadow:"0 4px 12px rgba(0,0,0,0.3)",pointerEvents:"none",zIndex:10}}>
         <div style={{fontWeight:700,marginBottom:3}}>{hover.t}</div>
         <div style={{opacity:.85}}>👤 {hover.who||"—"}</div>
         <div style={{opacity:.85}}>📅 Дедлайн: {hover.dl.toLocaleDateString("uk-UA")}</div>
-        {hover.done&&<div style={{color:"#7DE0B8"}}>✓ Виконано{hover.doneAt?" "+parseDlDate(hover.doneAt.slice(0,10)).toLocaleDateString("uk-UA"):""}{hover.isLate?" (із запізненням)":""}</div>}
+        {hover.done&&<div style={{color:"#7DE0B8"}}>✓ Виконано{hover.isLate?" (із запізненням)":""}</div>}
         {hover.isOvd&&<div style={{color:"#FCA5A5"}}>⚠ Прострочено</div>}
         {hover.isBlocked&&<div style={{color:"#FCD34D",marginTop:3}}>🔒 Чекає на: {cl.filter(x=>hover.deps?.includes(x.t)&&!x.done).map(x=>x.t).join(", ")}</div>}
-        {(hover.blocksCount||0)>0&&<div style={{opacity:.85,marginTop:3}}>🔗 Блокує {hover.blocksCount} задач</div>}
+        {(hover.blocksCount||0)>0&&<div style={{color:"#FFD27D",marginTop:3,fontWeight:700}}>🔗 Блокує {hover.blocksCount} задач{chain.size>0?` — підсвічено червоним`:""}</div>}
+        {(hover.blocksCount||0)===0&&<div style={{opacity:.7,marginTop:3}}>Не блокує інших задач</div>}
       </div>}
     </div>
 
     <div style={{fontSize:11,color:"var(--text3)",marginTop:8}}>
-      Наведіть на задачу щоб побачити деталі. Пунктирні лінії — залежності між задачами; жовті — активні (блокер ще не виконано).
+      Наведіть на задачу — <b style={{color:"#A32D2D"}}>червоним</b> підсвітяться всі задачі що від неї залежать (прямо і через ланцюг). Розмір маркера = кількість залежних задач.
     </div>
   </div>;
 }

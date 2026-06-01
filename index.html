@@ -769,7 +769,11 @@ function generateDocHTML(ev,budget,blocks,docType){
     <tr><td>Клас локації</td><td>${f.venueType||"—"}</td></tr><tr><td>Побажання щодо локації</td><td>${f.venueCustom||"—"}</td></tr>
     <tr><td>Донор</td><td>${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||"—"}</td></tr>
     <tr><td>Тип доступу</td><td>${f.eventAccess||"—"}</td></tr>
-    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?" ("+f.durationHours+" год)":""}</td></tr><tr><td>Час</td><td>${f.timeStart||f.timeEnd?(f.timeStart||"")+(f.timeEnd?" — "+f.timeEnd:""):"—"}</td></tr></table>`);
+    <tr><td>Тривалість</td><td>${f.duration||"—"}${f.durationHours?" ("+f.durationHours+" год)":""}</td></tr>
+    <tr><td>Початок реєстрації</td><td>${f.regStart||"—"}</td></tr>
+    <tr><td>Початок заходу</td><td>${f.timeStart||"—"}</td></tr>
+    <tr><td>Кінець заходу</td><td>${f.timeEnd||"—"}</td></tr>
+    ${(f.anthem||f.minuteSilence)?`<tr><td>Протокол</td><td>${[f.anthem&&"Гімн України",f.minuteSilence&&"Хвилина мовчання"].filter(Boolean).join(", ")}</td></tr>`:""}</table>`);
   }
   if(blocks.includes("team")){
     sections.push(`<h2>Відповідальні</h2>
@@ -971,7 +975,10 @@ function DocModal({ev,budget,onClose}){
       text+=`Донор: ${(f.donors&&f.donors.filter(d=>d!=="Без донора").join(", "))||"—"}\n`;
       text+=`Тип доступу: ${f.eventAccess||"—"}\n`;
       text+=`Тривалість: ${f.duration||"—"}${f.durationHours?` (${f.durationHours} год)`:""}\n`;
-      if(f.timeStart||f.timeEnd)text+=`Час: ${f.timeStart||""}${f.timeEnd?" — "+f.timeEnd:""}\n`;
+      if(f.regStart)text+=`Початок реєстрації: ${f.regStart}\n`;
+      if(f.timeStart)text+=`Початок заходу: ${f.timeStart}\n`;
+      if(f.timeEnd)text+=`Кінець заходу: ${f.timeEnd}\n`;
+      if(f.anthem||f.minuteSilence)text+=`Протокол: ${[f.anthem&&"Гімн України",f.minuteSilence&&"Хвилина мовчання"].filter(Boolean).join(", ")}\n`;
       text+=`\n`;
     }
     if(blocks.includes("team")){
@@ -1951,7 +1958,12 @@ function App(){
     const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
     showToast("Заявку скопійовано");
   };
-  const approve=()=>{const ev=getEv();triggerStatusNotification(ev,"approved");upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
+  const sendApprovalInfo=(srcEv)=>{
+    if(!config.sheetsApiUrl)return;
+    // Надсилає інфо про захід на загальну пошту при затвердженні
+    sheetsPost(config.sheetsApiUrl,"sendApprovalInfo",{evId:srcEv.id,form:srcEv.form||{}});
+  };
+  const approve=()=>{const ev=getEv();triggerStatusNotification(ev,"approved");sendApprovalInfo(ev);upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const updateChecklist=()=>{
     const ev=getEv();
     const newCl=genChecklist(ev.form,tasks,team);
@@ -2445,7 +2457,7 @@ function App(){
 
     <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {Object.entries(SL).map(([k,v])=>(
-        <button key={k}onClick={()=>{const ev=getEv();upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);}}className="status-btn"
+        <button key={k}onClick={()=>{const ev=getEv();upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);if(k==="approved")sendApprovalInfo(ev);}}className="status-btn"
           style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)"}}>
           {v}
         </button>
@@ -2481,8 +2493,9 @@ function App(){
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
         {f.duration==="Неповний день (вказати кількість годин)"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
         <div className="grid2">
-          <F label="Початок (час)"><input type="time"value={f.timeStart||""}onChange={e=>uf("timeStart",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
-          <F label="Кінець (час)"><input type="time"value={f.timeEnd||""}onChange={e=>uf("timeEnd",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
+          <F label="Початок реєстрації (час)"><input type="time"value={f.regStart||""}onChange={e=>uf("regStart",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
+          <F label="Початок заходу (час)"><input type="time"value={f.timeStart||""}onChange={e=>uf("timeStart",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
+          <F label="Кінець заходу (час)"><input type="time"value={f.timeEnd||""}onChange={e=>uf("timeEnd",e.target.value)}style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",background:"var(--bg-white)",color:"var(--text)",fontSize:13,fontFamily:"var(--font)",outline:"none"}}/></F>
         </div>
         <F label="Донор"><DonorMultiSelect donors={donorsList}selected={f.donors||[]}onChange={v=>uf("donors",v)}/></F>
       </div>
@@ -2513,6 +2526,12 @@ function App(){
         <F label="Відшкодування проїзду (осіб)"><Inp type="number"val={f.travel}set={v=>uf("travel",v)}ph="0"/></F>
       </div>
       <F label="Учасники з регіонів"><TA val={f.regionParticipants}set={v=>uf("regionParticipants",v)}ph="ПІБ, міста"/></F>
+
+      <ST icon="🎗">Протокол / церемонія</ST>
+      <div className="grid2">
+        <CB checked={f.anthem}set={v=>uf("anthem",v)}label="Гімн України перед заходом"/>
+        <CB checked={f.minuteSilence}set={v=>uf("minuteSilence",v)}label="Хвилина мовчання"/>
+      </div>
 
       <ST icon="🖥">Технічне забезпечення</ST>
       <div className="grid2"style={{marginBottom:10}}>

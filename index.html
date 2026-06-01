@@ -773,7 +773,8 @@ function generateDocHTML(ev,budget,blocks,docType){
   }
   if(blocks.includes("team")){
     sections.push(`<h2>Відповідальні</h2>
-    <table><tr><td>Експерт ЦППР</td><td>${f.expertName||"—"}</td></tr>
+    <table><tr><td>Керівник проєкту</td><td>${f.head||"—"}</td></tr>
+    <tr><td>Експерт ЦППР</td><td>${f.expertName||"—"}</td></tr>
     <tr><td>Координатор</td><td>${f.coordinator||"—"}</td></tr>
     <tr><td>Комунікаційний менеджер</td><td>${f.commManager||"—"}</td></tr>
     <tr><td>Асистент</td><td>${f.assistant||"—"}</td></tr></table>`);
@@ -975,6 +976,7 @@ function DocModal({ev,budget,onClose}){
     }
     if(blocks.includes("team")){
       text+=`ВІДПОВІДАЛЬНІ\n${"-".repeat(40)}\n`;
+      text+=`Керівник проєкту: ${f.head||"—"}\n`;
       text+=`Експерт ЦППР: ${f.expertName||"—"}\n`;
       text+=`Координатор: ${f.coordinator||"—"}\n`;
       text+=`Комунікаційний менеджер: ${f.commManager||"—"}\n`;
@@ -1589,6 +1591,7 @@ function ReportModal({ev,onClose,team,config}){
   const defaultRecipients=React.useMemo(()=>{
     const r=new Set();
     const addEmail=name=>{const m=(team||DEFAULT_TEAM).find(t=>t.name===name);if(m?.email)r.add(m.email);};
+    if(f.head)addEmail(f.head);
     if(f.expertName)addEmail(f.expertName);
     if(f.coordinator)addEmail(f.coordinator);
     if(f.commManager)addEmail(f.commManager);
@@ -2079,13 +2082,14 @@ function App(){
     const evFormat=srcEv?.form?.eventFormat||"";
     const evCity=srcEv?.form?.city||"";
     const evExpert=srcEv?.form?.expertName||"";
+    const evHead=srcEv?.form?.head||"";
     const evDonors=(srcEv?.form?.donors||[]).filter(d=>d!=="Без донора").join(", ");
      const evParticipants=srcEv?.form?.participants||"";
      const evCoordinator=srcEv?.form?.coordinator||"";
      const evComment=srcEv?.form?.notes||"";
      if(config.sheetsApiUrl)sheetsPost(config.sheetsApiUrl,"sendStatusNotification",{
        evId:srcEv.id,status:newStatus,recipients:allRecipients,
-       evName,evDate,evType,evFormat,evCity,evExpert,evCoordinator,evDonors,evParticipants,evComment
+       evName,evDate,evType,evFormat,evCity,evExpert,evHead,evCoordinator,evDonors,evParticipants,evComment
      });
   };
 

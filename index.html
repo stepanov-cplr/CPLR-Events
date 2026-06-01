@@ -2710,7 +2710,7 @@ function App(){
               {ev.checklist.filter(t=>t.g===g&&!t.hidden&&!t.manualDelete).map(t=>{
                 const idx=ev.checklist.indexOf(t);
                 const _today=new Date();_today.setHours(0,0,0,0);
-                const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_today;
+                const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<_today;
                 // Перевіряємо чи задача заблокована (є невиконані блокери)
                 const blockers=!t.done&&t.deps?.length
                   ? t.deps.map(depName=>{const dt=ev.checklist.find(x=>x.t===depName&&!x.manualDelete);return dt&&!dt.done?dt:null;}).filter(Boolean)

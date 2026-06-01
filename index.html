@@ -1960,8 +1960,9 @@ function App(){
   };
   const sendApprovalInfo=(srcEv)=>{
     if(!config.sheetsApiUrl)return;
-    // Надсилає інфо про захід на загальну пошту при затвердженні
+    if(!confirm("Надіслати інформацію про захід на загальну пошту centre@pravo.org.ua?\n\n(Основна інформація, Відповідальні, Учасники, Безпека)"))return;
     sheetsPost(config.sheetsApiUrl,"sendApprovalInfo",{evId:srcEv.id,form:srcEv.form||{}});
+    showToast("📧 Інформацію надіслано на centre@pravo.org.ua");
   };
   const approve=()=>{const ev=getEv();triggerStatusNotification(ev,"approved");sendApprovalInfo(ev);upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
   const updateChecklist=()=>{

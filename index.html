@@ -1999,9 +1999,11 @@ function App(){
     // Задачі видалені вручну (є в oldCl з manualDelete) — не додаємо назад
     const deletedTexts=new Set(oldCl.filter(t=>t.manualDelete).map(t=>t.t+"||"+t.g));
     const finalCl=merged.filter(t=>!deletedTexts.has(t.t+"||"+t.g));
-    upd({checklist:finalCl});
+    // Зберігаємо задачі додані вручну (їх немає в шаблоні)
+    const manualTasks=oldCl.filter(t=>t.manualAdd&&!t.manualDelete);
+    upd({checklist:[...finalCl,...manualTasks]});
     setTab("checklist");
-    showToast(`Чеклист оновлено: ${finalCl.length} задач`);
+    showToast(`Чеклист оновлено: ${finalCl.length+manualTasks.length} задач`);
   };
   const sendEmails=async()=>{
     const ev=getEv();
@@ -2074,6 +2076,20 @@ function App(){
     );
     upd({checklist:cl});
     showToast("Задачу відновлено");
+  };
+  const addManualTask=()=>{
+    const ev=getEv();
+    const title=prompt("Назва нової задачі:");
+    if(!title||!title.trim())return;
+    // Визначаємо групу: беремо з останньої задачі або дефолт
+    const existingGroups=[...new Set((ev.checklist||[]).filter(t=>!t.manualDelete).map(t=>t.g))];
+    const grp=existingGroups.length?existingGroups[existingGroups.length-1]:"Додані вручну";
+    const newTask={
+      g:grp,t:title.trim(),who:"",dl:"—",dlDate:null,d:0,
+      done:false,deps:[],blocksCount:0,manualAdd:true
+    };
+    upd({checklist:[...(ev.checklist||[]),newTask]});
+    showToast("Задачу додано — вкажіть виконавця і дедлайн");
   };
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
@@ -2710,6 +2726,9 @@ function App(){
     </div>}
 
     {tab==="checklist"&&<div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+        <button className="btn-ghost"style={{fontSize:12,padding:"5px 12px"}}onClick={addManualTask}>+ Додати задачу</button>
+      </div>
       {clOverdue>0&&<div className="alert-danger"style={{marginBottom:14}}>⚠ <b>{clOverdue} задач</b> мали бути виконані до сьогодні</div>}
       {(()=>{const delCnt=ev.checklist?.filter(t=>t.manualDelete).length||0;return delCnt>0&&(
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>

@@ -172,7 +172,7 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
 // При зміні DEFAULT_TASKS або DEFAULT_TEAM — збільш цю цифру на 1
 // Програма автоматично скине кеш у всіх користувачів
-const DATA_VERSION = "5";
+const DATA_VERSION = "6";
 // ──────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG={sheetsApiUrl:SHEETS_API_URL};
 const DEFAULT_TEAM=[
@@ -255,6 +255,8 @@ const DEFAULT_TASKS=[
   {g:"Підготовка  (за 8 днів)",d:8,t:"Підготовка презентації, надсилання комунікаційникам",role:"expert"},
   {g:"Підготовка  (за 8 днів)",d:8,t:"Формування остаточного списку учасників з проживанням/проїздом",role:"expert",cond:"hasAccommodationOrTravel"},
   {g:"Підготовка  (за 7 днів)",d:7,t:"Формування остаточного списку доповідачів",role:"expert"},
+  {g:"Підготовка  (за 7 днів)",d:7,t:"Забезпечити Гімн України перед початком заходу",role:"dmitro",cond:"anthem"},
+  {g:"Підготовка  (за 7 днів)",d:7,t:"Забезпечити хвилину мовчання перед заходом",role:"dmitro",cond:"minuteSilence"},
   {g:"За 5 днів",d:5,t:"Підготовка прес-анонсу",role:"comm",cond:"media"},
   {g:"За 5 днів",d:5,t:"Поширення прес-анонсу",role:"comm",cond:"media"},
   {g:"За 5 днів",d:5,t:"Запрошення ЗМІ",role:"coord",cond:"media"},
@@ -388,6 +390,8 @@ function genChecklist(f,taskTemplates,team){
     inviteTranslation:!!f.inviteTranslation,
     printSmall:!!f.printSmall,
     printLarge:!!f.printLarge,
+    anthem:!!f.anthem,
+    minuteSilence:!!f.minuteSilence,
   };
   const allTasks=mergeTaskDeps(taskTemplates||DEFAULT_TASKS, window.__taskDeps||{deps:[],independent:[]});
   const blocksMap=calcBlocksCount(allTasks);
@@ -816,6 +820,10 @@ function generateDocHTML(ev,budget,blocks,docType){
     const sec=[f.secShelter&&"Наявність укриття на локації",f.secUDO&&"Координація з УДО",f.secAccreditation&&"Акредитація учасників на вході",f.secGenerator&&"Резервне живлення (генератор)",f.secInternational&&"Інструктаж для міжнародних учасників",f.secNoPhoto&&"Заборона фото/відео"].filter(Boolean);
     sections.push(`<h2>🔒 Безпека</h2><ul>${sec.map(i=>`<li>${i}</li>`).join("")||"<li>Особливих вимог не зазначено</li>"}</ul>${f.secNotes?`<p>${f.secNotes}</p>`:""}`);
   }
+  if(blocks.includes("protocol")){
+    const proto=[f.anthem&&"Гімн України перед заходом",f.minuteSilence&&"Хвилина мовчання"].filter(Boolean);
+    sections.push(`<h2>🎗 Протокол / церемонія</h2><ul>${proto.map(i=>`<li>${i}</li>`).join("")||"<li>Не передбачено</li>"}</ul>`);
+  }
   if(blocks.includes("donor")){
     sections.push(`<h2>Комунікації та донор</h2>
     <table><tr><td>Залучення ЗМІ</td><td>${yn(f.media)}</td></tr>
@@ -926,7 +934,7 @@ function generateDocHTML(ev,budget,blocks,docType){
 // ══ DOC MODAL ══════════════════════════════════════════
 function DocModal({ev,budget,onClose}){
   const [docType,setDocType]=useState("team");
-  const [customBlocks,setCustomBlocks]=useState(["main","tech","catering","print","security"]);
+  const [customBlocks,setCustomBlocks]=useState(["main","tech","catering","print","security","protocol"]);
   const allBlocks=[
     {id:"main",l:"Основна інформація"},
     {id:"team",l:"Відповідальні"},
@@ -935,12 +943,13 @@ function DocModal({ev,budget,onClose}){
     {id:"catering",l:"Харчування"},
     {id:"print",l:"Поліграфія"},
     {id:"security",l:"Безпека"},
+    {id:"protocol",l:"Протокол / церемонія"},
     {id:"donor",l:"Комунікації та донор"},
     {id:"budget",l:"Бюджет"},
     {id:"checklist",l:"Чеклист задач"},
   ];
   const presets={
-    team:["main","team","participants","tech","catering","print","security","donor","budget","checklist"],
+    team:["main","team","participants","tech","catering","print","security","protocol","donor","budget","checklist"],
     donor:["main","participants","tech","catering","donor"],
     contractor:customBlocks,
   };
@@ -1049,6 +1058,13 @@ function DocModal({ev,budget,onClose}){
       if(f.secInternational)text+=`• Інструктаж для міжнародних учасників\n`;
       if(f.secNoPhoto)text+=`• Заборона фото/відео\n`;
       if(f.secNotes)text+=`Додаткові вимоги: ${f.secNotes}\n`;
+      text+=`\n`;
+    }
+    if(blocks.includes("protocol")){
+      text+=`ПРОТОКОЛ / ЦЕРЕМОНІЯ\n${"-".repeat(40)}\n`;
+      if(f.anthem)text+=`• Гімн України перед заходом\n`;
+      if(f.minuteSilence)text+=`• Хвилина мовчання\n`;
+      if(!f.anthem&&!f.minuteSilence)text+=`Не передбачено\n`;
       text+=`\n`;
     }
     if(blocks.includes("donor")){

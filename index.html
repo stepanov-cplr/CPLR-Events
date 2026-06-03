@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --blue:#1C75BC;--blue-dark:#252868;--blue-hover:#0056A0;
@@ -170,6 +171,12 @@ const LOGO_B64="data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAJoAhQDAC
 // ║  КОНФІГУРАЦІЯ — змініть тут якщо URL таблиці зміниться      ║
 // ╚══════════════════════════════════════════════════════════════╝
 const SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbxUBJsxyyAo2z5Dcs57XoxwNcSG3xbzxyHGRcTuot0l0ws8DpnyM0phQMcgnZwEkLC_/exec";
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  GOOGLE АВТЕНТИФІКАЦІЯ — встав сюди свій OAuth Client ID       ║
+// ╚══════════════════════════════════════════════════════════════╝
+const GOOGLE_CLIENT_ID = "480913215993-h8o3gcsismg88cjg7h7e48h9o8gpj45r.apps.googleusercontent.com";
+// Глобальне зберігання токена поточного користувача (інжектується в кожен запит)
+window.__authToken = null;
 // При зміні DEFAULT_TASKS або DEFAULT_TEAM — збільш цю цифру на 1
 // Програма автоматично скине кеш у всіх користувачів
 const DATA_VERSION = "6";
@@ -406,17 +413,20 @@ async function sheetsRequest(apiUrl,action,data){
   try{
     let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
     if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
+    if(window.__authToken)url+=`&authToken=${encodeURIComponent(window.__authToken)}`;
     const r=await fetch(url,{method:"GET",redirect:"follow"});
-    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+    const text=await r.text();
+    try{const j=JSON.parse(text);if(j&&j.error==="AUTH_REQUIRED"&&action!=="checkAccess"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
 // POST для великих даних (чеклист, задачі) — обходить ліміт GET URL
 async function sheetsPost(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
-    const body=JSON.stringify({action,...data});
+    const body=JSON.stringify({action,authToken:window.__authToken||"",...data});
     const r=await fetch(apiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body});
-    const text=await r.text();try{return JSON.parse(text);}catch{return null;}
+    const text=await r.text();
+    try{const j=JSON.parse(text);if(j&&j.error==="AUTH_REQUIRED"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
 
@@ -1848,7 +1858,71 @@ function getAllBlockedFront(taskName, bbMap) {
   return [...visited];
 }
 
+// ══ АВТЕНТИФІКАЦІЯ ══════════════════════════════════════
+// Декодуємо JWT щоб дістати email та ім'я (без перевірки — перевірка на бекенді)
+function decodeJwt(token){
+  try{
+    const payload=token.split(".")[1];
+    const json=decodeURIComponent(atob(payload.replace(/-/g,"+").replace(/_/g,"/")).split("").map(c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+    return JSON.parse(json);
+  }catch(e){return null;}
+}
+
+function LoginScreen({onLogin}){
+  const btnRef=React.useRef(null);
+  const [err,setErr]=React.useState("");
+  React.useEffect(()=>{
+    // Чекаємо поки завантажиться бібліотека Google
+    const init=()=>{
+      if(!window.google?.accounts?.id){setTimeout(init,200);return;}
+      window.google.accounts.id.initialize({
+        client_id:GOOGLE_CLIENT_ID,
+        callback:(resp)=>{
+          const token=resp.credential;
+          const info=decodeJwt(token);
+          if(!info?.email){setErr("Не вдалося отримати email");return;}
+          window.__authToken=token;
+          localStorage.setItem("cppr_auth_token",token);
+          localStorage.setItem("cppr_auth_email",info.email);
+          onLogin(token,info);
+        },
+      });
+      if(btnRef.current){
+        window.google.accounts.id.renderButton(btnRef.current,{theme:"filled_blue",size:"large",text:"signin_with",locale:"uk",width:280});
+      }
+    };
+    init();
+  },[]);
+  return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1C75BC,#252868)"}}>
+    <div style={{background:"#fff",borderRadius:16,padding:"40px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+      <div style={{fontSize:34,marginBottom:8}}>🗓</div>
+      <h1 style={{fontSize:20,color:"#252868",margin:"0 0 6px",fontFamily:"var(--font)"}}>Система заявок на заходи</h1>
+      <p style={{fontSize:13,color:"#666",margin:"0 0 24px"}}>Центр політико-правових реформ</p>
+      <p style={{fontSize:13,color:"#444",margin:"0 0 20px",lineHeight:1.5}}>Для доступу увійдіть через робочий Google-акаунт ЦППР.</p>
+      <div ref={btnRef}style={{display:"flex",justifyContent:"center"}}></div>
+      {err&&<p style={{color:"#DC2626",fontSize:12,marginTop:16}}>{err}</p>}
+      <p style={{fontSize:11,color:"#999",marginTop:24}}>Доступ лише для членів команди. Якщо не можете увійти — зверніться до Миколи Степанова.</p>
+    </div>
+  </div>;
+}
+
+function AccessDeniedScreen({email,onLogout}){
+  return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1C75BC,#252868)"}}>
+    <div style={{background:"#fff",borderRadius:16,padding:"40px 36px",maxWidth:400,textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+      <div style={{fontSize:40,marginBottom:12}}>🚫</div>
+      <h1 style={{fontSize:19,color:"#DC2626",margin:"0 0 10px",fontFamily:"var(--font)"}}>Доступ заборонено</h1>
+      <p style={{fontSize:14,color:"#444",margin:"0 0 8px",lineHeight:1.5}}>Акаунт <b>{email}</b> не має доступу до системи.</p>
+      <p style={{fontSize:13,color:"#666",margin:"0 0 24px",lineHeight:1.5}}>Зверніться до Миколи Степанова, щоб вас додали до команди.</p>
+      <button onClick={onLogout}style={{padding:"10px 24px",background:"#1C75BC",color:"#fff",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",fontFamily:"var(--font)"}}>Увійти іншим акаунтом</button>
+    </div>
+  </div>;
+}
+
 function App(){
+  // ── Автентифікація ──
+  const [authState,setAuthState]=useState("checking"); // checking | login | denied | ok
+  const [authEmail,setAuthEmail]=useState(localStorage.getItem("cppr_auth_email")||"");
+  const [authName,setAuthName]=useState("");
   const [view,setView]=useState("list");
   const [evs,setEvs]=useState([]);
   const [cid,setCid]=useState(null);
@@ -1887,7 +1961,52 @@ function App(){
   const [notifications,setNotifications]=useState(()=>{try{return JSON.parse(localStorage.getItem("cppr_notifications"))||DEFAULT_NOTIFICATIONS;}catch{return DEFAULT_NOTIFICATIONS;}});
   const [newListItem,setNewListItem]=useState("");
 
+  // ── Перевірка доступу при старті ──
+  const verifyAccess=async(token,email)=>{
+    window.__authToken=token;
+    const res=await sheetsRequest(SHEETS_API_URL,"checkAccess",{});
+    if(res&&res.allowed){
+      setAuthEmail(email);
+      setAuthName(res.name||"");
+      setAuthState("ok");
+      return true;
+    }else{
+      setAuthState("denied");
+      return false;
+    }
+  };
+  const handleLogin=(token,info)=>{
+    verifyAccess(token,info.email);
+  };
+  const handleLogout=()=>{
+    localStorage.removeItem("cppr_auth_token");
+    localStorage.removeItem("cppr_auth_email");
+    window.__authToken=null;
+    if(window.google?.accounts?.id)window.google.accounts.id.disableAutoSelect();
+    setAuthState("login");
+    setAuthEmail("");
+  };
   useEffect(()=>{
+    // Якщо CLIENT_ID не налаштований — пропускаємо автентифікацію (режим розробки)
+    if(GOOGLE_CLIENT_ID.startsWith("ВАШ_CLIENT_ID")){setAuthState("ok");return;}
+    // Обробник протухання токена під час роботи
+    window.__onAuthExpired=()=>{
+      localStorage.removeItem("cppr_auth_token");
+      window.__authToken=null;
+      setAuthState("login");
+      showToast("Сесія завершилась — увійдіть знову");
+    };
+    const savedToken=localStorage.getItem("cppr_auth_token");
+    const savedEmail=localStorage.getItem("cppr_auth_email");
+    if(savedToken){
+      verifyAccess(savedToken,savedEmail);
+    }else{
+      setAuthState("login");
+    }
+  },[]);
+
+  useEffect(()=>{
+    if(authState!=="ok")return;
     (async()=>{
       setLoading(true);
       if(SHEETS_API_URL){
@@ -1928,7 +2047,7 @@ function App(){
       try{const s=localStorage.getItem("cppr_events_v3");if(s)setEvs(JSON.parse(s));}catch(e){}
       setLoading(false);
     })();
-  },[]);
+  },[authState]);
 
   const saveEvs=async(list,changedId)=>{
     setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
@@ -2150,9 +2269,16 @@ function App(){
         <span className="header-version">v3.0</span>
         {view!=="settings"&&<button className="btn-outline"style={{fontSize:11}}onClick={()=>setView("settings")}>⚙ Налаштування</button>}
         {view!=="list"&&<button className="btn-outline"style={{fontSize:11}}onClick={()=>setView("list")}>← До списку</button>}
+        {authEmail&&<span style={{fontSize:11,color:"var(--text2)",marginLeft:4}}title={authEmail}>{authEmail.split("@")[0]}</span>}
+        {authEmail&&<button className="btn-outline"style={{fontSize:11}}onClick={handleLogout}title="Вийти">⏻</button>}
       </div>
     </div>
   </div>;
+
+  // ── Екрани автентифікації ──
+  if(authState==="checking")return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f5f7fa"}}><div className="spinner"style={{width:32,height:32}}></div></div>;
+  if(authState==="login")return<LoginScreen onLogin={handleLogin}/>;
+  if(authState==="denied")return<AccessDeniedScreen email={authEmail}onLogout={handleLogout}/>;
 
   if(loading)return<><Header/><div style={{padding:60,textAlign:"center",color:"var(--text2)"}}>
     <div className="spinner"style={{width:28,height:28,margin:"0 auto 12px"}}></div>

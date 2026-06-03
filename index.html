@@ -1970,8 +1970,17 @@ function App(){
       setAuthName(res.name||"");
       setAuthState("ok");
       return true;
-    }else{
+    }else if(res&&res.denied){
+      // Токен валідний, але email НЕ в команді — справжня відмова доступу
+      setAuthEmail(email||"");
       setAuthState("denied");
+      return false;
+    }else{
+      // Токен невалідний/протух (denied:false) — треба увійти заново
+      localStorage.removeItem("cppr_auth_token");
+      localStorage.removeItem("cppr_auth_email");
+      window.__authToken=null;
+      setAuthState("login");
       return false;
     }
   };

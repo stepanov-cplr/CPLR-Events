@@ -509,6 +509,11 @@ function generateReportHTML(ev) {
   const earlyExec = cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate);
   const onTime = cl.filter(t=>t.done&&(!t.dlDate||!t.doneAt||t.doneAt<=t.dlDate)).length;
   const pct = total ? Math.round(done/total*100) : 0;
+  // Прогрес задач ДО заходу (d>0 — підготовчі, найважливіші; день заходу і після не враховуються)
+  const preCl = cl.filter(t=>(t.d!=null?t.d:0)>0);
+  const preTotal = preCl.length;
+  const preDone = preCl.filter(t=>t.done).length;
+  const prePct = preTotal ? Math.round(preDone/preTotal*100) : 0;
 
   // Рядки early birds
   const earlyRows = earlyExec.sort((a,b)=>daysDiff(a.doneAt,a.dlDate)>daysDiff(b.doneAt,b.dlDate)?1:-1)
@@ -615,6 +620,7 @@ function generateReportHTML(ev) {
     .stat-lbl{font-size:11px;color:#6B7A90;margin-top:4px}
     .progress-bar{background:#E5E7EB;border-radius:8px;height:10px;margin:12px 0}
     .progress-fill{height:100%;border-radius:8px;background:${pct>=80?'#00916E':pct>=50?'#1C75BC':'#DC2626'};width:${pct}%}
+    .progress-fill-pre{height:100%;border-radius:8px;background:${prePct>=80?'#00916E':prePct>=50?'#1C75BC':'#DC2626'};width:${prePct}%}
     .footer{margin-top:40px;padding-top:16px;border-top:1px solid #E5E7EB;font-size:11px;color:#9AAABB;text-align:center}
     @media print{.no-print{display:none}}
     @media(max-width:600px){
@@ -661,7 +667,11 @@ function generateReportHTML(ev) {
       <div class="stat-lbl">З випередженням</div>
     </div>
   </div>
-  <div style="font-size:12px;color:#666;margin-bottom:4px">Прогрес виконання: <b>${pct}%</b> (${done} з ${total})</div>
+  <div style="background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:12px 14px;margin-bottom:10px">
+    <div style="font-size:13px;color:#1C4A7A;margin-bottom:4px;font-weight:600">🎯 Прогрес підготовки до заходу: <b>${prePct}%</b> (${preDone} з ${preTotal}) <span style="font-size:11px;font-weight:400;color:#6B7A90">— ключові задачі до дня заходу</span></div>
+    <div class="progress-bar" style="margin:6px 0 0"><div class="progress-fill-pre"></div></div>
+  </div>
+  <div style="font-size:12px;color:#666;margin-bottom:4px">Загальний прогрес виконання: <b>${pct}%</b> (${done} з ${total}) <span style="font-size:11px;color:#9AAABB">— разом із задачами в день заходу і після</span></div>
   <div class="progress-bar"><div class="progress-fill"></div></div>
 
   <h2>Зведення по виконавцях</h2>
@@ -1670,6 +1680,12 @@ function ReportModal({ev,onClose,team,config}){
   const early=cl.filter(t=>t.done&&t.doneAt&&t.dlDate&&t.doneAt<t.dlDate).length;
   const pct=total?Math.round(done/total*100):0;
   const barColor=pct>=80?'#00916E':pct>=50?'var(--blue)':'var(--red)';
+  // Прогрес підготовки (задачі до заходу, d>0)
+  const preCl=cl.filter(t=>(t.d!=null?t.d:0)>0);
+  const preTotal=preCl.length;
+  const preDone=preCl.filter(t=>t.done).length;
+  const prePct=preTotal?Math.round(preDone/preTotal*100):0;
+  const preBarColor=prePct>=80?'#00916E':prePct>=50?'var(--blue)':'var(--red)';
 
   const allTeamEmails=(team||DEFAULT_TEAM).filter(m=>m.email);
 
@@ -1721,8 +1737,20 @@ function ReportModal({ev,onClose,team,config}){
 
         {/* Прогрес */}
         <div style={{marginBottom:16}}>
+          {/* Головний — підготовка до заходу */}
+          <div style={{background:"#F0F7FF",border:"1px solid #C5DDF5",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <span style={{fontSize:12,color:"#1C4A7A",fontWeight:600}}>🎯 Підготовка до заходу</span>
+              <span style={{fontSize:14,fontWeight:600,color:preBarColor}}>{prePct}%</span>
+            </div>
+            <div style={{background:"#fff",borderRadius:20,height:8,overflow:"hidden"}}>
+              <div style={{width:prePct+"%",height:"100%",borderRadius:20,background:preBarColor,transition:"width .3s"}}></div>
+            </div>
+            <div style={{fontSize:10,color:"#6B7A90",marginTop:4}}>{preDone} з {preTotal} ключових задач до дня заходу</div>
+          </div>
+          {/* Загальний */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <span style={{fontSize:12,color:"var(--text2)"}}>Прогрес виконання</span>
+            <span style={{fontSize:12,color:"var(--text2)"}}>Загальний прогрес <span style={{fontSize:10,color:"var(--text3)"}}>(разом із днем заходу і після)</span></span>
             <span style={{fontSize:13,fontWeight:500,color:barColor}}>{pct}%</span>
           </div>
           <div style={{background:"var(--bg-card)",borderRadius:20,height:6,overflow:"hidden"}}>

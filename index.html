@@ -524,35 +524,40 @@ function generateReportHTML(ev) {
       <td style="color:#00916E">-${Math.abs(daysDiff(t.doneAt,t.dlDate))} дн.</td>
     </tr>`).join('');
 
-  // По виконавцях
-  const byWho = {};
-  cl.forEach(t=>{
-    const w=t.who||'—';
-    if(!byWho[w])byWho[w]={total:0,done:0,late:0,overdue:0,lateSum:0};
-    byWho[w].total++;
-    if(t.done)byWho[w].done++;
-    if(t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate){byWho[w].late++;byWho[w].lateSum+=daysDiff(t.doneAt,t.dlDate);}
-    if(!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)byWho[w].overdue++;
-  });
-  const whoRows = Object.entries(byWho).sort((a,b)=>b[1].total-a[1].total).map(([who,s])=>{
-    const pct=Math.round(s.done/s.total*100);
-    const bar=`<div style="background:#e5e7eb;border-radius:4px;height:6px;width:80px;display:inline-block;vertical-align:middle;margin-left:6px"><div style="background:${pct>=80?'#00916E':pct>=50?'#1C75BC':'#DC2626'};width:${pct}%;height:100%;border-radius:4px"></div></div>`;
-    return `<tr>
-      <td style="font-weight:500">${who}</td>
-      <td style="text-align:center">${s.total}</td>
-      <td style="text-align:center;color:${s.done===s.total?'#00916E':'#1C75BC'}">${s.done}</td>
-      <td style="text-align:center;color:${s.overdue>0?'#DC2626':'#666'}">${s.overdue||'—'}</td>
-      <td style="text-align:center;color:${s.late>0?'#D97706':'#666'}">${s.late||'—'}${s.late?` <span style="font-size:10px;color:#999">(~${Math.round(s.lateSum/s.late)} дн.)</span>`:''}</td>
-      <td>${bar} <span style="font-size:11px;color:#666">${pct}%</span></td>
-    </tr>`;
-  }).join('');
+  // По виконавцях — функція для заданого набору
+  const buildWhoRows=(taskSet)=>{
+    const bw={};
+    taskSet.forEach(t=>{
+      const w=t.who||'—';
+      if(!bw[w])bw[w]={total:0,done:0,late:0,overdue:0,lateSum:0};
+      bw[w].total++;
+      if(t.done)bw[w].done++;
+      if(t.done&&t.doneAt&&t.dlDate&&t.doneAt>t.dlDate){bw[w].late++;bw[w].lateSum+=daysDiff(t.doneAt,t.dlDate);}
+      if(!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)bw[w].overdue++;
+    });
+    return Object.entries(bw).sort((a,b)=>b[1].total-a[1].total).map(([who,s])=>{
+      const pct=Math.round(s.done/s.total*100);
+      const bar=`<div style="background:#e5e7eb;border-radius:4px;height:6px;width:80px;display:inline-block;vertical-align:middle;margin-left:6px"><div style="background:${pct>=80?'#00916E':pct>=50?'#1C75BC':'#DC2626'};width:${pct}%;height:100%;border-radius:4px"></div></div>`;
+      return `<tr>
+        <td style="font-weight:500">${who}</td>
+        <td style="text-align:center">${s.total}</td>
+        <td style="text-align:center;color:${s.done===s.total?'#00916E':'#1C75BC'}">${s.done}</td>
+        <td style="text-align:center;color:${s.overdue>0?'#DC2626':'#666'}">${s.overdue||'—'}</td>
+        <td style="text-align:center;color:${s.late>0?'#D97706':'#666'}">${s.late||'—'}${s.late?` <span style="font-size:10px;color:#999">(~${Math.round(s.lateSum/s.late)} дн.)</span>`:''}</td>
+        <td>${bar} <span style="font-size:11px;color:#666">${pct}%</span></td>
+      </tr>`;
+    }).join('');
+  };
+  const whoRows = buildWhoRows(cl);
+  const preWhoRows = buildWhoRows(cl.filter(t=>(t.d!=null?t.d:0)>0));
 
   // Прострочені
+  const overdueDaysCalc=dlDate=>Math.round((today-parseDlDate(dlDate))/(1000*60*60*24));
   const overdueRows = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)
     .sort((a,b)=>a.dlDate>b.dlDate?1:-1)
     .map(t=>`<tr style="background:#FEF2F2">
       <td>${t.t}</td><td>${t.who||'—'}</td><td style="color:#DC2626;font-weight:500">${fmt(t.dlDate)}</td>
-      <td style="color:#DC2626">+${daysDiff(today.toISOString().slice(0,10),t.dlDate)} дн.</td>
+      <td style="color:#DC2626">+${overdueDaysCalc(t.dlDate)} дн.</td>
     </tr>`).join('');
 
   // Виконані із запізненням
@@ -674,7 +679,11 @@ function generateReportHTML(ev) {
   <div style="font-size:12px;color:#666;margin-bottom:4px">Загальний прогрес виконання: <b>${pct}%</b> (${done} з ${total}) <span style="font-size:11px;color:#9AAABB">— разом із задачами в день заходу і після</span></div>
   <div class="progress-bar"><div class="progress-fill"></div></div>
 
-  <h2>Зведення по виконавцях</h2>
+  ${preWhoRows?`<h2 style="color:#1C4A7A">🎯 Зведення по виконавцях — підготовка до заходу</h2>
+  <table><thead><tr><th>Виконавець</th><th>Всього</th><th>Виконано</th><th>Прострочено</th><th>Із запізненням</th><th>Прогрес</th></tr></thead>
+  <tbody>${preWhoRows}</tbody></table>`:''}
+
+  <h2>Зведення по виконавцях — всі задачі</h2>
   <table><thead><tr><th>Виконавець</th><th>Всього</th><th>Виконано</th><th>Прострочено</th><th>Із запізненням</th><th>Прогрес</th></tr></thead>
   <tbody>${whoRows}</tbody></table>
 

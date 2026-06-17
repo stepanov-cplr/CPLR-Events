@@ -2257,6 +2257,67 @@ function App(){
     showToast("Задачу додано — вкажіть виконавця і дедлайн");
   };
 
+  // ── Підсумки заходу: журнал коментарів + остаточний бюджет ──
+  const getSummary=()=>{const ev=getEv();return ev?.summary||{comments:[],finalBudget:[]};};
+  const pushSyncSummary=(summary)=>{
+    // Дублюємо бюджет у плаский аркуш "Підсумки" для аналітики (асинхронно, не блокує UI)
+    const ev=getEv();if(!ev||!config.sheetsApiUrl)return;
+    const f=ev.form||{};
+    sheetsPost(config.sheetsApiUrl,"saveSummary",{
+      evId:ev.id,
+      eventName:f.eventName||"",
+      eventDate:f.eventDate||"",
+      eventType:f.eventType==="Інше"?(f.eventTypeCustom||"Інше"):(f.eventType||""),
+      city:f.city||"",
+      participants:f.participants||"",
+      finalBudget:summary.finalBudget||[]
+    });
+  };
+  const addComment=(text)=>{
+    if(!text||!text.trim())return;
+    const s=getSummary();
+    const entry={id:Date.now().toString(),text:text.trim(),author:authName||authEmail||"—",email:authEmail||"",ts:new Date().toISOString()};
+    const summary={...s,comments:[entry,...(s.comments||[])]};
+    upd({summary});
+  };
+  const deleteComment=(id)=>{
+    if(!confirm("Видалити цей запис?"))return;
+    const s=getSummary();
+    const summary={...s,comments:(s.comments||[]).filter(c=>c.id!==id)};
+    upd({summary});
+  };
+  // Ініціалізація таблиці бюджету з кошторису (план→стаття), факт лишаємо порожнім
+  const initFinalBudgetFromPlan=()=>{
+    const ev=getEv();const f=ev.form||{};
+    const b=calcBudget(f,costs);
+    const rows=(b.lines||[]).map((l,i)=>({id:"p"+i+"_"+Date.now(),article:l.label,plan:l.amount,fact:"",note:""}));
+    const s=getSummary();
+    const summary={...s,finalBudget:rows};
+    upd({summary});pushSyncSummary(summary);
+    showToast("Статті підтягнуто з кошторису — впишіть фактичні суми");
+  };
+  const addBudgetRow=()=>{
+    const s=getSummary();
+    const row={id:"b"+Date.now(),article:"",plan:"",fact:"",note:""};
+    const summary={...s,finalBudget:[...(s.finalBudget||[]),row]};
+    upd({summary});
+  };
+  const updBudgetRow=(id,field,val)=>{
+    const s=getSummary();
+    const summary={...s,finalBudget:(s.finalBudget||[]).map(r=>r.id===id?{...r,[field]:val}:r)};
+    upd({summary});
+  };
+  const delBudgetRow=(id)=>{
+    const s=getSummary();
+    const summary={...s,finalBudget:(s.finalBudget||[]).filter(r=>r.id!==id)};
+    upd({summary});pushSyncSummary(summary);
+  };
+  const saveFinalBudget=()=>{
+    const s=getSummary();
+    pushSyncSummary(s);
+    showToast("✓ Остаточний бюджет збережено в аркуш «Підсумки»");
+  };
+
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
   const saveTeam=t=>{setTeam(t);localStorage.setItem("cppr_team",JSON.stringify(t));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"team",value:JSON.stringify(t)});};
   const saveTasks=async(t,changedIdx)=>{
@@ -2624,6 +2685,7 @@ function App(){
     {id:"checklist",l:`Чеклист${clTotal?` ${clDone}/${clTotal}${clOverdue>0?` ⚠${clOverdue}`:""}`:""}`},
     ...(clTotal>0?[{id:"gantt",l:"📊 Діаграма"}]:[]),
     {id:"tasks",l:"Розсилка задач"},
+    {id:"summary",l:`📝 Підсумки${(()=>{const s=ev.summary;const c=s?.comments?.length||0;return c?` ${c}`:"";})()}`},
   ];
 
   return<><Header/>
@@ -3037,6 +3099,90 @@ function App(){
           });
         })()}
     </div>}
+
+    {tab==="summary"&&(()=>{
+      const s=ev.summary||{comments:[],finalBudget:[]};
+      const comments=s.comments||[];
+      const fb=s.finalBudget||[];
+      const sumPlan=fb.reduce((a,r)=>a+(parseFloat(r.plan)||0),0);
+      const sumFact=fb.reduce((a,r)=>a+(parseFloat(r.fact)||0),0);
+      const diff=sumFact-sumPlan;
+      const fmt=n=>(Math.round(n)||0).toLocaleString("uk-UA");
+      return <div>
+        {/* ── Журнал заходу ── */}
+        <ST icon="🗒">Журнал заходу</ST>
+        <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>
+          Фіксуйте труднощі, рішення і висновки по ходу підготовки — щоб не забути. Записи бачить уся команда.
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"flex-start"}}>
+          <textarea id="cppr-new-comment"placeholder="Новий запис: проблема, рішення, висновок…"
+            style={{flex:1,minHeight:64,padding:"9px 11px",borderRadius:"var(--radius)",border:"1.5px solid var(--border)",fontFamily:"var(--font)",fontSize:13,resize:"vertical"}}/>
+          <button className="btn-primary"style={{fontSize:12,padding:"9px 16px",whiteSpace:"nowrap"}}
+            onClick={()=>{const el=document.getElementById("cppr-new-comment");const v=el?.value||"";addComment(v);if(el)el.value="";}}>+ Додати</button>
+        </div>
+        {comments.length===0
+          ? <div style={{color:"var(--text3)",fontSize:13,padding:"4px 0 18px"}}>Поки немає записів.</div>
+          : <div style={{marginBottom:20}}>
+              {comments.map(c=>(
+                <div key={c.id}style={{border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",marginBottom:8,background:"var(--bg-white)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:5}}>
+                    <span style={{fontWeight:600,fontSize:12,color:"var(--blue)"}}>{c.author}</span>
+                    <span style={{display:"flex",gap:10,alignItems:"center"}}>
+                      <span style={{fontSize:11,color:"var(--text3)"}}>{new Date(c.ts).toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>
+                      <button onClick={()=>deleteComment(c.id)}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:14,padding:0,lineHeight:1}}title="Видалити запис">✕</button>
+                    </span>
+                  </div>
+                  <div style={{fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{c.text}</div>
+                </div>
+              ))}
+            </div>}
+
+        {/* ── Остаточний бюджет ── */}
+        <ST icon="💰">Остаточний бюджет (план ↔ факт)</ST>
+        <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>
+          Фактичні суми по статтях. Дані дублюються в аркуш «Підсумки» для актуалізації нормативів.
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={initFinalBudgetFromPlan}>↧ Підтягнути статті з кошторису</button>
+          <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={addBudgetRow}>+ Додати статтю</button>
+          <button className="btn-primary"style={{fontSize:12,padding:"6px 14px",marginLeft:"auto"}}onClick={saveFinalBudget}>💾 Зберегти в «Підсумки»</button>
+        </div>
+        {fb.length===0
+          ? <div style={{color:"var(--text3)",fontSize:13,padding:"4px 0"}}>Натисніть «Підтягнути статті з кошторису» або «+ Додати статтю».</div>
+          : <div style={{border:"1.5px solid var(--border)",borderRadius:"var(--radius-lg)",overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px 1.2fr 32px",gap:0,background:"var(--blue)",color:"#fff",fontSize:11,fontWeight:700}}>
+                <div style={{padding:"8px 10px"}}>Стаття</div>
+                <div style={{padding:"8px 10px",textAlign:"right"}}>План, грн</div>
+                <div style={{padding:"8px 10px",textAlign:"right"}}>Факт, грн</div>
+                <div style={{padding:"8px 10px"}}>Коментар</div>
+                <div></div>
+              </div>
+              {fb.map((r,i)=>(
+                <div key={r.id}style={{display:"grid",gridTemplateColumns:"1fr 110px 110px 1.2fr 32px",gap:0,background:i%2?"var(--bg-card)":"var(--bg-white)",alignItems:"center",borderTop:"1px solid var(--border)"}}>
+                  <input value={r.article}onChange={e=>updBudgetRow(r.id,"article",e.target.value)}placeholder="Назва статті"
+                    style={{border:"none",background:"transparent",padding:"7px 10px",fontSize:13,fontFamily:"var(--font)",width:"100%"}}/>
+                  <input value={r.plan}onChange={e=>updBudgetRow(r.id,"plan",e.target.value.replace(/[^\d.]/g,""))}inputMode="numeric"
+                    style={{border:"none",background:"transparent",padding:"7px 10px",fontSize:13,fontFamily:"var(--font)",width:"100%",textAlign:"right"}}/>
+                  <input value={r.fact}onChange={e=>updBudgetRow(r.id,"fact",e.target.value.replace(/[^\d.]/g,""))}inputMode="numeric"placeholder="—"
+                    style={{border:"none",background:"transparent",padding:"7px 10px",fontSize:13,fontFamily:"var(--font)",width:"100%",textAlign:"right",fontWeight:600}}/>
+                  <input value={r.note}onChange={e=>updBudgetRow(r.id,"note",e.target.value)}placeholder="напр. підрядник, причина різниці"
+                    style={{border:"none",background:"transparent",padding:"7px 10px",fontSize:12,fontFamily:"var(--font)",width:"100%",color:"var(--text2)"}}/>
+                  <button onClick={()=>delBudgetRow(r.id)}style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:13,padding:0}}title="Видалити рядок">✕</button>
+                </div>
+              ))}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 110px 110px 1.2fr 32px",gap:0,background:"var(--blue-light)",fontWeight:700,fontSize:13,borderTop:"1.5px solid var(--blue-mid)"}}>
+                <div style={{padding:"9px 10px",color:"var(--blue-dark)"}}>Разом</div>
+                <div style={{padding:"9px 10px",textAlign:"right",color:"var(--blue-dark)"}}>{fmt(sumPlan)}</div>
+                <div style={{padding:"9px 10px",textAlign:"right",color:"var(--blue-dark)"}}>{fmt(sumFact)}</div>
+                <div style={{padding:"9px 10px",fontSize:12,color:diff>0?"var(--red)":diff<0?"#00916E":"var(--text2)"}}>
+                  {sumFact===0?"":diff>0?`перевитрата +${fmt(diff)}`:diff<0?`економія ${fmt(Math.abs(diff))}`:"точно за планом"}
+                </div>
+                <div></div>
+              </div>
+            </div>}
+        <div className="alert-warn"style={{marginTop:14}}>Фактичні суми вписуються вручну. «План» можна підтягнути з кошторису заходу і за потреби скоригувати.</div>
+      </div>;
+    })()}
   </div></>;
 }
 

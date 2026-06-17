@@ -960,6 +960,46 @@ function generateDocHTML(ev,budget,blocks,docType){
   </body></html>`;
 }
 
+// ══ ЕКСПОРТ ЖУРНАЛУ ЗАХОДУ (PDF / Word) ════════════════
+// forWord=true додає Word-сумісну розмітку (ms-word namespace), щоб .doc відкривався як документ Word
+function generateJournalHTML(ev,forWord){
+  const f=ev.form||{};
+  const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const comments=(ev.summary&&ev.summary.comments)||[];
+  const fmtTs=ts=>{try{return new Date(ts).toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return "";}};
+  const ordered=[...comments].sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+  const rows=ordered.length
+    ? ordered.map(c=>`<tr><td class="meta"><b>${esc(c.author||"—")}</b><br><span class="ts">${esc(fmtTs(c.ts))}</span></td><td class="text">${esc(c.text).replace(/\n/g,"<br>")}</td></tr>`).join("")
+    : `<tr><td colspan="2" class="empty">Записів немає.</td></tr>`;
+  const wordHead=forWord
+    ? `<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->`
+    : "";
+  return `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="uk"><head><meta charset="UTF-8">
+  <title>Журнал заходу — ${esc(f.eventName||"Захід ЦППР")}</title>
+  ${wordHead}
+  <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1A2535;font-size:13px}
+  .doc-header{display:flex;align-items:center;gap:12px;border-bottom:3px solid #1C75BC;padding-bottom:16px;margin-bottom:24px}
+  .doc-title h1{font-size:18px;color:#252868;margin:0}.doc-title p{font-size:11px;color:#6B7A90;margin:2px 0 0}
+  h2{font-size:14px;color:#1C75BC;border-bottom:1px solid #D0DCE8;padding-bottom:6px;margin:24px 0 10px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  td{padding:8px 10px;border:1px solid #D0DCE8;font-size:12px;vertical-align:top}
+  td.meta{width:30%;color:#252868}td.meta .ts{color:#6B7A90;font-size:11px}
+  td.text{white-space:pre-wrap}
+  td.empty{color:#9AAABB;text-align:center}
+  .footer{margin-top:40px;padding-top:16px;border-top:1px solid #D0DCE8;font-size:11px;color:#9AAABB;text-align:center}
+  </style></head><body>
+  <div class="doc-header">
+    <img src="${LOGO_B64}" alt="ЦППР" style="width:50px;height:50px;object-fit:contain"/>
+    <div class="doc-title"><h1>Журнал заходу — ${esc(f.eventName||"Захід ЦППР")}</h1>
+    <p>Центр політико-правових реформ — Система заявок на заходи</p>
+    <p>${f.eventDate?"Дата заходу: "+esc(new Date(f.eventDate+"T00:00:00").toLocaleDateString("uk-UA"))+" · ":""}Сформовано: ${esc(new Date().toLocaleDateString("uk-UA"))}</p></div>
+  </div>
+  <h2>Журнал заходу (${ordered.length})</h2>
+  <table><tbody>${rows}</tbody></table>
+  <div class="footer">ЦППР — Центр політико-правових реформ · pravo.org.ua</div>
+  </body></html>`;
+}
+
 // ══ DOC MODAL ══════════════════════════════════════════
 function DocModal({ev,budget,onClose}){
   const [docType,setDocType]=useState("team");
@@ -2270,7 +2310,8 @@ function App(){
       eventType:f.eventType==="Інше"?(f.eventTypeCustom||"Інше"):(f.eventType||""),
       city:f.city||"",
       participants:f.participants||"",
-      finalBudget:summary.finalBudget||[]
+      finalBudget:summary.finalBudget||[],
+      budgetNote:summary.budgetNote||""
     });
   };
   const addComment=(text)=>{
@@ -2316,6 +2357,33 @@ function App(){
     const s=getSummary();
     pushSyncSummary(s);
     showToast("✓ Остаточний бюджет збережено в аркуш «Підсумки»");
+  };
+  // Загальний коментар до бюджету (вільний текст, поза таблицею статей)
+  const updBudgetNote=(val)=>{
+    const s=getSummary();
+    upd({summary:{...s,budgetNote:val}});
+  };
+  // Експорт журналу заходу
+  const exportJournalPDF=()=>{
+    const ev=getEv();if(!ev)return;
+    const html=generateJournalHTML(ev,false);
+    const blob=new Blob([html],{type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    showToast("Журнал відкрито у новій вкладці — Ctrl+P → «Зберегти як PDF»");
+  };
+  const exportJournalWord=()=>{
+    const ev=getEv();if(!ev)return;
+    const f=ev.form||{};
+    const html=generateJournalHTML(ev,true);
+    const blob=new Blob(["\ufeff",html],{type:"application/msword"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`Журнал_${(f.eventName||"захід").replace(/[\\/:*?"<>|]/g,"_")}_ЦППР.doc`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    showToast("Журнал завантажено (.doc — відкривається у Word)");
   };
 
   const saveConfig=c=>{setConfig(c);localStorage.setItem("cppr_config",JSON.stringify(c));};
@@ -3110,7 +3178,13 @@ function App(){
       const fmt=n=>(Math.round(n)||0).toLocaleString("uk-UA");
       return <div>
         {/* ── Журнал заходу ── */}
-        <ST icon="🗒">Журнал заходу</ST>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <ST icon="🗒">Журнал заходу</ST>
+          {comments.length>0&&<div style={{display:"flex",gap:6,marginBottom:8}}>
+            <button className="btn-ghost"style={{fontSize:11,padding:"5px 10px"}}onClick={exportJournalPDF}>📄 PDF</button>
+            <button className="btn-ghost"style={{fontSize:11,padding:"5px 10px"}}onClick={exportJournalWord}>📝 Word</button>
+          </div>}
+        </div>
         <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>
           Фіксуйте труднощі, рішення і висновки по ходу підготовки — щоб не забути. Записи бачить уся команда.
         </div>
@@ -3180,6 +3254,16 @@ function App(){
                 <div></div>
               </div>
             </div>}
+
+        {/* Загальний коментар до бюджету (вільний текст) */}
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--text2)",marginBottom:6}}>Коментар до бюджету</div>
+          <textarea value={s.budgetNote||""}onChange={e=>updBudgetNote(e.target.value)}
+            placeholder="Те, що не вкладається в цифри й статті: домовленості, причини відхилень, нестандартні витрати, висновки для майбутніх кошторисів…"
+            style={{width:"100%",minHeight:72,padding:"9px 11px",borderRadius:"var(--radius)",border:"1.5px solid var(--border)",fontFamily:"var(--font)",fontSize:13,resize:"vertical",boxSizing:"border-box"}}/>
+          <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Зберігається разом із заявкою. Натисніть «💾 Зберегти в Підсумки» щоб записати і в аркуш.</div>
+        </div>
+
         <div className="alert-warn"style={{marginTop:14}}>Фактичні суми вписуються вручну. «План» можна підтягнути з кошторису заходу і за потреби скоригувати.</div>
       </div>;
     })()}

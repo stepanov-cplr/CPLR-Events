@@ -606,6 +606,25 @@ function generateReportHTML(ev) {
   const mode = isAfterEvent ? 'Підсумковий звіт' : 'Звіт у процесі підготовки';
   const modeColor = isAfterEvent ? '#252868' : '#1C75BC';
 
+  // Журнал коментарів (AAR)
+  const _comments = ((ev.summary && ev.summary.comments) || []).filter(c => c && c.text);
+  const _escH = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const _fmtTs = iso => {
+    if(!iso) return '';
+    const d = new Date(iso);
+    if(isNaN(d)) return '';
+    const p = n => (n<10?'0':'')+n;
+    return p(d.getDate())+'.'+p(d.getMonth()+1)+'.'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
+  };
+  const journalHTML = _comments.length
+    ? `<h2>📝 Журнал заходу (${_comments.length})</h2>
+       <div style="font-size:11px;color:#6B7A90;margin:-6px 0 10px">Коментарі команди впродовж підготовки — для AAR-розбору.</div>`
+      + _comments.map(c => `<div style="border-left:3px solid ${modeColor};background:#F5F8FC;padding:8px 12px;margin-bottom:8px;border-radius:0 6px 6px 0">
+          <div style="font-size:11px;color:#6B7A90;margin-bottom:3px">${_escH(c.author||'—')}${_fmtTs(c.ts)?' · '+_fmtTs(c.ts):''}</div>
+          <div style="font-size:12px;color:#1A2535;white-space:pre-wrap">${_escH(c.text)}</div>
+        </div>`).join('')
+    : '';
+
   return `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
   <title>Звіт — ${f.eventName||'Захід ЦППР'}</title>
   <style>
@@ -648,6 +667,8 @@ function generateReportHTML(ev) {
       <div style="font-size:11px;color:#9AAABB;margin-top:3px"><b>Сформовано:</b> ${new Date().toLocaleDateString('uk-UA')}</div>
     </div>
   </div>
+
+  ${journalHTML}
 
   <h2>Загальна статистика</h2>
   <div class="stat-grid">
@@ -1671,14 +1692,18 @@ function ReportModal({ev,onClose,team,config}){
     try{
       const r=await sheetsPost(config.sheetsApiUrl,'sendFinalReport',{
         evId:ev.id,recipients:all,
-        evName:f.eventName||'',evDate:f.eventDate||'',evCity:f.city||''
+        evName:f.eventName||'',evDate:f.eventDate||'',evCity:f.city||'',
+        comments:(ev.summary&&ev.summary.comments)||[]
       });
-      if(r&&r.errors&&r.errors.length){
-        showToast('⚠ Не надіслано: '+r.errors.length+' з '+all.length+'. Квота Gmail: '+(r.quotaRemaining??'?'));
-      }else{
-        showToast('✓ Звіт надіслано '+all.length+' отримувачам'+(r&&r.quotaRemaining!=null?' (залишок квоти: '+r.quotaRemaining+')':''));
-        onClose();
+      if(!r){showToast('Помилка надсилання (немає відповіді сервера)');return;}
+      if(r.error==='AUTH_REQUIRED'){showToast('Сесія застаріла — увійдіть знову і повторіть');return;}
+      if(r.error){showToast('Помилка сервера: '+r.error);return;}
+      if(r.errors&&r.errors.length){
+        showToast('⚠ Не надіслано '+r.errors.length+' з '+all.length+(r.quotaRemaining!=null?'. Квота Gmail: '+r.quotaRemaining:''));
+        return;
       }
+      showToast('✓ Звіт надіслано '+(r.sent||all.length)+' отримувачам');
+      onClose();
     }catch(e){showToast('Помилка надсилання');}
     finally{setIsSending(false);}
   };

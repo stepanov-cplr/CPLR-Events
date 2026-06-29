@@ -492,7 +492,7 @@ function DonorMultiSelect({donors,selected,onChange}){
 
 function generateReportHTML(ev) {
   const f = ev.form || {};
-  const cl = (ev.checklist || []).filter(t => !t.manualDelete);
+  const cl = (ev.checklist || []).filter(t => !t.manualDelete && !t.hidden);
   const today = new Date(); today.setHours(0,0,0,0);
   const eventDate = f.eventDate ? new Date(f.eventDate) : null;
   const isAfterEvent = eventDate && today > eventDate;
@@ -907,7 +907,7 @@ function generateDocHTML(ev,budget,blocks,docType){
       return`<span style="background:${bg};color:${c};font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;opacity:${done?0.5:1}">${lbl} 🔗${n}</span>`;
     };
     const clRows=groups.map(g=>{
-      const tasks=ev.checklist.filter(t=>t.g===g&&!t.manualDelete);
+      const tasks=ev.checklist.filter(t=>t.g===g&&!t.manualDelete&&!t.hidden);
       if(!tasks.length)return"";
       const rows=tasks.map(t=>{
         const dl=parseDl(t.dlDate||t.dl);
@@ -1204,7 +1204,7 @@ function parseDlDate(dlDate){
 }
 
 function GanttChart({ev}){
-  const cl=(ev.checklist||[]).filter(t=>!t.manualDelete);
+  const cl=(ev.checklist||[]).filter(t=>!t.manualDelete&&!t.hidden);
   const f=ev.form||{};
   const [hover,setHover]=React.useState(null);
   const [filterWho,setFilterWho]=React.useState("");
@@ -1715,7 +1715,7 @@ function ReportModal({ev,onClose,team,config}){
 
   const toggleRecipient=email=>setSelRecipients(prev=>prev.includes(email)?prev.filter(e=>e!==email):[...prev,email]);
 
-  const cl=ev.checklist?.filter(t=>!t.manualDelete)||[];
+  const cl=ev.checklist?.filter(t=>!t.manualDelete&&!t.hidden)||[];
   const total=cl.length;
   const done=cl.filter(t=>t.done).length;
   const overdue=cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today).length;
@@ -2587,9 +2587,9 @@ function App(){
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                 <Badge s={ev.status}/>
-                {ev.checklist?.length>0&&(()=>{const _td=new Date();_td.setHours(0,0,0,0);const od=ev.checklist.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td).length;
+                {ev.checklist?.length>0&&(()=>{const _td=new Date();_td.setHours(0,0,0,0);const live=ev.checklist.filter(t=>!t.manualDelete&&!t.hidden);const od=live.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td).length;
                   return<div style={{fontSize:10,color:od>0?"var(--red)":"var(--text3)",fontWeight:od>0?700:400}}>
-                    {od>0&&`⚠ ${od} просрочено · `}{ev.checklist.filter(t=>t.done).length}/{ev.checklist.length} задач</div>;})()}
+                    {od>0&&`⚠ ${od} просрочено · `}{live.filter(t=>t.done).length}/{live.length} задач</div>;})()}
                 <button onClick={e=>{e.stopPropagation();delEv(ev.id);}}style={{fontSize:10,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:0}}>видалити</button>
                 <button onClick={e=>copyEv(ev.id,e)}style={{fontSize:10,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:0}}>копіювати</button>
               </div>
@@ -2826,7 +2826,7 @@ function App(){
   const budget=calcBudget(f,costs);
   const clDone=ev.checklist?.filter(t=>t.done&&!t.manualDelete).length||0;
   const clTotal=ev.checklist?.filter(t=>!t.manualDelete).length||0;
-  const _td2=new Date();_td2.setHours(0,0,0,0);const clOverdue=ev.checklist?.filter(t=>!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td2).length||0;
+  const _td2=new Date();_td2.setHours(0,0,0,0);const clOverdue=ev.checklist?.filter(t=>!t.done&&!t.manualDelete&&!t.hidden&&!!t.dlDate&&parseDlDate(t.dlDate)<=_td2).length||0;
   // venues now use type-based selection
   const photoPrice=gc(costs,"tech","ph",f.city||"Київ");
 

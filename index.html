@@ -2284,19 +2284,42 @@ function App(){
     const ev=getEv();const draft=ev.taskDraft||[];
     if(!draft.length){showToast("Список задач порожній");return;}
     const today=new Date();today.setHours(0,0,0,0);
+    // Зберігаємо відмітки виконання зі старого чеклиста (якщо це повторне редагування)
+    const oldCl=ev.checklist||[];
     const checklist=draft.map(t=>{
-      const od=!!t.dlDate&&parseDlDate(t.dlDate)<today;
-      return{...t,done:false,doneAt:null,overdue:od};
+      const existing=oldCl.find(o=>o.t===t.t&&o.g===t.g);
+      const done=existing?.done||false;
+      const doneAt=existing?.doneAt||null;
+      const od=!done&&!!t.dlDate&&parseDlDate(t.dlDate)<today;
+      return{...t,done,doneAt,overdue:od};
     });
     upd({checklist,taskDraft:null});
     setTab("checklist");
     showToast(`Чеклист сформовано: ${checklist.length} задач`);
   };
+  // Повернути вже сформований чеклист у режим чернетки для повного редагування.
+  // Відмітки виконання (done/doneAt) зберігаються і повернуться при «Сформувати чеклист».
+  const editChecklistAsDraft=()=>{
+    const ev=getEv();
+    const cl=(ev.checklist||[]).filter(t=>!t.manualDelete&&!t.hidden);
+    if(!cl.length){showToast("Чеклист порожній");return;}
+    // Перерахунок blocksCount на актуальному наборі
+    const bm=calcBlocksCount(cl);
+    const draft=draftSort(cl.map(t=>({...t,blocksCount:bm[t.t]||0})));
+    upd({taskDraft:draft});
+    setTab("draft");
+    showToast("Список задач відкрито для редагування. Відмітки виконання збережуться.");
+  };
   // Відмінити чернетку
   const draftDiscard=()=>{
-    if(!confirm("Видалити чернетку задач? Зміни не збережуться."))return;
+    const ev=getEv();
+    const hasChecklist=!!(ev.checklist||[]).filter(t=>!t.manualDelete).length;
+    const msg=hasChecklist
+      ? "Відмінити редагування? Зміни в списку задач не збережуться, чинний чеклист лишиться як є."
+      : "Видалити чернетку задач? Зміни не збережуться.";
+    if(!confirm(msg))return;
     upd({taskDraft:null});
-    setTab("form");
+    setTab(hasChecklist?"checklist":"form");
   };
   const sendEmails=async()=>{
     const ev=getEv();
@@ -2810,7 +2833,7 @@ function App(){
   const tabs=[
     {id:"form",l:"Заявка"},
     {id:"budget",l:`Бюджет (~${Math.round(budget.total/1000)}k грн)`},
-    ...(ev.taskDraft?.length?[{id:"draft",l:`📝 Чернетка задач (${ev.taskDraft.length})`}]:[]),
+    ...(ev.taskDraft?.length?[{id:"draft",l:`✏️ Редагування задач (${ev.taskDraft.length})`}]:[]),
     {id:"checklist",l:`Чеклист${clTotal?` ${clDone}/${clTotal}${clOverdue>0?` ⚠${clOverdue}`:""}`:""}`},
     ...(clTotal>0?[{id:"gantt",l:"📊 Діаграма"}]:[]),
     {id:"tasks",l:"Розсилка задач"},
@@ -2867,6 +2890,8 @@ function App(){
       )}
       {!!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
         <div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>
+          <button onClick={editChecklistAsDraft}className="btn-ghost"style={{fontSize:12}}
+            title="Повне редагування списку: назви, групи, залежності, додавання — у режимі чернетки. Відмітки виконання збережуться">✏️ Редагувати список задач</button>
           <button onClick={updateChecklist}className="btn-ghost"style={{fontSize:12}}>🔄 Оновити чеклист</button>
           <button onClick={()=>{if(confirm("Позначити захід як завершений (Архів)? Цю дію можна скасувати.")){const ev=getEv();upd({status:"done"});}}}className="btn-ghost"
             style={{fontSize:12,color:"#00916E",borderColor:"#00916E"}}>✓ Завершити захід</button>
@@ -3092,14 +3117,18 @@ function App(){
       <div className="alert-warn"style={{marginTop:14}}>Бюджет орієнтовний. Вартості можна оновити в Налаштуваннях → Вартості.</div>
     </div>}
 
-    {tab==="draft"&&<div>
+    {tab==="draft"&&(()=>{
+      const editingExisting=!!(ev.checklist||[]).filter(t=>!t.manualDelete).length;
+      return<div>
       <div className="alert-info"style={{marginBottom:14,fontSize:12}}>
-        📝 Це <b>попередній список задач</b>. Видаліть неактуальні, відредагуйте поля або додайте нові — і лише потім натисніть <b>«Сформувати чеклист»</b>. Список автоматично впорядковується за дедлайном. Чернетка зберігається — можна перервати і повернутись пізніше.
+        {editingExisting
+          ? <>✏️ <b>Редагування списку задач.</b> Змінюйте назви, групи, виконавців, дедлайни, залежності, додавайте чи видаляйте задачі. Натисніть <b>«Зберегти зміни»</b> — <b>відмітки виконання збережуться</b>. Список упорядковується за дедлайном.</>
+          : <>📝 Це <b>попередній список задач</b>. Видаліть неактуальні, відредагуйте поля або додайте нові — і лише потім натисніть <b>«Сформувати чеклист»</b>. Список автоматично впорядковується за дедлайном. Чернетка зберігається — можна перервати і повернутись пізніше.</>}
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
-        <button className="btn-primary"style={{fontSize:13,padding:"8px 18px"}}onClick={draftToChecklist}>✓ Сформувати чеклист ({(ev.taskDraft||[]).length})</button>
+        <button className="btn-primary"style={{fontSize:13,padding:"8px 18px"}}onClick={draftToChecklist}>{editingExisting?"✓ Зберегти зміни":"✓ Сформувати чеклист"} ({(ev.taskDraft||[]).length})</button>
         <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px"}}onClick={()=>setDraftNewTask({g:"",t:"",who:"",dlDate:"",d:0})}>+ Додати задачу</button>
-        <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px"}}onClick={()=>{if(confirm("Перегенерувати список задач з форми? Усі ручні зміни в чернетці буде втрачено.")){prepareTaskDraft();}}}>🔄 Перегенерувати з форми</button>
+        {!editingExisting&&<button className="btn-ghost"style={{fontSize:12,padding:"8px 14px"}}onClick={()=>{if(confirm("Перегенерувати список задач з форми? Усі ручні зміни в чернетці буде втрачено.")){prepareTaskDraft();}}}>🔄 Перегенерувати з форми</button>}
         <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px",color:"var(--red)",borderColor:"#fca5a5",marginLeft:"auto"}}onClick={draftDiscard}>✕ Відмінити</button>
       </div>
 
@@ -3201,7 +3230,7 @@ function App(){
           ));
         })()}
       <datalist id="draft-groups-all">{[...new Set((ev.taskDraft||[]).map(t=>t.g))].map(g=><option key={g}value={g}/>)}</datalist>
-    </div>}
+    </div>;})()}
 
     {tab==="checklist"&&<div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>

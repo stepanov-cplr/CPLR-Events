@@ -367,15 +367,20 @@ function calcBudget(f,costs){
   return{total,lines};
 }
 
+// Обчислення дедлайну задачі за зміщенням d (днів до заходу) і датою заходу.
+// Повертає {label, date}. Винесено окремо щоб редактор чернетки міг перераховувати.
+function taskDeadline(d,eventDate){
+  const ed=eventDate?new Date(eventDate):null;
+  if(d===0)return{label:"День заходу",date:ed};
+  if(d<0){const dt=ed?new Date(ed):null;dt&&dt.setDate(dt.getDate()+Math.abs(d));return{label:`${Math.abs(d)} дн. після`,date:dt};}
+  if(!ed)return{label:`за ${d} днів`,date:null};
+  const dt=new Date(ed);dt.setDate(dt.getDate()-d);return{label:dt.toLocaleDateString("uk-UA"),date:dt};
+}
+
 function genChecklist(f,taskTemplates,team){
   const ed=f.eventDate?new Date(f.eventDate):null;
   const today=new Date();today.setHours(0,0,0,0);
-  const dd=d=>{
-    if(d===0)return{label:"День заходу",date:ed};
-    if(d<0){const dt=ed?new Date(ed):null;dt&&dt.setDate(dt.getDate()+Math.abs(d));return{label:`${Math.abs(d)} дн. після`,date:dt};}
-    if(!ed)return{label:`за ${d} днів`,date:null};
-    const dt=new Date(ed);dt.setDate(dt.getDate()-d);return{label:dt.toLocaleDateString("uk-UA"),date:dt};
-  };
+  const dd=d=>taskDeadline(d,f.eventDate);
   const roleMap={
     expert:f.expertName||"Експерт",coord:f.coordinator||"Координатор",
     comm:f.commManager||"Комунікаційник",dmitro:"Український Дмитро",
@@ -1996,6 +2001,7 @@ function App(){
   const [saving,setSaving]=useState(false);
   const [sending,setSending]=useState(false);
   const [showDeleted,setShowDeleted]=useState(false);
+  const [draftNewTask,setDraftNewTask]=useState(null); // {g,t,who,d} коли відкрита форма додавання в чернетці
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
   const [showReportModal,setShowReportModal]=useState(false);
@@ -2129,8 +2135,8 @@ function App(){
     if(config.sheetsApiUrl&&changedId){
       const ev=list.find(e=>e.id===changedId);
       if(ev){
-        // Передаємо без чеклиста щоб не перевищити ліміт GET URL
-        const evToSend={...ev,checklist:[]};
+        // Передаємо без чеклиста і чернетки щоб не перевищити ліміт GET URL
+        const evToSend={...ev,checklist:[],taskDraft:[]};
         await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
         // Якщо є чеклист — зберігаємо частинами (GET має ліміт ~2кБ)
         if(ev.checklist?.length){
@@ -2139,10 +2145,12 @@ function App(){
             await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
           }
         }
+        // Чернетку задач зберігаємо окремим POST (великий масив, не влазить у GET)
+        await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
       }
     } else if(config.sheetsApiUrl){
       for(const ev of list){
-        const evToSend={...ev,checklist:[]};
+        const evToSend={...ev,checklist:[],taskDraft:[]};
         await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
       }
     }
@@ -2198,6 +2206,97 @@ function App(){
     upd({checklist:[...finalCl,...manualTasks]});
     setTab("checklist");
     showToast(`Чеклист оновлено: ${finalCl.length+manualTasks.length} задач`);
+  };
+
+  // ── Чернетка задач: попередній перегляд/редагування перед формуванням чеклиста ──
+  const draftSort=arr=>[...arr].sort((a,b)=>{
+    const da=a.dlDate?parseDlDate(a.dlDate):null, db=b.dlDate?parseDlDate(b.dlDate):null;
+    if(da&&db)return da-db;
+    if(da&&!db)return -1;
+    if(!da&&db)return 1;
+    return (b.d||0)-(a.d||0); // без дати — за зміщенням d (раніші зверху)
+  });
+  // Згенерувати чернетку з форми (опціональний крок перед чеклистом)
+  const prepareTaskDraft=()=>{
+    const ev=getEv();
+    const draft=draftSort(genChecklist(ev.form,tasks,team).map(t=>({...t,done:false})));
+    upd({taskDraft:draft});
+    setTab("draft");
+    showToast(`Список задач сформовано: ${draft.length}. Перевірте і за потреби відредагуйте.`);
+  };
+  // Редагування поля задачі в чернетці
+  const draftEditField=(idx,field,val)=>{
+    const ev=getEv();const d=ev.taskDraft||[];
+    let arr=d.map((t,i)=>{
+      if(i!==idx)return t;
+      const u={...t,[field]:val};
+      // При зміні виконавця/дати позначаємо ручну правку (для узгодженості з чеклистом)
+      if(field==="who")u.manualWho=true;
+      return u;
+    });
+    upd({taskDraft:arr});
+  };
+  // Зміна дедлайну в чернетці: приймає рядок YYYY-MM-DD, перераховує dl-label, ресортує
+  const draftEditDate=(idx,dateStr)=>{
+    const ev=getEv();const d=ev.taskDraft||[];
+    let arr=d.map((t,i)=>{
+      if(i!==idx)return t;
+      if(!dateStr)return{...t,dlDate:null,dl:"—",manualDate:true};
+      const [y,m,dy]=dateStr.split("-").map(Number);
+      const dl=`${String(dy).padStart(2,"0")}.${String(m).padStart(2,"0")}.${y}`;
+      return{...t,dlDate:dateStr,dl,manualDate:true};
+    });
+    upd({taskDraft:draftSort(arr)});
+  };
+  // Зміна важливості/залежностей у чернетці: масив назв задач-блокерів (deps)
+  const draftEditDeps=(idx,depsArr)=>{
+    const ev=getEv();let arr=(ev.taskDraft||[]).map((t,i)=>i===idx?{...t,deps:depsArr}:t);
+    // Перерахунок blocksCount по всій чернетці
+    const bm=calcBlocksCount(arr);
+    arr=arr.map(t=>({...t,blocksCount:bm[t.t]||0}));
+    upd({taskDraft:arr});
+  };
+  // Видалити задачу з чернетки (без тумбстоуна — вона ще не «жива»)
+  const draftRemove=(idx)=>{
+    const ev=getEv();
+    upd({taskDraft:(ev.taskDraft||[]).filter((_,i)=>i!==idx)});
+  };
+  // Додати нову задачу в чернетку через інлайн-форму
+  const draftAdd=(nt)=>{
+    if(!nt||!nt.t||!nt.t.trim())return;
+    const ev=getEv();
+    const dl=nt.dlDate?(()=>{const[y,m,dy]=nt.dlDate.split("-").map(Number);return`${String(dy).padStart(2,"0")}.${String(m).padStart(2,"0")}.${y}`;})():"—";
+    const newTask={
+      g:(nt.g||"").trim()||"Додані вручну",
+      t:nt.t.trim(),
+      who:nt.who||"",
+      dl,dlDate:nt.dlDate||null,d:nt.d!=null?nt.d:0,
+      done:false,deps:[],blocksCount:0,manualAdd:true,
+      manualWho:!!nt.who,manualDate:!!nt.dlDate,
+      role:nt.role||"other",
+    };
+    upd({taskDraft:draftSort([...(ev.taskDraft||[]),newTask])});
+    setDraftNewTask(null);
+    showToast("Задачу додано до списку");
+  };
+  // Сформувати чеклист з чернетки (фінальний крок)
+  const draftToChecklist=()=>{
+    const ev=getEv();const draft=ev.taskDraft||[];
+    if(!draft.length){showToast("Список задач порожній");return;}
+    const today=new Date();today.setHours(0,0,0,0);
+    const checklist=draft.map(t=>{
+      const od=!!t.dlDate&&parseDlDate(t.dlDate)<today;
+      return{...t,done:false,doneAt:null,overdue:od};
+    });
+    upd({checklist,taskDraft:null});
+    setTab("checklist");
+    showToast(`Чеклист сформовано: ${checklist.length} задач`);
+  };
+  // Відмінити чернетку
+  const draftDiscard=()=>{
+    if(!confirm("Видалити чернетку задач? Зміни не збережуться."))return;
+    upd({taskDraft:null});
+    setTab("form");
   };
   const sendEmails=async()=>{
     const ev=getEv();
@@ -2711,6 +2810,7 @@ function App(){
   const tabs=[
     {id:"form",l:"Заявка"},
     {id:"budget",l:`Бюджет (~${Math.round(budget.total/1000)}k грн)`},
+    ...(ev.taskDraft?.length?[{id:"draft",l:`📝 Чернетка задач (${ev.taskDraft.length})`}]:[]),
     {id:"checklist",l:`Чеклист${clTotal?` ${clDone}/${clTotal}${clOverdue>0?` ⚠${clOverdue}`:""}`:""}`},
     ...(clTotal>0?[{id:"gantt",l:"📊 Діаграма"}]:[]),
     {id:"tasks",l:"Розсилка задач"},
@@ -2759,7 +2859,11 @@ function App(){
         </button>
       ))}
       {!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
-        <button onClick={approve}className="btn-primary"style={{marginLeft:"auto",fontSize:12,flexShrink:0}}>✓ Затвердити + чеклист</button>
+        <div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>
+          <button onClick={prepareTaskDraft}className="btn-ghost"style={{fontSize:12,flexShrink:0}}
+            title="Сформувати список задач для перегляду та редагування перед чеклистом">📋 Підготувати задачі</button>
+          <button onClick={approve}className="btn-primary"style={{fontSize:12,flexShrink:0}}>✓ Затвердити + чеклист</button>
+        </div>
       )}
       {!!ev.checklist?.length&&ev.status!=="done"&&ev.status!=="cancelled"&&(
         <div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -2988,6 +3092,117 @@ function App(){
       <div className="alert-warn"style={{marginTop:14}}>Бюджет орієнтовний. Вартості можна оновити в Налаштуваннях → Вартості.</div>
     </div>}
 
+    {tab==="draft"&&<div>
+      <div className="alert-info"style={{marginBottom:14,fontSize:12}}>
+        📝 Це <b>попередній список задач</b>. Видаліть неактуальні, відредагуйте поля або додайте нові — і лише потім натисніть <b>«Сформувати чеклист»</b>. Список автоматично впорядковується за дедлайном. Чернетка зберігається — можна перервати і повернутись пізніше.
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+        <button className="btn-primary"style={{fontSize:13,padding:"8px 18px"}}onClick={draftToChecklist}>✓ Сформувати чеклист ({(ev.taskDraft||[]).length})</button>
+        <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px"}}onClick={()=>setDraftNewTask({g:"",t:"",who:"",dlDate:"",d:0})}>+ Додати задачу</button>
+        <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px"}}onClick={()=>{if(confirm("Перегенерувати список задач з форми? Усі ручні зміни в чернетці буде втрачено.")){prepareTaskDraft();}}}>🔄 Перегенерувати з форми</button>
+        <button className="btn-ghost"style={{fontSize:12,padding:"8px 14px",color:"var(--red)",borderColor:"#fca5a5",marginLeft:"auto"}}onClick={draftDiscard}>✕ Відмінити</button>
+      </div>
+
+      {draftNewTask&&(()=>{
+        const grps=[...new Set((ev.taskDraft||[]).map(t=>t.g))];
+        return<div style={{border:"1.5px solid var(--blue)",borderRadius:"var(--radius-lg)",padding:14,marginBottom:16,background:"#F5F9FD"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"var(--blue)",marginBottom:10}}>Нова задача</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <input autoFocus value={draftNewTask.t}onChange={e=>setDraftNewTask({...draftNewTask,t:e.target.value})}placeholder="Назва задачі *"
+              style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
+            <div className="grid2"style={{gap:8}}>
+              <input list="draft-groups"value={draftNewTask.g}onChange={e=>setDraftNewTask({...draftNewTask,g:e.target.value})}placeholder="Група (напр. Логістика)"
+                style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
+              <datalist id="draft-groups">{grps.map(g=><option key={g}value={g}/>)}</datalist>
+              <select value={draftNewTask.who}onChange={e=>setDraftNewTask({...draftNewTask,who:e.target.value})}
+                style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)",background:"var(--bg-white)"}}>
+                <option value="">— виконавець —</option>
+                {(team||DEFAULT_TEAM).map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
+              </select>
+              <div>
+                <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>Дедлайн</div>
+                <input type="date"value={draftNewTask.dlDate}onChange={e=>setDraftNewTask({...draftNewTask,dlDate:e.target.value})}
+                  style={{width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:4}}>
+              <button className="btn-primary"style={{fontSize:12,padding:"6px 16px"}}onClick={()=>draftAdd(draftNewTask)}>Додати</button>
+              <button className="btn-ghost"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>setDraftNewTask(null)}>Скасувати</button>
+            </div>
+          </div>
+        </div>;
+      })()}
+
+      {!(ev.taskDraft||[]).length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Список порожній. Додайте задачі або перегенеруйте з форми.</div>
+        :(()=>{
+          const today=new Date();today.setHours(0,0,0,0);
+          const groups=[...new Set(ev.taskDraft.map(t=>t.g))];
+          const allNames=ev.taskDraft.map(t=>t.t);
+          return groups.map(g=>(
+            <div key={g}style={{marginBottom:16}}>
+              <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>{g}
+              </div>
+              {ev.taskDraft.filter(t=>t.g===g).map(t=>{
+                const idx=ev.taskDraft.indexOf(t);
+                const isOd=!!t.dlDate&&parseDlDate(t.dlDate)<today;
+                return<div key={idx}style={{border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",marginBottom:8,background:"var(--bg-white)"}}>
+                  {/* Назва — редагована */}
+                  <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                    <textarea value={t.t}onChange={e=>draftEditField(idx,"t",e.target.value)}rows={1}
+                      style={{flex:1,fontSize:13,padding:"5px 8px",border:"1px solid var(--border)",borderRadius:4,fontFamily:"var(--font)",resize:"vertical",lineHeight:1.35}}/>
+                    {(t.blocksCount||0)>0&&<span title={"Блокує "+t.blocksCount+" задач"}style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10,flexShrink:0,marginTop:3,
+                      background:(t.blocksCount||0)>=10?"#FCEBEB":(t.blocksCount||0)>=4?"#FAEEDA":"#EBF4FB",
+                      color:(t.blocksCount||0)>=10?"#A32D2D":(t.blocksCount||0)>=4?"#854F0B":"#185FA5"}}>🔗 {t.blocksCount}</span>}
+                    <button onClick={()=>draftRemove(idx)}title="Видалити задачу"
+                      style={{fontSize:15,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:"0 4px",flexShrink:0,lineHeight:1,marginTop:2}}>✕</button>
+                  </div>
+                  {/* Поля: група, виконавець, дедлайн */}
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:10,color:"var(--text3)"}}>Група:</span>
+                      <input list="draft-groups-all"value={t.g}onChange={e=>draftEditField(idx,"g",e.target.value)}
+                        style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,fontFamily:"var(--font)",width:130}}/>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:10,color:"var(--text3)"}}>Хто:</span>
+                      <select value={t.who||""}onChange={e=>draftEditField(idx,"who",e.target.value)}
+                        style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,background:"var(--bg-white)",color:"var(--text2)",fontFamily:"var(--font)",maxWidth:170}}>
+                        <option value="">— оберіть —</option>
+                        {(team||DEFAULT_TEAM).map(m=><option key={m.name}value={m.name}>{m.name}</option>)}
+                        {t.who&&!(team||DEFAULT_TEAM).find(m=>m.name===t.who)&&<option value={t.who}>{t.who}</option>}
+                      </select>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:10,color:"var(--text3)"}}>Дедлайн:</span>
+                      <input type="date"value={t.dlDate?t.dlDate.slice(0,10):""}onChange={e=>draftEditDate(idx,e.target.value)}
+                        style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,fontFamily:"var(--font)",color:isOd?"var(--red)":"var(--text2)"}}/>
+                      {isOd&&<span style={{fontSize:9,color:"var(--red)",fontWeight:700}}>в минулому</span>}
+                    </div>
+                  </div>
+                  {/* Залежності (блокери) */}
+                  <details style={{marginTop:8}}>
+                    <summary style={{fontSize:10,color:"var(--text2)",cursor:"pointer",userSelect:"none"}}>
+                      Залежить від{t.deps?.length?` (${t.deps.length})`:""} ▾
+                    </summary>
+                    <div style={{marginTop:6,maxHeight:140,overflowY:"auto",border:"1px solid var(--border)",borderRadius:4,padding:"6px 8px",background:"var(--bg-card)"}}>
+                      {allNames.filter(n=>n!==t.t).map(n=>(
+                        <label key={n}style={{display:"flex",alignItems:"center",gap:6,fontSize:11,padding:"2px 0",cursor:"pointer"}}>
+                          <input type="checkbox"checked={(t.deps||[]).includes(n)}
+                            onChange={e=>{const cur=t.deps||[];draftEditDeps(idx,e.target.checked?[...cur,n]:cur.filter(x=>x!==n));}}/>
+                          <span style={{color:"var(--text2)"}}>{n}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </div>;
+              })}
+            </div>
+          ));
+        })()}
+      <datalist id="draft-groups-all">{[...new Set((ev.taskDraft||[]).map(t=>t.g))].map(g=><option key={g}value={g}/>)}</datalist>
+    </div>}
+
     {tab==="checklist"&&<div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
         <button className="btn-ghost"style={{fontSize:12,padding:"5px 12px"}}onClick={addManualTask}>+ Додати задачу</button>
@@ -3016,7 +3231,9 @@ function App(){
           ))}
         </div>
       )}
-      {!ev.checklist?.length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Натисніть «Затвердити + чеклист» щоб сформувати список задач.</div>
+      {!ev.checklist?.length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>
+          Натисніть «✓ Затвердити + чеклист» щоб одразу сформувати список задач, або «📋 Підготувати задачі» — щоб спершу переглянути й відредагувати їх.
+        </div>
         :(() => {
           const groups=[...new Set(ev.checklist.map(t=>t.g))];
           return groups.map(g=>(

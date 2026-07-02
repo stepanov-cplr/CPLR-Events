@@ -1202,6 +1202,43 @@ function parseDlDate(dlDate){
   const dt=new Date(dlDate);dt.setHours(0,0,0,0);return dt;
 }
 
+// Ярлик групи з фактичної дати задачі: «06.07.2026 (за 16 днів)».
+// Формат: дата ДД.ММ.РРРР + скільки днів до заходу (або «день заходу»/«N дн. після»).
+function dateGroupLabel(task,eventDate){
+  const dl=task.dlDate?parseDlDate(task.dlDate):null;
+  if(!dl)return "Без дати";
+  const dd=String(dl.getDate()).padStart(2,"0");
+  const mm=String(dl.getMonth()+1).padStart(2,"0");
+  const dateStr=`${dd}.${mm}.${dl.getFullYear()}`;
+  const ed=eventDate?parseDlDate(eventDate.length>10?eventDate.slice(0,10):eventDate):null;
+  if(!ed)return dateStr;
+  const days=Math.round((ed.getTime()-dl.getTime())/(1000*60*60*24));
+  let suffix;
+  if(days>1)suffix=`за ${days} дн.`;
+  else if(days===1)suffix="за 1 день";
+  else if(days===0)suffix="день заходу";
+  else suffix=`${Math.abs(days)} дн. після`;
+  return `${dateStr} (${suffix})`;
+}
+
+// Групування задач за фактичною датою. Повертає впорядкований масив
+// [{key, tasks}] — групи відсортовані хронологічно (раніші дати першими,
+// «без дати» — в кінець). Задачі всередині групи зберігають вхідний порядок.
+function groupTasksByDate(tasks,eventDate){
+  const map=new Map();
+  for(const t of tasks){
+    const key=dateGroupLabel(t,eventDate);
+    if(!map.has(key))map.set(key,[]);
+    map.get(key).push(t);
+  }
+  const entries=[...map.entries()].map(([key,tasks])=>{
+    const dl=tasks[0].dlDate?parseDlDate(tasks[0].dlDate):null;
+    return{key,tasks,sortDate:dl?dl.getTime():Infinity};
+  });
+  entries.sort((a,b)=>a.sortDate-b.sortDate);
+  return entries.map(e=>({key:e.key,tasks:e.tasks}));
+}
+
 function GanttChart({ev}){
   const cl=(ev.checklist||[]).filter(t=>!t.manualDelete&&!t.hidden);
   const f=ev.form||{};
@@ -2238,15 +2275,21 @@ function App(){
     });
     upd({taskDraft:arr});
   };
-  // Зміна дедлайну в чернетці: приймає рядок YYYY-MM-DD, перераховує dl-label, ресортує
+  // Зміна дедлайну в чернетці: приймає рядок YYYY-MM-DD, перераховує dl-label, g і ресортує
   const draftEditDate=(idx,dateStr)=>{
     const ev=getEv();const d=ev.taskDraft||[];
     let arr=d.map((t,i)=>{
       if(i!==idx)return t;
-      if(!dateStr)return{...t,dlDate:null,dl:"—",manualDate:true};
+      if(!dateStr)return{...t,dlDate:null,dl:"—",g:"Без дати",manualDate:true};
       const [y,m,dy]=dateStr.split("-").map(Number);
       const dl=`${String(dy).padStart(2,"0")}.${String(m).padStart(2,"0")}.${y}`;
-      return{...t,dlDate:dateStr,dl,manualDate:true};
+      const u={...t,dlDate:dateStr,dl,manualDate:true};
+      // Оновлюємо d і g щоб лишались синхронними з датою
+      const ed=ev.form?.eventDate?parseDlDate(ev.form.eventDate.length>10?ev.form.eventDate.slice(0,10):ev.form.eventDate):null;
+      const dd2=parseDlDate(dateStr);
+      if(ed&&dd2)u.d=Math.round((ed.getTime()-dd2.getTime())/(1000*60*60*24));
+      u.g=dateGroupLabel(u,ev.form?.eventDate);
+      return u;
     });
     upd({taskDraft:draftSort(arr)});
   };
@@ -2268,16 +2311,24 @@ function App(){
     if(!nt||!nt.t||!nt.t.trim())return;
     const ev=getEv();
     const dl=nt.dlDate?(()=>{const[y,m,dy]=nt.dlDate.split("-").map(Number);return`${String(dy).padStart(2,"0")}.${String(m).padStart(2,"0")}.${y}`;})():"—";
-    const newTask={
-      g:(nt.g||"").trim()||"Додані вручну",
+    // d рахуємо з дати заходу (для сортування та сумісності)
+    let dOff=0;
+    if(nt.dlDate&&ev.form?.eventDate){
+      const ed=parseDlDate(ev.form.eventDate.length>10?ev.form.eventDate.slice(0,10):ev.form.eventDate);
+      const dd2=parseDlDate(nt.dlDate);
+      if(ed&&dd2)dOff=Math.round((ed.getTime()-dd2.getTime())/(1000*60*60*24));
+    }
+    const baseTask={
       t:nt.t.trim(),
       who:nt.who||"",
-      dl,dlDate:nt.dlDate||null,d:nt.d!=null?nt.d:0,
+      dl,dlDate:nt.dlDate||null,d:dOff,
       done:false,deps:[],blocksCount:0,manualAdd:true,
       manualWho:!!nt.who,manualDate:!!nt.dlDate,
       role:nt.role||"other",
     };
-    upd({taskDraft:draftSort([...(ev.taskDraft||[]),newTask])});
+    // g = ярлик групи з дати (для сумісності зі звітами/чеклистом, що дивляться на g)
+    baseTask.g=dateGroupLabel(baseTask,ev.form?.eventDate);
+    upd({taskDraft:draftSort([...(ev.taskDraft||[]),baseTask])});
     setDraftNewTask(null);
     showToast("Задачу додано до списку");
   };
@@ -3124,8 +3175,8 @@ function App(){
       return<div>
       <div className="alert-info"style={{marginBottom:14,fontSize:12}}>
         {editingExisting
-          ? <>✏️ <b>Редагування списку задач.</b> Змінюйте назви, групи, виконавців, дедлайни, залежності, додавайте чи видаляйте задачі. Натисніть <b>«Зберегти зміни»</b> — <b>відмітки виконання збережуться</b>. Список упорядковується за дедлайном.</>
-          : <>📝 Це <b>попередній список задач</b>. Видаліть неактуальні, відредагуйте поля або додайте нові — і лише потім натисніть <b>«Сформувати чеклист»</b>. Список автоматично впорядковується за дедлайном. Чернетка зберігається — можна перервати і повернутись пізніше.</>}
+          ? <>✏️ <b>Редагування списку задач.</b> Змінюйте назви, виконавців, дедлайни, залежності, додавайте чи видаляйте задачі. Задачі групуються за датою автоматично. Натисніть <b>«Зберегти зміни»</b> — <b>відмітки виконання збережуться</b>.</>
+          : <>📝 Це <b>попередній список задач</b>, згрупований за датами. Видаліть неактуальні, відредагуйте поля або додайте нові — і лише потім натисніть <b>«Сформувати чеклист»</b>. Зміна дедлайну автоматично переносить задачу у відповідну групу. Чернетка зберігається — можна перервати і повернутись пізніше.</>}
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
         <button className="btn-primary"style={{fontSize:13,padding:"8px 18px"}}onClick={draftToChecklist}>{editingExisting?"✓ Зберегти зміни":"✓ Сформувати чеклист"} ({(ev.taskDraft||[]).length})</button>
@@ -3135,23 +3186,19 @@ function App(){
       </div>
 
       {draftNewTask&&(()=>{
-        const grps=[...new Set((ev.taskDraft||[]).map(t=>t.g))];
         return<div style={{border:"1.5px solid var(--blue)",borderRadius:"var(--radius-lg)",padding:14,marginBottom:16,background:"#F5F9FD"}}>
           <div style={{fontSize:12,fontWeight:700,color:"var(--blue)",marginBottom:10}}>Нова задача</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <input autoFocus value={draftNewTask.t}onChange={e=>setDraftNewTask({...draftNewTask,t:e.target.value})}placeholder="Назва задачі *"
               style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
             <div className="grid2"style={{gap:8}}>
-              <input list="draft-groups"value={draftNewTask.g}onChange={e=>setDraftNewTask({...draftNewTask,g:e.target.value})}placeholder="Група (напр. Логістика)"
-                style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
-              <datalist id="draft-groups">{grps.map(g=><option key={g}value={g}/>)}</datalist>
               <select value={draftNewTask.who}onChange={e=>setDraftNewTask({...draftNewTask,who:e.target.value})}
                 style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)",background:"var(--bg-white)"}}>
                 <option value="">— виконавець —</option>
                 {(team||DEFAULT_TEAM).map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
               </select>
               <div>
-                <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>Дедлайн</div>
+                <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>Дедлайн (визначає групу)</div>
                 <input type="date"value={draftNewTask.dlDate}onChange={e=>setDraftNewTask({...draftNewTask,dlDate:e.target.value})}
                   style={{width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
               </div>
@@ -3167,17 +3214,16 @@ function App(){
       {!(ev.taskDraft||[]).length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Список порожній. Додайте задачі або перегенеруйте з форми.</div>
         :(()=>{
           const today=new Date();today.setHours(0,0,0,0);
-          // Сортуємо задачі хронологічно (незалежно від порядку в масиві),
-          // потім групуємо. Порядок груп — за найранішою задачею в кожній групі.
-          const sorted=draftSort(ev.taskDraft);
-          const groups=[...new Set(sorted.map(t=>t.g))];
+          // Групуємо за ФАКТИЧНОЮ датою (не за вшитим ярликом g).
+          // Групи автоматично хронологічні — розсинхрону дати й заголовка бути не може.
+          const dateGroups=groupTasksByDate(ev.taskDraft,ev.form?.eventDate);
           const allNames=ev.taskDraft.map(t=>t.t);
-          return groups.map(g=>(
-            <div key={g}style={{marginBottom:16}}>
+          return dateGroups.map(grp=>(
+            <div key={grp.key}style={{marginBottom:16}}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
-                <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>{g}
+                <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>{grp.key}
               </div>
-              {sorted.filter(t=>t.g===g).map(t=>{
+              {grp.tasks.map(t=>{
                 const idx=ev.taskDraft.indexOf(t);
                 const isOd=!!t.dlDate&&parseDlDate(t.dlDate)<today;
                 return<div key={idx}style={{border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",marginBottom:8,background:"var(--bg-white)"}}>
@@ -3193,11 +3239,6 @@ function App(){
                   </div>
                   {/* Поля: група, виконавець, дедлайн */}
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:4}}>
-                      <span style={{fontSize:10,color:"var(--text3)"}}>Група:</span>
-                      <input list="draft-groups-all"value={t.g}onChange={e=>draftEditField(idx,"g",e.target.value)}
-                        style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,fontFamily:"var(--font)",width:130}}/>
-                    </div>
                     <div style={{display:"flex",alignItems:"center",gap:4}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Хто:</span>
                       <select value={t.who||""}onChange={e=>draftEditField(idx,"who",e.target.value)}
@@ -3234,7 +3275,6 @@ function App(){
             </div>
           ));
         })()}
-      <datalist id="draft-groups-all">{[...new Set((ev.taskDraft||[]).map(t=>t.g))].map(g=><option key={g}value={g}/>)}</datalist>
     </div>;})()}
 
     {tab==="checklist"&&<div>
@@ -3269,14 +3309,16 @@ function App(){
           Натисніть «✓ Затвердити + чеклист» щоб одразу сформувати список задач, або «📋 Підготувати задачі» — щоб спершу переглянути й відредагувати їх.
         </div>
         :(() => {
-          const groups=[...new Set(ev.checklist.map(t=>t.g))];
-          return groups.map(g=>(
-            <div key={g}style={{marginBottom:16}}>
+          // Групуємо за фактичною датою (варіант Б — консистентно з чернеткою)
+          const liveTasks=ev.checklist.filter(t=>!t.hidden&&!t.manualDelete);
+          const dateGroups=groupTasksByDate(liveTasks,ev.form?.eventDate);
+          return dateGroups.map(grp=>(
+            <div key={grp.key}style={{marginBottom:16}}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
                 <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>
-                {g}
+                {grp.key}
               </div>
-              {ev.checklist.filter(t=>t.g===g&&!t.hidden&&!t.manualDelete).map(t=>{
+              {grp.tasks.map(t=>{
                 const idx=ev.checklist.indexOf(t);
                 const _today=new Date();_today.setHours(0,0,0,0);
                 const isOd=!t.done&&!!t.dlDate&&parseDlDate(t.dlDate)<_today;

@@ -2209,11 +2209,14 @@ function App(){
 
   // ── Чернетка задач: попередній перегляд/редагування перед формуванням чеклиста ──
   const draftSort=arr=>[...arr].sort((a,b)=>{
+    // Головний ключ — дата дедлайну (раніші зверху). Якщо дати рівні або відсутні —
+    // впорядковуємо за зміщенням d (більше днів до заходу = раніший етап = вище).
     const da=a.dlDate?parseDlDate(a.dlDate):null, db=b.dlDate?parseDlDate(b.dlDate):null;
-    if(da&&db)return da-db;
-    if(da&&!db)return -1;
-    if(!da&&db)return 1;
-    return (b.d||0)-(a.d||0); // без дати — за зміщенням d (раніші зверху)
+    if(da&&db){const diff=da.getTime()-db.getTime();if(diff!==0)return diff;}
+    else if(da&&!db)return -1;
+    else if(!da&&db)return 1;
+    // Вторинний ключ (або основний, якщо дат нема): більший d — раніше
+    return (b.d||0)-(a.d||0);
   });
   // Згенерувати чернетку з форми (опціональний крок перед чеклистом)
   const prepareTaskDraft=()=>{
@@ -3164,14 +3167,17 @@ function App(){
       {!(ev.taskDraft||[]).length?<div style={{color:"var(--text2)",fontSize:13,padding:"16px 0"}}>Список порожній. Додайте задачі або перегенеруйте з форми.</div>
         :(()=>{
           const today=new Date();today.setHours(0,0,0,0);
-          const groups=[...new Set(ev.taskDraft.map(t=>t.g))];
+          // Сортуємо задачі хронологічно (незалежно від порядку в масиві),
+          // потім групуємо. Порядок груп — за найранішою задачею в кожній групі.
+          const sorted=draftSort(ev.taskDraft);
+          const groups=[...new Set(sorted.map(t=>t.g))];
           const allNames=ev.taskDraft.map(t=>t.t);
           return groups.map(g=>(
             <div key={g}style={{marginBottom:16}}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
                 <span style={{width:4,height:4,borderRadius:"50%",background:"var(--blue)",display:"inline-block"}}/>{g}
               </div>
-              {ev.taskDraft.filter(t=>t.g===g).map(t=>{
+              {sorted.filter(t=>t.g===g).map(t=>{
                 const idx=ev.taskDraft.indexOf(t);
                 const isOd=!!t.dlDate&&parseDlDate(t.dlDate)<today;
                 return<div key={idx}style={{border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"10px 12px",marginBottom:8,background:"var(--bg-white)"}}>

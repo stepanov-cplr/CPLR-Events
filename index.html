@@ -412,15 +412,37 @@ function genChecklist(f,taskTemplates,team){
   });
 }
 
+// Обгортка fetch із ретраями. Apps Script під навантаженням віддає 404/429/500
+// на рівні редиректу echo — це тимчасово і проходить з повторної спроби.
+// Повертає {ok, text, status}. ok=false лише коли всі спроби провалились.
+async function fetchWithRetry(url,opts,tries=3){
+  let lastErr=null;
+  for(let i=0;i<tries;i++){
+    try{
+      const r=await fetch(url,opts);
+      // 200-299 — успіх. 404/429/500/502/503 — тимчасово, повторюємо.
+      if(r.ok){return{ok:true,text:await r.text(),status:r.status};}
+      if(![404,429,500,502,503,429].includes(r.status)){
+        // Інші коди (403 тощо) не ретраїмо — повертаємо як є
+        return{ok:false,text:await r.text().catch(()=>""),status:r.status};
+      }
+      lastErr=`HTTP ${r.status}`;
+    }catch(e){lastErr=e;}
+    // Пауза перед наступною спробою: 400мс, 900мс (експоненційно + джитер)
+    if(i<tries-1)await new Promise(res=>setTimeout(res,400*(i+1)+Math.random()*200));
+  }
+  return{ok:false,text:"",status:0,error:lastErr};
+}
+
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
     let url=`${apiUrl}?action=${encodeURIComponent(action)}`;
     if(data)for(const[k,v]of Object.entries(data))url+=`&${k}=${encodeURIComponent(typeof v==="object"?JSON.stringify(v):v)}`;
     if(window.__authToken)url+=`&authToken=${encodeURIComponent(window.__authToken)}`;
-    const r=await fetch(url,{method:"GET",redirect:"follow"});
-    const text=await r.text();
-    try{const j=JSON.parse(text);if(j&&j.error==="AUTH_REQUIRED"&&action!=="checkAccess"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
+    const r=await fetchWithRetry(url,{method:"GET",redirect:"follow"});
+    if(!r.ok)return null; // всі спроби провалились — тимчасова мережева проблема, НЕ викидаємо на вхід
+    try{const j=JSON.parse(r.text);if(j&&j.error==="AUTH_REQUIRED"&&action!=="checkAccess"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
 // POST для великих даних (чеклист, задачі) — обходить ліміт GET URL
@@ -428,9 +450,9 @@ async function sheetsPost(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
     const body=JSON.stringify({action,authToken:window.__authToken||"",...data});
-    const r=await fetch(apiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body});
-    const text=await r.text();
-    try{const j=JSON.parse(text);if(j&&j.error==="AUTH_REQUIRED"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
+    const r=await fetchWithRetry(apiUrl,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain"},body});
+    if(!r.ok)return null; // всі спроби провалились — НЕ викидаємо на вхід
+    try{const j=JSON.parse(r.text);if(j&&j.error==="AUTH_REQUIRED"){window.__onAuthExpired&&window.__onAuthExpired();}return j;}catch{return null;}
   }catch(e){console.error(e);return null;}
 }
 
@@ -1982,18 +2004,25 @@ function LoginScreen({onLogin}){
     // Чекаємо поки завантажиться бібліотека Google
     const init=()=>{
       if(!window.google?.accounts?.id){setTimeout(init,200);return;}
-      window.google.accounts.id.initialize({
-        client_id:GOOGLE_CLIENT_ID,
-        callback:(resp)=>{
-          const token=resp.credential;
-          const info=decodeJwt(token);
-          if(!info?.email){setErr("Не вдалося отримати email");return;}
-          window.__authToken=token;
-          localStorage.setItem("cppr_auth_token",token);
-          localStorage.setItem("cppr_auth_email",info.email);
-          onLogin(token,info);
-        },
-      });
+      // initialize() викликаємо ЛИШЕ РАЗ глобально (інакше GSI сварится
+      // "called multiple times" при кожному перемонтуванні екрану входу)
+      if(!window.__gsiInited){
+        window.google.accounts.id.initialize({
+          client_id:GOOGLE_CLIENT_ID,
+          callback:(resp)=>{
+            const token=resp.credential;
+            const info=decodeJwt(token);
+            if(!info?.email){setErr("Не вдалося отримати email");return;}
+            window.__authToken=token;
+            localStorage.setItem("cppr_auth_token",token);
+            localStorage.setItem("cppr_auth_email",info.email);
+            (window.__gsiOnLogin||onLogin)(token,info);
+          },
+        });
+        window.__gsiInited=true;
+      }
+      // Актуальний колбек — на випадок що onLogin змінився між монтуваннями
+      window.__gsiOnLogin=onLogin;
       if(btnRef.current){
         window.google.accounts.id.renderButton(btnRef.current,{theme:"filled_blue",size:"large",text:"signin_with",locale:"uk",width:280});
       }
@@ -2083,11 +2112,23 @@ function App(){
       setAuthEmail(email||"");
       setAuthState("denied");
       return false;
-    }else{
-      // Токен невалідний/протух (denied:false) — треба увійти заново
+    }else if(res&&res.error==="AUTH_REQUIRED"){
+      // Бекенд ЯВНО сказав що токен невалідний/протух — треба увійти заново
       localStorage.removeItem("cppr_auth_token");
       localStorage.removeItem("cppr_auth_email");
       window.__authToken=null;
+      setAuthState("login");
+      return false;
+    }else{
+      // res===null — тимчасова мережева проблема (404 від навантаження, не відповідь бекенду).
+      // НЕ розлогінюємо. Даємо доступ на основі збереженого токена і пробуємо ще раз за 3с.
+      if(token&&email){
+        setAuthEmail(email);setAuthState("ok");
+        setTimeout(()=>{sheetsRequest(SHEETS_API_URL,"checkAccess",{}).then(r=>{
+          if(r&&r.denied){handleLogout();}
+        });},3000);
+        return true;
+      }
       setAuthState("login");
       return false;
     }
@@ -2103,6 +2144,23 @@ function App(){
     setAuthState("login");
     setAuthEmail("");
   };
+  // Перед закриттям/перезавантаженням — форсимо відкладене збереження на бекенд.
+  useEffect(()=>{
+    const handler=()=>{
+      if(pendingSaveRef.current){
+        // Синхронний best-effort: локальні дані вже збережені, шлемо upsert через sendBeacon
+        try{
+          const ev=pendingSaveRef.current;
+          const body=JSON.stringify({action:"upsert",authToken:window.__authToken||"",ev:JSON.stringify({...ev,checklist:[],taskDraft:[]})});
+          if(navigator.sendBeacon&&config.sheetsApiUrl){
+            navigator.sendBeacon(config.sheetsApiUrl,new Blob([body],{type:"text/plain"}));
+          }
+        }catch(e){}
+      }
+    };
+    window.addEventListener("beforeunload",handler);
+    return()=>window.removeEventListener("beforeunload",handler);
+  },[config.sheetsApiUrl]);
   useEffect(()=>{
     // Якщо CLIENT_ID не налаштований — пропускаємо автентифікацію (режим розробки)
     if(GOOGLE_CLIENT_ID.startsWith("ВАШ_CLIENT_ID")){setAuthState("ok");return;}
@@ -2166,31 +2224,53 @@ function App(){
     })();
   },[authState]);
 
-  const saveEvs=async(list,changedId)=>{
-    setSaving(true);localStorage.setItem("cppr_events_v3",JSON.stringify(list));
-    if(config.sheetsApiUrl&&changedId){
-      const ev=list.find(e=>e.id===changedId);
-      if(ev){
-        // Передаємо без чеклиста і чернетки щоб не перевищити ліміт GET URL
-        const evToSend={...ev,checklist:[],taskDraft:[]};
-        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
-        // Якщо є чеклист — зберігаємо частинами (GET має ліміт ~2кБ)
-        if(ev.checklist?.length){
-          const chunkSize=15;
-          for(let i=0;i<ev.checklist.length;i+=chunkSize){
-            await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
-          }
+  const saveTimerRef=useRef(null);
+  const pendingSaveRef=useRef(null);
+
+  // Синхронізація заявки з бекендом (важкі запити). Викликається з дебаунсом.
+  const syncEvToBackend=async(ev)=>{
+    if(!config.sheetsApiUrl||!ev)return;
+    setSaving(true);
+    try{
+      // Передаємо без чеклиста і чернетки щоб не перевищити ліміт GET URL
+      const evToSend={...ev,checklist:[],taskDraft:[]};
+      await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
+      // Чеклист — частинами, ПОСЛІДОВНО (не залпом), щоб не перевантажити бекенд
+      if(ev.checklist?.length){
+        const chunkSize=15;
+        for(let i=0;i<ev.checklist.length;i+=chunkSize){
+          await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
         }
-        // Чернетку задач зберігаємо окремим POST (великий масив, не влазить у GET)
-        await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
       }
-    } else if(config.sheetsApiUrl){
-      for(const ev of list){
-        const evToSend={...ev,checklist:[],taskDraft:[]};
-        await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
-      }
+      // Чернетку — окремим POST після чеклиста (теж послідовно)
+      await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
+    }finally{setSaving(false);}
+  };
+
+  // saveEvs: локальне збереження — миттєве; бекенд — з дебаунсом 1.4с,
+  // щоб серія швидких правок (редагування чернетки) давала ОДИН пакет запитів, а не залп.
+  const saveEvs=(list,changedId)=>{
+    localStorage.setItem("cppr_events_v3",JSON.stringify(list));
+    if(!config.sheetsApiUrl)return;
+    if(changedId){
+      const ev=list.find(e=>e.id===changedId);
+      if(!ev)return;
+      pendingSaveRef.current=ev; // запам'ятовуємо найсвіжіший стан
+      if(saveTimerRef.current)clearTimeout(saveTimerRef.current);
+      setSaving(true);
+      saveTimerRef.current=setTimeout(()=>{
+        const toSave=pendingSaveRef.current;pendingSaveRef.current=null;
+        syncEvToBackend(toSave);
+      },1400);
+    }else{
+      // Масове збереження (без changedId) — послідовно, одразу
+      (async()=>{setSaving(true);try{for(const ev of list){await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify({...ev,checklist:[],taskDraft:[]})});}}finally{setSaving(false);}})();
     }
-    setSaving(false);
+  };
+  // Примусово зберегти негайно (перед критичними діями: розсилка, звіт, зміна статусу)
+  const flushSave=async()=>{
+    if(saveTimerRef.current){clearTimeout(saveTimerRef.current);saveTimerRef.current=null;}
+    if(pendingSaveRef.current){const ev=pendingSaveRef.current;pendingSaveRef.current=null;await syncEvToBackend(ev);}
   };
 
   const getEv=()=>evs.find(e=>e.id===cid)||null;

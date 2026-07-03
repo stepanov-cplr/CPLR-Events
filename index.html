@@ -2232,9 +2232,9 @@ function App(){
     if(!config.sheetsApiUrl||!ev)return;
     setSaving(true);
     try{
-      // Передаємо без чеклиста і чернетки щоб не перевищити ліміт GET URL
+      // upsert через POST — заявка з бюджетом/підсумками не влазить у GET URL (400 Bad Request)
       const evToSend={...ev,checklist:[],taskDraft:[]};
-      await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
+      await sheetsPost(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
       // Чеклист — частинами, ПОСЛІДОВНО (не залпом), щоб не перевантажити бекенд
       if(ev.checklist?.length){
         const chunkSize=15;
@@ -2264,7 +2264,7 @@ function App(){
       },1400);
     }else{
       // Масове збереження (без changedId) — послідовно, одразу
-      (async()=>{setSaving(true);try{for(const ev of list){await sheetsRequest(config.sheetsApiUrl,"upsert",{ev:JSON.stringify({...ev,checklist:[],taskDraft:[]})});}}finally{setSaving(false);}})();
+      (async()=>{setSaving(true);try{for(const ev of list){await sheetsPost(config.sheetsApiUrl,"upsert",{ev:JSON.stringify({...ev,checklist:[],taskDraft:[]})});}}finally{setSaving(false);}})();
     }
   };
   // Примусово зберегти негайно (перед критичними діями: розсилка, звіт, зміна статусу)

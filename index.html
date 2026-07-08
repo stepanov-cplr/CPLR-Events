@@ -434,6 +434,16 @@ async function fetchWithRetry(url,opts,tries=3){
   return{ok:false,text:"",status:0,error:lastErr};
 }
 
+// ── Захист несинхронізованих правок (1·Pending) ──
+// Мапа id заявки → токен (час) останньої локальної правки, яка ще НЕ підтверджена бекендом.
+// При завантаженні заявки з цієї мапи беруться з localStorage (вони новіші за бекенд),
+// щоб перезавантаження після викидання не затирало щойно зроблені правки дедлайнів.
+const PENDING_KEY="cppr_pending_sync";
+function getPendingMap(){try{return JSON.parse(localStorage.getItem(PENDING_KEY)||"{}")||{};}catch{return{};}}
+function setPendingMap(m){try{localStorage.setItem(PENDING_KEY,JSON.stringify(m));}catch{}}
+function markPending(id){if(!id)return;const m=getPendingMap();m[id]=Date.now();setPendingMap(m);}
+function clearPending(id){const m=getPendingMap();if(m[id]!==undefined){delete m[id];setPendingMap(m);}}
+
 async function sheetsRequest(apiUrl,action,data){
   if(!apiUrl)return null;
   try{
@@ -1536,12 +1546,9 @@ function SendEmailsModal({ev, team, config, onClose}){
     if(!config.sheetsApiUrl){ showToast("Немає підключення"); return; }
     setIsSending(true);
     try{
-      // Зберігаємо чеклист
-      const clData = cl.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,d:t.d,done:t.done||false,doneAt:t.doneAt,dlDate:t.dlDate,deps:t.deps,blocksCount:t.blocksCount,manualWho:t.manualWho,manualDate:t.manualDate,manualDelete:t.manualDelete}));
-      const chunkSize=10;
-      for(let i=0;i<clData.length;i+=chunkSize){
-        await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:clData.slice(i,i+chunkSize),total:clData.length});
-      }
+      // Зберігаємо ВЕСЬ чеклист атомарно (з тумбстоунами й усіма полями) — щоб бекенд
+      // читав актуальну версію і не втрачав dlDate/manualDate при розсилці.
+      await sheetsPost(config.sheetsApiUrl,"saveChecklist",{id:ev.id,cl:ev.checklist||[]});
       // Передаємо список отримувачів в скрипт
       const res = await sheetsPost(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:allRecipients});
       if(res?.ok){ setSent(res.sent||allRecipients.length); }
@@ -2217,7 +2224,29 @@ function App(){
         }
         // Завантажуємо заявки
         const res=await sheetsRequest(SHEETS_API_URL,"getAll",{});
-        if(res?.events){setEvs(res.events);setLoading(false);return;}
+        if(res?.events){
+          // 1·Pending: заявки з незбереженими локальними правками НЕ затираємо бекендом.
+          // Беремо їх локальну (новішу) версію і до-зберігаємо на бекенд.
+          const pend=getPendingMap();
+          const pendIds=Object.keys(pend);
+          let merged=res.events;
+          if(pendIds.length){
+            let localEvs=[];try{localEvs=JSON.parse(localStorage.getItem("cppr_events_v3")||"[]");}catch{}
+            const localById={};for(const e of localEvs)localById[e.id]=e;
+            merged=res.events.map(be=>(pend[be.id]&&localById[be.id])?localById[be.id]:be);
+            // Локальні заявки, яких ще нема на бекенді (нова, не встигла синхронізуватись)
+            for(const le of localEvs){if(pend[le.id]&&!merged.find(e=>e.id===le.id))merged=[le,...merged];}
+          }
+          setEvs(merged);
+          setLoading(false);
+          // До-зберігаємо незасинхронізовані заявки (позначаємо чеклист і чернетку брудними, щоб пішли повністю)
+          for(const id of pendIds){
+            const e=merged.find(x=>x.id===id);
+            if(e){dirtyRef.current[id]={checklist:true,taskDraft:true};syncEvToBackend(e);}
+            else clearPending(id); // заявки вже нема (видалена) — прибираємо висячу мітку
+          }
+          return;
+        }
       }
       try{const s=localStorage.getItem("cppr_events_v3");if(s)setEvs(JSON.parse(s));}catch(e){}
       setLoading(false);
@@ -2237,28 +2266,31 @@ function App(){
     // Правки, що прийдуть під час await, накопичаться у свіжому об'єкті й підуть наступним пакетом.
     const dirty=dirtyRef.current[ev.id]||{};
     dirtyRef.current[ev.id]={};
+    // Токен правки, яку зараз зберігаємо (1·Pending). Знімемо мітку лише якщо він не зміниться.
+    const tokenAtSync=getPendingMap()[ev.id];
     setSaving(true);
+    let allOk=true;
     try{
       // upsert через POST — заявка з бюджетом/підсумками не влазить у GET URL (400 Bad Request).
       // Несе summary/коментарі/бюджет (вони малі) — тому йде завжди.
       const evToSend={...ev,checklist:[],taskDraft:[]};
-      await sheetsPost(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
-      // Чеклист — ЛИШЕ якщо реально змінювався в цьому пакеті. Раніше перезаливався щоразу
-      // (≈7 запитів на один коментар) → зайвий залп до бекенду і хибні викидання сесії.
-      if(dirty.checklist&&ev.checklist?.length){
-        const chunkSize=15;let failed=false;
-        for(let i=0;i<ev.checklist.length;i+=chunkSize){
-          const r=await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
-          if(r===null)failed=true;
-        }
-        if(failed)dirtyRef.current[ev.id].checklist=true; // не зберіглось — лишаємо брудним для повтору
+      const up=await sheetsPost(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
+      if(up===null)allOk=false;
+      // Чеклист — ОДНИМ атомарним записом (2·Атом), лише якщо реально змінювався (B).
+      // Раніше слався чанками через merge-by-offset — обрив на середині / видалення задач
+      // лишали напів-стару версію. Тепер увесь масив (з тумбстоунами) замінюється цілком.
+      if(dirty.checklist){
+        const r=await sheetsPost(config.sheetsApiUrl,"saveChecklist",{id:ev.id,cl:ev.checklist||[]});
+        if(r===null){allOk=false;dirtyRef.current[ev.id].checklist=true;} // не зберіглось — лишаємо брудним
       }
       // Чернетка — теж лише якщо змінювалась.
       if(dirty.taskDraft){
         const r=await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
-        if(r===null)dirtyRef.current[ev.id].taskDraft=true;
+        if(r===null){allOk=false;dirtyRef.current[ev.id].taskDraft=true;}
       }
     }finally{setSaving(false);}
+    // Знімаємо мітку «незбережено» лише якщо все збереглось І під час збереження не прийшла новіша правка.
+    if(allOk){const m=getPendingMap();if(m[ev.id]===tokenAtSync)clearPending(ev.id);}
   };
 
   // saveEvs: локальне збереження — миттєве; бекенд — з дебаунсом 1.4с,
@@ -2269,6 +2301,7 @@ function App(){
     if(changedId){
       const ev=list.find(e=>e.id===changedId);
       if(!ev)return;
+      markPending(changedId); // 1·Pending: правка ще не підтверджена бекендом
       pendingSaveRef.current=ev; // запам'ятовуємо найсвіжіший стан
       if(saveTimerRef.current)clearTimeout(saveTimerRef.current);
       setSaving(true);
@@ -2306,7 +2339,7 @@ function App(){
     const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);
   };
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
-  const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
+  const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);clearPending(id);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
   const copyEv=(id,e)=>{
     e.stopPropagation();
     const src=evs.find(ev=>ev.id===id);if(!src)return;
@@ -2344,6 +2377,7 @@ function App(){
     // Зберігаємо задачі додані вручну (їх немає в шаблоні)
     const manualTasks=oldCl.filter(t=>t.manualAdd&&!t.manualDelete);
     upd({checklist:[...finalCl,...manualTasks]});
+    flushSave(); // 1·Флаш: одразу зберегти на бекенд, не чекати дебаунс (щоб не втратити при викиданні)
     setTab("checklist");
     showToast(`Чеклист оновлено: ${finalCl.length+manualTasks.length} задач`);
   };
@@ -2451,6 +2485,7 @@ function App(){
       return{...t,done,doneAt,overdue:od};
     });
     upd({checklist,taskDraft:null});
+    flushSave(); // 1·Флаш: одразу зберегти сформований чеклист на бекенд
     setTab("checklist");
     showToast(`Чеклист сформовано: ${checklist.length} задач`);
   };
@@ -2485,12 +2520,9 @@ function App(){
     setSending(true);
     showToast("Надсилаємо листи...");
     try{
-      // Зберігаємо чеклист частинами по 10 задач
-      const cl=ev.checklist.map(t=>({g:t.g,t:t.t,who:t.who,dl:t.dl,done:t.done||false}));
-      const chunkSize=10;
-      for(let i=0;i<cl.length;i+=chunkSize){
-        await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:cl.slice(i,i+chunkSize),total:cl.length});
-      }
+      // Зберігаємо ВЕСЬ чеклист атомарно (раніше слався урізаний до 5 полів → бекенд втрачав
+      // dlDate/manualDate/deps, ламало прострочення та AAR).
+      await sheetsPost(config.sheetsApiUrl,"saveChecklist",{id:ev.id,cl:ev.checklist||[]});
       // Надсилаємо листи — команда читається скриптом з аркушу "Налаштування"
       const res=await sheetsPost(config.sheetsApiUrl,"sendEmails",{evId:ev.id,recipients:[]});
       if(res?.ok)showToast(`✓ Надіслано листів: ${res.sent}`);

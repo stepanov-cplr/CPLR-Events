@@ -2226,24 +2226,38 @@ function App(){
 
   const saveTimerRef=useRef(null);
   const pendingSaveRef=useRef(null);
+  // Що змінилось у заявці з моменту останнього збереження: {evId:{checklist,taskDraft}}.
+  // Дозволяє НЕ перезаливати важкий чеклист при дрібних правках (коментар, бюджет) — варіант B.
+  const dirtyRef=useRef({});
 
   // Синхронізація заявки з бекендом (важкі запити). Викликається з дебаунсом.
   const syncEvToBackend=async(ev)=>{
     if(!config.sheetsApiUrl||!ev)return;
+    // Знімаємо й одразу скидаємо прапорці «брудних» частин для цієї заявки.
+    // Правки, що прийдуть під час await, накопичаться у свіжому об'єкті й підуть наступним пакетом.
+    const dirty=dirtyRef.current[ev.id]||{};
+    dirtyRef.current[ev.id]={};
     setSaving(true);
     try{
-      // upsert через POST — заявка з бюджетом/підсумками не влазить у GET URL (400 Bad Request)
+      // upsert через POST — заявка з бюджетом/підсумками не влазить у GET URL (400 Bad Request).
+      // Несе summary/коментарі/бюджет (вони малі) — тому йде завжди.
       const evToSend={...ev,checklist:[],taskDraft:[]};
       await sheetsPost(config.sheetsApiUrl,"upsert",{ev:JSON.stringify(evToSend)});
-      // Чеклист — частинами, ПОСЛІДОВНО (не залпом), щоб не перевантажити бекенд
-      if(ev.checklist?.length){
-        const chunkSize=15;
+      // Чеклист — ЛИШЕ якщо реально змінювався в цьому пакеті. Раніше перезаливався щоразу
+      // (≈7 запитів на один коментар) → зайвий залп до бекенду і хибні викидання сесії.
+      if(dirty.checklist&&ev.checklist?.length){
+        const chunkSize=15;let failed=false;
         for(let i=0;i<ev.checklist.length;i+=chunkSize){
-          await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
+          const r=await sheetsPost(config.sheetsApiUrl,"saveClChunk",{id:ev.id,offset:i,cl:ev.checklist.slice(i,i+chunkSize),total:ev.checklist.length});
+          if(r===null)failed=true;
         }
+        if(failed)dirtyRef.current[ev.id].checklist=true; // не зберіглось — лишаємо брудним для повтору
       }
-      // Чернетку — окремим POST після чеклиста (теж послідовно)
-      await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
+      // Чернетка — теж лише якщо змінювалась.
+      if(dirty.taskDraft){
+        const r=await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
+        if(r===null)dirtyRef.current[ev.id].taskDraft=true;
+      }
     }finally{setSaving(false);}
   };
 
@@ -2280,7 +2294,17 @@ function App(){
       form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",coffeeItems:[],streamPlatforms:[]},checklist:[]};
     const u=[n,...evs];setEvs(u);saveEvs(u,id);setCid(id);setTab("form");setView("detail");
   };
-  const upd=(patch)=>{const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);};
+  const upd=(patch)=>{
+    // Позначаємо, які важкі частини заявки змінились — щоб syncEvToBackend слав чеклист/чернетку
+    // лише за потреби, а не при кожній дрібній правці (варіант B).
+    if(patch.checklist!==undefined||patch.taskDraft!==undefined){
+      const d=dirtyRef.current[cid]||{};
+      if(patch.checklist!==undefined)d.checklist=true;
+      if(patch.taskDraft!==undefined)d.taskDraft=true;
+      dirtyRef.current[cid]=d;
+    }
+    const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);
+  };
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
   const delEv=(id)=>{if(!confirm("Видалити заявку?"))return;const u=evs.filter(e=>e.id!==id);setEvs(u);sheetsRequest(config.sheetsApiUrl,"delete",{id});localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
   const copyEv=(id,e)=>{

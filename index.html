@@ -376,6 +376,9 @@ function taskDeadline(d,eventDate){
   const dt=new Date(ed);dt.setDate(dt.getDate()-d);return{label:dt.toLocaleDateString("uk-UA"),date:dt};
 }
 
+// Підпис виконавця для звітів/листів/діаграм: порожній who → «Без виконавця» (замість «—»).
+function whoLabel(w){return (w&&String(w).trim())?w:"Без виконавця";}
+
 function genChecklist(f,taskTemplates,team){
   const ed=f.eventDate?new Date(f.eventDate):null;
   const today=new Date();today.setHours(0,0,0,0);
@@ -554,7 +557,7 @@ function generateReportHTML(ev) {
   // Рядки early birds
   const earlyRows = earlyExec.sort((a,b)=>daysDiff(a.doneAt,a.dlDate)>daysDiff(b.doneAt,b.dlDate)?1:-1)
     .map(t=>`<tr style="background:#F0FDF4">
-      <td>${t.t}</td><td>${t.who||'—'}</td>
+      <td>${t.t}</td><td>${whoLabel(t.who)}</td>
       <td style="color:#666">${fmt(t.dlDate)}</td>
       <td style="color:#00916E;font-weight:500">${fmt(t.doneAt)}</td>
       <td style="color:#00916E">-${Math.abs(daysDiff(t.doneAt,t.dlDate))} дн.</td>
@@ -564,7 +567,7 @@ function generateReportHTML(ev) {
   const buildWhoRows=(taskSet)=>{
     const bw={};
     taskSet.forEach(t=>{
-      const w=t.who||'—';
+      const w=whoLabel(t.who);
       if(!bw[w])bw[w]={total:0,done:0,late:0,overdue:0,lateSum:0};
       bw[w].total++;
       if(t.done)bw[w].done++;
@@ -592,14 +595,14 @@ function generateReportHTML(ev) {
   const overdueRows = cl.filter(t=>!t.done&&t.dlDate&&parseDlDate(t.dlDate)<today)
     .sort((a,b)=>a.dlDate>b.dlDate?1:-1)
     .map(t=>`<tr style="background:#FEF2F2">
-      <td>${t.t}</td><td>${t.who||'—'}</td><td style="color:#DC2626;font-weight:500">${fmt(t.dlDate)}</td>
+      <td>${t.t}</td><td>${whoLabel(t.who)}</td><td style="color:#DC2626;font-weight:500">${fmt(t.dlDate)}</td>
       <td style="color:#DC2626">+${overdueDaysCalc(t.dlDate)} дн.</td>
     </tr>`).join('');
 
   // Виконані із запізненням
   const lateRows = lateExec.sort((a,b)=>daysDiff(a.doneAt,a.dlDate)<daysDiff(b.doneAt,b.dlDate)?1:-1)
     .map(t=>`<tr style="background:#FFFBEB">
-      <td>${t.t}</td><td>${t.who||'—'}</td>
+      <td>${t.t}</td><td>${whoLabel(t.who)}</td>
       <td style="color:#666">${fmt(t.dlDate)}</td>
       <td style="color:#D97706;font-weight:500">${fmt(t.doneAt)}</td>
       <td style="color:#D97706">+${daysDiff(t.doneAt,t.dlDate)} дн.</td>
@@ -627,10 +630,10 @@ function generateReportHTML(ev) {
       const blockedNameColor=isBlocked&&!isProblem?'#92400E':nameColor;
       const status=t.done?(isLate?`<span style="color:#D97706;font-weight:600">запізнення</span>`:`<span style="color:#00916E;font-weight:500">вчасно</span>`)
         :(isOvd?`<span style="color:#DC2626;font-weight:600">прострочено</span>`:isBlocked?`<span style="color:#92400E;font-weight:500">🔒 заблоковано</span>`:`<span style="color:#166534;font-weight:500">очікує</span>`);
-      const blockerInfo=isBlocked?`<div style="font-size:9px;color:#92400E;margin-top:2px">Чекає: ${_blockers.map(b=>b.t+' ('+( b.who||'—')+')').join(', ')}</div>`:'';
+      const blockerInfo=isBlocked?`<div style="font-size:9px;color:#92400E;margin-top:2px">Чекає: ${_blockers.map(b=>b.t+' ('+( whoLabel(b.who))+')').join(', ')}</div>`:'';
       return `<tr style="background:${blockedBg}">
         <td style="color:${blockedNameColor};${nameWeight}${t.done&&!isProblem?'text-decoration:line-through;':''}">${t.t}${blockerInfo}</td>
-        <td>${t.who||'—'}</td>
+        <td>${whoLabel(t.who)}</td>
         <td style="color:${dlColor};white-space:nowrap">${fmt(t.dlDate)}</td>
         <td style="color:${t.done?doneColor:'inherit'};white-space:nowrap">${t.done&&t.doneAt?fmt(t.doneAt):'—'}${lateSuffix}</td>
         <td>${status}</td>
@@ -758,7 +761,7 @@ function generateReportHTML(ev) {
 
   ${isAfterEvent&&notDone>0?`<h2>✗ Невиконані задачі (${notDone})</h2>
   <table><thead><tr><th>Задача</th><th>Виконавець</th><th>Дедлайн</th></tr></thead>
-  <tbody>${cl.filter(t=>!t.done).map(t=>`<tr style="background:#FEF2F2"><td>${t.t}</td><td>${t.who||'—'}</td><td>${fmt(t.dlDate)}</td></tr>`).join('')}</tbody></table>`:''}
+  <tbody>${cl.filter(t=>!t.done).map(t=>`<tr style="background:#FEF2F2"><td>${t.t}</td><td>${whoLabel(t.who)}</td><td>${fmt(t.dlDate)}</td></tr>`).join('')}</tbody></table>`:''}
 
   ${(()=>{
     // AAR: будуємо зворотній граф з deps які є в чеклисті
@@ -797,8 +800,8 @@ function generateReportHTML(ev) {
             ?`<span style="background:#E8F5E9;color:#166534;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px">дедлайн: ${fmt(pt.dlDate)} · залишилось ${ptDaysLeft} дн.</span>`
             :'';
       const titleText=isLate
-        ?`⏱ <b>${pt.t}</b> — запізнення <b style="color:#D97706">+${lateDays} дн.</b> (${pt.who||'—'}) ${dlBadge}`
-        :`✗ <b>${pt.t}</b> — не виконано (${pt.who||'—'}) ${dlBadge}`;
+        ?`⏱ <b>${pt.t}</b> — запізнення <b style="color:#D97706">+${lateDays} дн.</b> (${whoLabel(pt.who)}) ${dlBadge}`
+        :`✗ <b>${pt.t}</b> — не виконано (${whoLabel(pt.who)}) ${dlBadge}`;
       // Таблиця: прострочені + запізнілі
       const impactedHtml=impacted.length?`
         <div style="font-size:10px;font-weight:700;color:#B91C1C;margin:6px 0 3px">Можливий вплив на ${impacted.length} задач${impacted.length===1?'у':''}:</div>
@@ -808,14 +811,14 @@ function generateReportHTML(ev) {
             const dlColor=x.overdue?'#B91C1C':'#D97706';
             const dlSub=x.overdue?`<br><span style="font-size:10px">прострочено ${Math.abs(x.daysLeft)} дн.</span>`:(x.late?`<br><span style="font-size:10px">+${x.lateDays} дн. запізн.</span>`:'');
             const stText=x.overdue?'Не виконано':`+${x.lateDays} дн. запізн.`;
-            return`<tr style="background:#FFF5F5"><td style="padding:4px 7px;border:1px solid #FECACA">${x.t}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:#666">${x.who||'—'}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:500;white-space:nowrap">${fmt(x.dlDate)}${dlSub}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:600">${stText}</td></tr>`;}).join('')}
+            return`<tr style="background:#FFF5F5"><td style="padding:4px 7px;border:1px solid #FECACA">${x.t}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:#666">${whoLabel(x.who)}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:500;white-space:nowrap">${fmt(x.dlDate)}${dlSub}</td><td style="padding:4px 7px;border:1px solid #FECACA;color:${dlColor};font-weight:600">${stText}</td></tr>`;}).join('')}
         </table>`:'';
       // Таблиця: очікують (дедлайн попереду)
       const pendingHtml=pending.length?`
         <div style="font-size:10px;font-weight:700;color:#92400E;margin:6px 0 3px">⚠ Під загрозою (${pending.length}) — залежить від невиконаної задачі, але ще є час:</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">
           <tr style="background:#F0FAF4"><th style="padding:4px 7px;border:1px solid #BBE0CC;text-align:left">Задача</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Виконавець</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Дедлайн</th><th style="padding:4px 7px;border:1px solid #BBE0CC">Стан</th></tr>
-          ${pending.map(x=>`<tr style="background:#F0FAF4"><td style="padding:4px 7px;border:1px solid #BBE0CC">${x.t}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#666">${x.who||'—'}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500;white-space:nowrap">${fmt(x.dlDate)}<br><span style="font-size:10px">залишилось ${x.daysLeft} дн.</span></td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500">Очікує</td></tr>`).join('')}
+          ${pending.map(x=>`<tr style="background:#F0FAF4"><td style="padding:4px 7px;border:1px solid #BBE0CC">${x.t}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#666">${whoLabel(x.who)}</td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500;white-space:nowrap">${fmt(x.dlDate)}<br><span style="font-size:10px">залишилось ${x.daysLeft} дн.</span></td><td style="padding:4px 7px;border:1px solid #BBE0CC;color:#166534;font-weight:500">Очікує</td></tr>`).join('')}
         </table>`:'';
       // Варіант C: міні-таблиця для вчасно виконаних
       const okHtml=okTasks.length?`
@@ -951,7 +954,7 @@ function generateDocHTML(ev,budget,blocks,docType){
         const blk=t.blocksCount||0;
         return`<tr style="background:${rowBg}">
           <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:${t.done?"#9CA3AF":"#1A2535"};text-decoration:${t.done?"line-through":"none"}">${t.t}</td>
-          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:#374151;white-space:nowrap">${t.who||"—"}</td>
+          <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:#374151;white-space:nowrap">${whoLabel(t.who)}</td>
           <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;color:${isOverdue?"#DC2626":"#374151"};white-space:nowrap;font-weight:${isOverdue?700:400}">${fmtDl(t.dlDate||t.dl)}</td>
           <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;text-align:center">${statusCell}</td>
           <td style="padding:5px 8px;border:1px solid #E5E7EB;font-size:11px;text-align:center">${blk>0?impBadge(blk,t.done):"<span style='color:#D1D5DB;font-size:10px'>—</span>"}</td>
@@ -1467,7 +1470,7 @@ function GanttChart({ev}){
 
       {hover&&<div style={{position:"absolute",top:8,right:8,background:"#252868",color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:11,maxWidth:300,boxShadow:"0 4px 12px rgba(0,0,0,0.3)",pointerEvents:"none",zIndex:10}}>
         <div style={{fontWeight:700,marginBottom:3}}>{hover.t}</div>
-        <div style={{opacity:.85}}>👤 {hover.who||"—"}</div>
+        <div style={{opacity:.85}}>👤 {whoLabel(hover.who)}</div>
         <div style={{opacity:.85}}>📅 Дедлайн: {hover.dl.toLocaleDateString("uk-UA")}</div>
         {hover.done&&<div style={{color:"#7DE0B8"}}>✓ Виконано{hover.isLate?" (із запізненням)":""}</div>}
         {hover.isOvd&&<div style={{color:"#FCA5A5"}}>⚠ Прострочено</div>}
@@ -3330,7 +3333,7 @@ function App(){
             <div className="grid2"style={{gap:8}}>
               <select value={draftNewTask.who}onChange={e=>setDraftNewTask({...draftNewTask,who:e.target.value})}
                 style={{width:"100%",padding:"8px 11px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)",background:"var(--bg-white)"}}>
-                <option value="">— виконавець —</option>
+                <option value="">Без виконавця</option>
                 {(team||DEFAULT_TEAM).map(m=><option key={m.email}value={m.name}>{m.name}</option>)}
               </select>
               <div>
@@ -3379,7 +3382,7 @@ function App(){
                       <span style={{fontSize:10,color:"var(--text3)"}}>Хто:</span>
                       <select value={t.who||""}onChange={e=>draftEditField(idx,"who",e.target.value)}
                         style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,background:"var(--bg-white)",color:"var(--text2)",fontFamily:"var(--font)",maxWidth:170}}>
-                        <option value="">— оберіть —</option>
+                        <option value="">Без виконавця</option>
                         {(team||DEFAULT_TEAM).map(m=><option key={m.name}value={m.name}>{m.name}</option>)}
                         {t.who&&!(team||DEFAULT_TEAM).find(m=>m.name===t.who)&&<option value={t.who}>{t.who}</option>}
                       </select>
@@ -3482,7 +3485,7 @@ function App(){
                     </div>
                     {isBlocked&&<div style={{fontSize:10,color:"#92400E",marginTop:2,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
                       <span style={{fontWeight:600}}>🔒 Чекає на:</span>
-                      {blockers.map((b,bi)=><span key={bi} style={{background:"#FEF3C7",color:"#92400E",padding:"0px 6px",borderRadius:8,fontSize:10}}>{b.t} ({b.who||'—'})</span>)}
+                      {blockers.map((b,bi)=><span key={bi} style={{background:"#FEF3C7",color:"#92400E",padding:"0px 6px",borderRadius:8,fontSize:10}}>{b.t} ({whoLabel(b.who)})</span>)}
                     </div>}
                     {t.done&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Виконано:</span>
@@ -3500,6 +3503,7 @@ function App(){
                       <select value={t.who||""}onChange={e=>{e.stopPropagation();changeTaskAssignee(idx,e.target.value);}}
                         onClick={e=>e.stopPropagation()}
                         style={{fontSize:11,padding:"1px 4px",border:"1px solid var(--border)",borderRadius:4,background:"var(--bg-white)",color:isOd?"var(--red)":"var(--text2)",fontFamily:"var(--font)",cursor:"pointer",maxWidth:180}}>
+                        <option value="">Без виконавця</option>
                         {(team||DEFAULT_TEAM).map(m=><option key={m.name}value={m.name}>{m.name}</option>)}
                         {t.who&&!(team||DEFAULT_TEAM).find(m=>m.name===t.who)&&<option value={t.who}>{t.who}</option>}
                       </select>
@@ -3533,7 +3537,7 @@ function App(){
       </div>
       {!ev.checklist?.length?<div style={{fontSize:13,color:"var(--text2)"}}>Спочатку затвердіть заявку.</div>
         :(() => {
-          const assignees=[...new Set(ev.checklist.map(t=>t.who))];
+          const assignees=[...new Set(ev.checklist.map(t=>t.who))].filter(Boolean);
           return assignees.map(who=>{
             const wtasks=ev.checklist.filter(t=>t.who===who);
             const member=(team||DEFAULT_TEAM).find(m=>m.name===who);

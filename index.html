@@ -2363,9 +2363,10 @@ function App(){
     const ev=getEv();
     const newCl=genChecklist(ev.form,tasks,team);
     const oldCl=ev.checklist||[];
-    // Зберігаємо статус виконання і вручну змінені дати
+    // Зіставляємо задачі за ТЕКСТОМ (він унікальний і стабільний), а не за текстом+групою:
+    // ярлик групи g може дрейфувати (зміна шаблону/формату) і ламати зіставлення.
     const merged=newCl.map(newTask=>{
-      const existing=oldCl.find(old=>old.t===newTask.t&&old.g===newTask.g);
+      const existing=oldCl.find(old=>old.t===newTask.t);
       if(!existing)return newTask;
       let base={...newTask,done:existing.done,overdue:existing.overdue};
       // Зберігаємо вручну зміненого виконавця
@@ -2374,9 +2375,9 @@ function App(){
       if(existing.manualDate)base={...base,dlDate:existing.dlDate,dl:existing.dl,manualDate:true};
       return base;
     });
-    // Задачі видалені вручну (є в oldCl з manualDelete) — не додаємо назад
-    const deletedTexts=new Set(oldCl.filter(t=>t.manualDelete).map(t=>t.t+"||"+t.g));
-    const finalCl=merged.filter(t=>!deletedTexts.has(t.t+"||"+t.g));
+    // Задачі видалені вручну (є в oldCl з manualDelete) — не додаємо назад. Ключ — лише текст.
+    const deletedTexts=new Set(oldCl.filter(t=>t.manualDelete).map(t=>t.t));
+    const finalCl=merged.filter(t=>!deletedTexts.has(t.t));
     // Зберігаємо задачі додані вручну (їх немає в шаблоні)
     const manualTasks=oldCl.filter(t=>t.manualAdd&&!t.manualDelete);
     upd({checklist:[...finalCl,...manualTasks]});
@@ -2580,7 +2581,7 @@ function App(){
   const restoreTask=(t)=>{
     const ev=getEv();
     const cl=ev.checklist.map(task=>
-      task.t===t.t&&task.g===t.g?{...task,manualDelete:false,hidden:false}:task
+      task.t===t.t?{...task,manualDelete:false,hidden:false}:task
     );
     upd({checklist:cl});
     showToast("Задачу відновлено");

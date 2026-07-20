@@ -2479,16 +2479,29 @@ function App(){
     const ev=getEv();const draft=ev.taskDraft||[];
     if(!draft.length){showToast("Список задач порожній");return;}
     const today=new Date();today.setHours(0,0,0,0);
-    // Зберігаємо відмітки виконання зі старого чеклиста (якщо це повторне редагування)
+    // Зберігаємо відмітки виконання зі старого чеклиста (якщо це повторне редагування).
+    // Зіставлення за ТЕКСТОМ (унікальний, стабільний) — ярлик групи g може дрейфувати.
     const oldCl=ev.checklist||[];
     const checklist=draft.map(t=>{
-      const existing=oldCl.find(o=>o.t===t.t&&o.g===t.g);
+      const existing=oldCl.find(o=>o.t===t.t);
       const done=existing?.done||false;
       const doneAt=existing?.doneAt||null;
       const od=!done&&!!t.dlDate&&parseDlDate(t.dlDate)<today;
       return{...t,done,doneAt,overdue:od};
     });
-    upd({checklist,taskDraft:null});
+    // ── Тумбстоуни (позначки «видалено») ──
+    // Раніше чернетка ПОВНІСТЮ заміщала чеклист, і всі позначки про видалення зникали:
+    // задача, прибрана в чернетці або видалена раніше, поверталась при «Оновити чеклист».
+    // Тепер позначку отримує кожна задача (зі старого чеклиста або з шаблону), якої нема в чернетці.
+    const draftTexts=new Set(draft.map(t=>t.t));
+    const tomb=[];const seen=new Set();
+    const addTomb=t=>{
+      if(!t||!t.t||draftTexts.has(t.t)||seen.has(t.t))return;
+      seen.add(t.t);tomb.push({...t,manualDelete:true,hidden:true,done:false});
+    };
+    oldCl.forEach(addTomb);                          // видалені раніше з живого чеклиста
+    genChecklist(ev.form,tasks,team).forEach(addTomb); // прибрані в чернетці (шаблонні)
+    upd({checklist:[...checklist,...tomb],taskDraft:null});
     flushSave(); // 1·Флаш: одразу зберегти сформований чеклист на бекенд
     setTab("checklist");
     showToast(`Чеклист сформовано: ${checklist.length} задач`);

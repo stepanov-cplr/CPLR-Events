@@ -2358,29 +2358,41 @@ function App(){
     sheetsPost(config.sheetsApiUrl,"sendApprovalInfo",{evId:srcEv.id,form:srcEv.form||{}});
     showToast("📧 Інформацію надіслано на centre@pravo.org.ua");
   };
-  const approve=()=>{const ev=getEv();triggerStatusNotification(ev,"approved");sendApprovalInfo(ev);upd({status:"approved",checklist:genChecklist(ev.form,tasks,team),approvedAt:new Date().toISOString()});setTab("checklist");showToast("Затверджено! Чеклист сформовано.");};
-  const updateChecklist=()=>{
-    const ev=getEv();
-    const newCl=genChecklist(ev.form,tasks,team);
-    const oldCl=ev.checklist||[];
-    // Зіставляємо задачі за ТЕКСТОМ (він унікальний і стабільний), а не за текстом+групою:
-    // ярлик групи g може дрейфувати (зміна шаблону/формату) і ламати зіставлення.
+  // Спільна логіка злиття шаблонного чеклиста зі старим. Зіставлення за ТЕКСТОМ задачі
+  // (унікальний і стабільний) — ярлик групи g може дрейфувати і ламати зіставлення.
+  const mergeChecklist=(newCl,oldCl)=>{
     const merged=newCl.map(newTask=>{
       const existing=oldCl.find(old=>old.t===newTask.t);
       if(!existing)return newTask;
-      let base={...newTask,done:existing.done,overdue:existing.overdue};
+      let base={...newTask,done:existing.done,overdue:existing.overdue,doneAt:existing.doneAt};
       // Зберігаємо вручну зміненого виконавця
       if(existing.manualWho)base={...base,who:existing.who,manualWho:true};
       // Зберігаємо вручну змінену дату
       if(existing.manualDate)base={...base,dlDate:existing.dlDate,dl:existing.dl,manualDate:true};
       return base;
     });
-    // Задачі видалені вручну (є в oldCl з manualDelete) — не додаємо назад. Ключ — лише текст.
+    // Видалені вручну — не додаємо назад
     const deletedTexts=new Set(oldCl.filter(t=>t.manualDelete).map(t=>t.t));
     const finalCl=merged.filter(t=>!deletedTexts.has(t.t));
-    // Зберігаємо задачі додані вручну (їх немає в шаблоні)
+    // Задачі додані вручну (їх немає в шаблоні)
     const manualTasks=oldCl.filter(t=>t.manualAdd&&!t.manualDelete);
-    upd({checklist:[...finalCl,...manualTasks]});
+    // Тумбстоуни ПЕРЕНОСИМО далі. Раніше вони губились після першого ж «Оновити чеклист»,
+    // тому наступне оновлення повертало видалені задачі назад.
+    const tomb=oldCl.filter(t=>t.manualDelete);
+    return{finalCl,manualTasks,tomb};
+  };
+  const approve=()=>{
+    const ev=getEv();triggerStatusNotification(ev,"approved");sendApprovalInfo(ev);
+    // Якщо чеклист уже існував (повторне затвердження) — зливаємо, а не генеруємо з нуля,
+    // щоб не втратити відмітки виконання, ручні правки й позначки «видалено».
+    const {finalCl,manualTasks,tomb}=mergeChecklist(genChecklist(ev.form,tasks,team),ev.checklist||[]);
+    upd({status:"approved",checklist:[...finalCl,...manualTasks,...tomb],approvedAt:new Date().toISOString()});
+    setTab("checklist");showToast("Затверджено! Чеклист сформовано.");
+  };
+  const updateChecklist=()=>{
+    const ev=getEv();
+    const {finalCl,manualTasks,tomb}=mergeChecklist(genChecklist(ev.form,tasks,team),ev.checklist||[]);
+    upd({checklist:[...finalCl,...manualTasks,...tomb]});
     flushSave(); // 1·Флаш: одразу зберегти на бекенд, не чекати дебаунс (щоб не втратити при викиданні)
     setTab("checklist");
     showToast(`Чеклист оновлено: ${finalCl.length+manualTasks.length} задач`);

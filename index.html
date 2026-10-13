@@ -3311,13 +3311,37 @@ function App(){
       <F label="Співорганізатори та їх контактні особи"><TA val={f.coOrganizers}set={v=>uf("coOrganizers",v)}ph="Назва організації, контактна особа, email/телефон…"rows={3}/></F>
 
       <ST icon="👤">Відповідальні</ST>
-      <div className="grid2">
-        <F label="Керівник проєкту"><TeamSel val={f.head}set={v=>uf("head",v)}team={team}/></F>
-        <F label="Відповідальний експерт ЦППР"><TeamSel val={f.expertName}set={v=>uf("expertName",v)}team={team}/></F>
-        <F label="Координатор заходу"><TeamSel val={f.coordinator}set={v=>uf("coordinator",v)}team={team}/></F>
-        <F label="Комунікаційний менеджер"><TeamSel val={f.commManager}set={v=>uf("commManager",v)}team={team}filterRole="comm"/></F>
-        <F label="Асистент"><TeamSel val={f.assistant}set={v=>uf("assistant",v)}team={team}/></F>
-      </div>
+      {(()=>{
+        // Скільки задач чеклиста припадає на кожну роль за поточних налаштувань заявки
+        const rc={};
+        genChecklist(f,tasks,team).forEach(t=>{
+          const r=t.role==="fin"?(f.coordinator?"coord":"assist"):t.role;
+          if(r)rc[r]=(rc[r]||0)+1;
+        });
+        const hint=(text,val,role)=>{
+          const n=rc[role]||0;
+          return<>{text}{n>0&&(val
+            ?<span style={{color:"var(--text2)"}}> Задач у цій заявці: {n}.</span>
+            :<span style={{color:"var(--red)",fontWeight:600}}> ⚠ Не обрано — задачі цієї ролі ({n}) залишаться без виконавця.</span>)}</>;
+        };
+        return<>
+          <div className="grid2">
+            <F label="Керівник проєкту" hint={hint("Погоджує проєкт програми й текст запрошення (≈ за 17 днів до заходу).",f.head,"head")}>
+              <TeamSel val={f.head} set={v=>uf("head",v)} team={team}/></F>
+            <F label="Відповідальний експерт ЦППР" hint={hint("Відповідає за зміст: опис заходу, програма, запрошення, доповідачі, презентація й матеріали, модерація, аналіз результатів. Погоджує опис заходу з донором.",f.expertName,"expert")}>
+              <TeamSel val={f.expertName} set={v=>uf("expertName",v)} team={team}/></F>
+            <F label="Координатор заходу" hint={hint("Зв'язок із донором і підрядниками: погодження з донором, переклад запрошення, фото/відео, ЗМІ й пресреліз, таблички, інформація донору, лист-підсумок.",f.coordinator,"coord")}>
+              <TeamSel val={f.coordinator} set={v=>uf("coordinator",v)} team={team}/></F>
+            <F label="Комунікаційний менеджер" hint={hint("Візуал і публічність: брендування програми й запрошення, Google-форма реєстрації, заставка, анонси, новини й дописи, моніторинг ЗМІ.",f.commManager,"comm")}>
+              <TeamSel val={f.commManager} set={v=>uf("commManager",v)} team={team} filterRole="comm"/></F>
+            <F label="Асистент" hint={hint("Учасники й друк: календар ЦППР, розсилка запрошень і нагадувань, реєстрація, друк програм і роздаткових, бейджі, папки, банер, тека документів.",f.assistant,"assist")}>
+              <TeamSel val={f.assistant} set={v=>uf("assistant",v)} team={team}/></F>
+          </div>
+          <div className="alert-info" style={{fontSize:11,marginBottom:12}}>
+            🚚 Логістика (кейтеринг, синхронний переклад, конференц-сервіс, гімн і хвилина мовчання) автоматично закріплена за Дмитром Українським — окремо обирати не треба.
+          </div>
+        </>;
+      })()}
       <F label="Коментарі"><TA val={f.notes}set={v=>uf("notes",v)}ph="Додаткова інформація…"rows={3}/></F>
     </div>}
 

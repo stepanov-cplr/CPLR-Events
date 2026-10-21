@@ -2770,7 +2770,8 @@ function App(){
     const cardBudget=ev=>{
       if(ev.status==="cancelled")return null;
       const f=ev.form||{};
-      const endStr=f.eventDateEnd||f.eventDate;
+      // Беремо пізнішу з дат початку/закінчення — на випадок застарілої дати закінчення
+      const endStr=[f.eventDate,f.eventDateEnd].filter(Boolean).map(d=>d.slice(0,10)).sort().pop();
       const isPast=ev.status==="done"||(!!endStr&&parseDlDate(endStr.slice(0,10))<_today);
       if(isPast){
         const rows=(ev.summary?.finalBudget||[]).filter(r=>String(r.fact??"").trim()!=="");
@@ -2787,7 +2788,8 @@ function App(){
     const shown=evs.filter(matchDonor);
     const shownFact=shown.reduce((a,ev)=>{const b=cardBudget(ev);return b?.kind==="fact"?a+b.sum:a;},0);
     // Архів: найновіші зверху (за датою заходу, інакше за датою створення)
-    const evSortDate=ev=>{const d=ev.form?.eventDateEnd||ev.form?.eventDate;return d?parseDlDate(d.slice(0,10)).getTime():(ev.createdAt?new Date(ev.createdAt).getTime():0);};
+    // Сортуємо за датою ПОЧАТКУ (саме вона показана на картці); дата закінчення може бути застарілою після копіювання
+    const evSortDate=ev=>{const d=ev.form?.eventDate||ev.form?.eventDateEnd;return d?parseDlDate(d.slice(0,10)).getTime():(ev.createdAt?new Date(ev.createdAt).getTime():0);};
     return<><Header/><div className="app">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
@@ -3175,7 +3177,9 @@ function App(){
           {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
         <F label="Дата початку"req hint="Якщо дата ще не фінальна або можливі варіанти — вкажіть це в полі «Коментарі» внизу форми"><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}/></F>
-        <F label="Дата закінчення"><Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}/></F>
+        <F label="Дата закінчення"hint={f.eventDate&&f.eventDateEnd&&f.eventDateEnd<f.eventDate
+          ?<span style={{color:"var(--red)",fontWeight:600}}>⚠ Дата закінчення раніша за дату початку — перевірте рік</span>:null}>
+          <Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}min={f.eventDate||"2020-01-01"}max="2099-12-31"/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
         {f.duration==="Неповний день (вказати кількість годин)"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
         <div className="grid2">

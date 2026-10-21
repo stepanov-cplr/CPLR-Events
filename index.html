@@ -2077,6 +2077,7 @@ function App(){
   const [sending,setSending]=useState(false);
   const [showDeleted,setShowDeleted]=useState(false);
   const [donorFilter,setDonorFilter]=useState(""); // фільтр списку заявок за донором ("" = усі)
+  const [searchQuery,setSearchQuery]=useState(""); // пошук заявок за назвою
   const [draftNewTask,setDraftNewTask]=useState(null); // {g,t,who,d} коли відкрита форма додавання в чернетці
   const [tab,setTab]=useState("form");
   const [showDocModal,setShowDocModal]=useState(false);
@@ -2785,7 +2786,12 @@ function App(){
     const evDonors=ev=>(ev.form?.donors||[]).filter(d=>d!=="Без донора");
     const matchDonor=ev=>!donorFilter||(donorFilter==="Без донора"?evDonors(ev).length===0:evDonors(ev).includes(donorFilter));
     const donorOpts=[...new Set([...donorsList.filter(d=>d!=="Без донора"),...evs.flatMap(evDonors)])];
-    const shown=evs.filter(matchDonor);
+    // Пошук за назвою: без урахування регістру, зайвих пробілів і крапок у кінці («Клуб належного...»)
+    const normQ=v=>String(v||"").toLowerCase().replace(/[.…]+$/,"").replace(/\s+/g," ").trim();
+    const q=normQ(searchQuery);
+    const matchName=ev=>!q||normQ(ev.form?.eventName).includes(q);
+    const filtersOn=!!(donorFilter||q);
+    const shown=evs.filter(ev=>matchDonor(ev)&&matchName(ev));
     const shownFact=shown.reduce((a,ev)=>{const b=cardBudget(ev);return b?.kind==="fact"?a+b.sum:a;},0);
     // Архів: найновіші зверху (за датою заходу, інакше за датою створення)
     // Сортуємо за датою ПОЧАТКУ (саме вона показана на картці); дата закінчення може бути застарілою після копіювання
@@ -2799,17 +2805,20 @@ function App(){
         <button className="btn-primary"onClick={createNew}>+ Нова заявка</button>
       </div>
       {evs.length>0&&<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:20}}>
+        <input type="text"value={searchQuery}onChange={e=>setSearchQuery(e.target.value)}placeholder="🔍 Пошук за назвою заходу…"
+          style={{flex:"1 1 240px",maxWidth:360,fontSize:12,padding:"6px 10px"}}/>
         <select value={donorFilter}onChange={e=>setDonorFilter(e.target.value)}style={{width:"auto",minWidth:200,fontSize:12,padding:"6px 10px"}}>
           <option value="">Усі донори</option>
           {donorOpts.map(d=><option key={d}value={d}>{d}</option>)}
           <option value="Без донора">Без донора</option>
         </select>
-        {donorFilter&&<>
+        {filtersOn&&<>
           <span style={{fontSize:12,color:"var(--text2)"}}>Знайдено: <b style={{color:"var(--text)"}}>{shown.length}</b>{shownFact>0&&<> · фактичний бюджет: <b style={{color:"var(--text)"}}>{fmtUah(shownFact)}</b></>}</span>
-          <button className="btn-outline"style={{fontSize:11,padding:"4px 10px"}}onClick={()=>setDonorFilter("")}>✕ Скинути</button>
+          <button className="btn-outline"style={{fontSize:11,padding:"4px 10px"}}onClick={()=>{setDonorFilter("");setSearchQuery("");}}>✕ Скинути</button>
         </>}
       </div>}
-      {donorFilter&&shown.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text2)",fontSize:13}}>Немає заявок для донора «{donorFilter}»</div>}
+      {filtersOn&&shown.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text2)",fontSize:13}}>
+        Нічого не знайдено{q?<> за запитом «{searchQuery.trim()}»</>:null}{donorFilter?<> для донора «{donorFilter}»</>:null}</div>}
       {false&&<div className="setup-banner">
         ⚠ <b>Google Sheets не підключено</b> — дані зберігаються локально в цьому браузері.
         <button onClick={()=>setView("settings")}style={{background:"none",border:"none",color:"var(--blue)",cursor:"pointer",padding:"0 4px",fontSize:13,textDecoration:"underline",fontFamily:"var(--font)"}}>Налаштувати</button>

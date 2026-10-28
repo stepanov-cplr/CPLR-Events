@@ -126,6 +126,11 @@ button{font-family:var(--font);cursor:pointer}
 .alert-danger{background:var(--red-light);border:1px solid #FECACA;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#991B1B}
 .alert-success{background:var(--green-light);border:1px solid #A7F3D0;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:#065F46}
 
+/* ARCHIVE LOCK — режим перегляду архівної заявки */
+.ro-lock{border:0;padding:0;margin:0;min-width:0}
+.ro-lock:disabled .multi-check-item{pointer-events:none;opacity:.7}
+.ro-lock:disabled .chk-box{cursor:default!important}
+
 /* MISC */
 .multi-check{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
 .multi-check-item{display:flex;align-items:center;gap:5px;padding:5px 11px;border:1.5px solid var(--border);
@@ -300,6 +305,10 @@ const DEFAULT_TASKS=[
 const SL={draft:"Чернетка",review:"На розгляді",approved:"Затверджено",cancelled:"Скасовано",done:"Архів"};
 const SC={draft:"#6B7A90",review:"#D97706",approved:"#1C75BC",cancelled:"#DC2626",done:"#00916E"};
 const SB={draft:"#F0F4F8",review:"#FFFBEB",approved:"#E8F3FB",cancelled:"#FEF2F2",done:"#E6F5F1"};
+// Архів (28.10.2026): заявку в архіві змінює лише адміністратор; «Підсумки» відкриті для всіх.
+// Сервер перевіряє те саме незалежно від інтерфейсу.
+const ARCHIVE_LOCK_MSG="🔒 Захід в архіві — змінювати його може лише адміністратор. Щоб зробити новий захід на його основі, натисніть «Копіювати».";
+const ARCHIVE_CONFIRM="Перевести захід в архів?\n\nПісля цього змінювати заявку, чеклист і статус зможе лише адміністратор. Вкладка «Підсумки» (журнал і фактичний бюджет) лишиться відкритою для всіх.";
 
 // ══ UTILS ══════════════════════════════════════════════
 function gc(costs,cat,key,city){const m=costs[cat]||DEFAULT_COSTS[cat];return((m[city])||m.def||{})[key]||0;}
@@ -2228,7 +2237,8 @@ function App(){
           if(pendIds.length){
             let localEvs=[];try{localEvs=JSON.parse(localStorage.getItem("cppr_events_v3")||"[]");}catch{}
             const localById={};for(const e of localEvs)localById[e.id]=e;
-            merged=res.events.map(be=>(pend[be.id]&&localById[be.id])?localById[be.id]:be);
+            // Архів: для не-адміна з локальної версії беремо лише «Підсумки» (решту сервер однаково не прийме)
+            merged=res.events.map(be=>{const le=localById[be.id];if(!(pend[be.id]&&le))return be;if(be.status==="done"&&!authIsAdmin)return{...be,summary:le.summary||be.summary};return le;});
             // Локальні заявки, яких ще нема на бекенді (нова, не встигла синхронізуватись)
             for(const le of localEvs){if(pend[le.id]&&!merged.find(e=>e.id===le.id))merged=[le,...merged];}
           }
@@ -2237,7 +2247,7 @@ function App(){
           // До-зберігаємо незасинхронізовані заявки (позначаємо чеклист і чернетку брудними, щоб пішли повністю)
           for(const id of pendIds){
             const e=merged.find(x=>x.id===id);
-            if(e){dirtyRef.current[id]={checklist:true,taskDraft:true};syncEvToBackend(e);}
+            if(e){dirtyRef.current[id]=(e.status==="done"&&!authIsAdmin)?{}:{checklist:true,taskDraft:true};syncEvToBackend(e);}
             else clearPending(id); // заявки вже нема (видалена) — прибираємо висячу мітку
           }
           return;
@@ -2277,11 +2287,13 @@ function App(){
       if(dirty.checklist){
         const r=await sheetsPost(config.sheetsApiUrl,"saveChecklist",{id:ev.id,cl:ev.checklist||[]});
         if(r===null){allOk=false;dirtyRef.current[ev.id].checklist=true;} // не зберіглось — лишаємо брудним
+        else if(r&&r.error==="FORBIDDEN")showToast(r.message||ARCHIVE_LOCK_MSG); // архів: сервер відхилив — не повторюємо
       }
       // Чернетка — теж лише якщо змінювалась.
       if(dirty.taskDraft){
         const r=await sheetsPost(config.sheetsApiUrl,"saveTaskDraft",{id:ev.id,draft:ev.taskDraft||[]});
         if(r===null){allOk=false;dirtyRef.current[ev.id].taskDraft=true;}
+        else if(r&&r.error==="FORBIDDEN")showToast(r.message||ARCHIVE_LOCK_MSG);
       }
     }finally{setSaving(false);}
     // Знімаємо мітку «незбережено» лише якщо все збереглось І під час збереження не прийшла новіша правка.
@@ -2322,7 +2334,12 @@ function App(){
       form:{city:"Київ",eventAccess:"Для запрошених",eventFormat:"Офлайн",duration:"Повний день",coffeeItems:[],streamPlatforms:[]},checklist:[]};
     const u=[n,...evs];setEvs(u);saveEvs(u,id);setCid(id);setTab("form");setView("detail");
   };
+  // Архівна заявка для не-адміна — лише перегляд (крім «Підсумків»)
+  const isLockedEv=e=>!!e&&e.status==="done"&&!authIsAdmin;
+  const lockGuard=()=>{if(isLockedEv(getEv())){showToast(ARCHIVE_LOCK_MSG);return true;}return false;};
   const upd=(patch)=>{
+    // Архів: не-адмін може змінювати лише «Підсумки» (сервер перевіряє те саме)
+    if(isLockedEv(getEv())&&Object.keys(patch).some(k=>k!=="summary")){showToast(ARCHIVE_LOCK_MSG);return;}
     // Позначаємо, які важкі частини заявки змінились — щоб syncEvToBackend слав чеклист/чернетку
     // лише за потреби, а не при кожній дрібній правці (варіант B).
     if(patch.checklist!==undefined||patch.taskDraft!==undefined){
@@ -2334,10 +2351,10 @@ function App(){
     const u=evs.map(e=>e.id===cid?{...e,...patch}:e);setEvs(u);saveEvs(u,cid);
   };
   const uf=(field,val)=>{const ev=getEv();upd({form:{...ev.form,[field]:val}});};
-  const canDelEv=ev=>!!ev&&(authIsAdmin||(!!ev.createdBy&&!!authEmail&&String(ev.createdBy).toLowerCase()===authEmail.toLowerCase()));
+  const canDelEv=ev=>!!ev&&(authIsAdmin||(ev.status!=="done"&&!!ev.createdBy&&!!authEmail&&String(ev.createdBy).toLowerCase()===authEmail.toLowerCase()));
   const delEv=(id)=>{
     const target=evs.find(e=>e.id===id);
-    if(!canDelEv(target)){showToast("Видалити заявку може лише її автор або адміністратор");return;}
+    if(!canDelEv(target)){showToast(target&&target.status==="done"?"Заявку в архіві може видалити лише адміністратор":"Видалити заявку може лише її автор або адміністратор");return;}
     if(!confirm("Видалити заявку?"))return;
     const prev=evs;
     const u=evs.filter(e=>e.id!==id);setEvs(u);clearPending(id);
@@ -2345,14 +2362,17 @@ function App(){
       if(r&&r.error==="FORBIDDEN"){setEvs(prev);localStorage.setItem("cppr_events_v3",JSON.stringify(prev));showToast(r.message||"Немає прав на видалення");}
     });
     localStorage.setItem("cppr_events_v3",JSON.stringify(u));if(cid===id)setView("list");};
-  const copyEv=(id,e)=>{
-    e.stopPropagation();
+  const copyEv=(id,e,open)=>{
+    if(e&&e.stopPropagation)e.stopPropagation();
     const src=evs.find(ev=>ev.id===id);if(!src)return;
     const newId=Date.now().toString();
     const copy={...src,id:newId,status:"draft",createdAt:new Date().toISOString(),createdBy:(authEmail||"").toLowerCase(),checklist:[],
       form:{...src.form,eventName:`Копія — ${src.form?.eventName||"захід"}`}};
+    // Копія — нова заявка: без журналу/фактичного бюджету, чернетки задач і дати затвердження оригіналу
+    delete copy.summary;delete copy.taskDraft;delete copy.approvedAt;
     const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
-    showToast("Заявку скопійовано");
+    if(open){setCid(newId);setTab("form");setView("detail");showToast("Створено нову заявку-копію — внесіть дані нового заходу");}
+    else showToast("Заявку скопійовано");
   };
   const sendApprovalInfo=(srcEv)=>{
     if(!config.sheetsApiUrl)return;
@@ -2384,6 +2404,7 @@ function App(){
     return{finalCl,manualTasks,tomb};
   };
   const approve=()=>{
+    if(lockGuard())return;
     const ev=getEv();triggerStatusNotification(ev,"approved");sendApprovalInfo(ev);
     // Якщо чеклист уже існував (повторне затвердження) — зливаємо, а не генеруємо з нуля,
     // щоб не втратити відмітки виконання, ручні правки й позначки «видалено».
@@ -2392,6 +2413,7 @@ function App(){
     setTab("checklist");showToast("Затверджено! Чеклист сформовано.");
   };
   const updateChecklist=()=>{
+    if(lockGuard())return;
     const ev=getEv();
     const {finalCl,manualTasks,tomb}=mergeChecklist(genChecklist(ev.form,tasks,team),ev.checklist||[]);
     upd({checklist:[...finalCl,...manualTasks,...tomb]});
@@ -2413,6 +2435,7 @@ function App(){
   });
   // Згенерувати чернетку з форми (опціональний крок перед чеклистом)
   const prepareTaskDraft=()=>{
+    if(lockGuard())return;
     const ev=getEv();
     const draft=draftSort(genChecklist(ev.form,tasks,team).map(t=>({...t,done:false})));
     upd({taskDraft:draft});
@@ -2523,6 +2546,7 @@ function App(){
   // Повернути вже сформований чеклист у режим чернетки для повного редагування.
   // Відмітки виконання (done/doneAt) зберігаються і повернуться при «Сформувати чеклист».
   const editChecklistAsDraft=()=>{
+    if(lockGuard())return;
     const ev=getEv();
     const cl=(ev.checklist||[]).filter(t=>!t.manualDelete&&!t.hidden);
     if(!cl.length){showToast("Чеклист порожній");return;}
@@ -2562,6 +2586,7 @@ function App(){
     setSending(false);
   };
   const toggleCL=(idx)=>{
+    if(lockGuard())return;
     const ev=getEv();const today=new Date();today.setHours(0,0,0,0);
     const todayStr=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
     const cl=ev.checklist.map((t,i)=>{
@@ -2598,6 +2623,7 @@ function App(){
     upd({checklist:cl});
   };
   const removeTask=(idx)=>{
+    if(lockGuard())return;
     if(!confirm("Видалити задачу? При оновленні чеклиста вона не повернеться."))return;
     const ev=getEv();
     const cl=ev.checklist.filter((_,i)=>i!==idx);
@@ -2606,6 +2632,7 @@ function App(){
     upd({checklist:cl});
   };
   const restoreTask=(t)=>{
+    if(lockGuard())return;
     const ev=getEv();
     const cl=ev.checklist.map(task=>
       task.t===t.t?{...task,manualDelete:false,hidden:false}:task
@@ -2614,6 +2641,7 @@ function App(){
     showToast("Задачу відновлено");
   };
   const addManualTask=()=>{
+    if(lockGuard())return;
     const ev=getEv();
     const title=prompt("Назва нової задачі:");
     if(!title||!title.trim())return;
@@ -3098,6 +3126,7 @@ function App(){
 
   // ══ DETAIL ══
   const ev=getEv();if(!ev){setView("list");return null;}
+  const evLocked=isLockedEv(ev); // архів + не адмін → режим перегляду
   const f=ev.form;
   const budget=calcBudget(f,costs);
   const clDone=ev.checklist?.filter(t=>t.done&&!t.manualDelete).length||0;
@@ -3142,7 +3171,7 @@ function App(){
       {/* Рядок 2: кнопки дій */}
       <div className="ev-actions"style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <button className="btn-primary"style={{fontSize:12,padding:"6px 14px"}}onClick={()=>{saveEvs(evs,cid);showToast("✓ Заявку збережено");}}>💾 Зберегти</button>
-        <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={e=>copyEv(cid,e)}>📋 Копіювати</button>
+        <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={e=>copyEv(cid,e,true)}>📋 Копіювати</button>
         <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={()=>setShowSendEmailsModal(true)}>📧 Надіслати задачі</button>
         <button className="btn-ghost"style={{fontSize:12,padding:"6px 12px"}}onClick={()=>setShowDocModal(true)}>📄 Документ</button>
         {ev.checklist?.filter(t=>!t.manualDelete).length>0&&
@@ -3152,8 +3181,9 @@ function App(){
 
     <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {Object.entries(SL).map(([k,v])=>(
-        <button key={k}onClick={()=>{const ev=getEv();upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);if(k==="approved")sendApprovalInfo(ev);}}className="status-btn"
-          style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)"}}>
+        <button key={k}onClick={()=>{const ev=getEv();if(isLockedEv(ev)){showToast(ARCHIVE_LOCK_MSG);return;}if(k==="done"&&!authIsAdmin&&!confirm(ARCHIVE_CONFIRM))return;upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);if(k==="approved")sendApprovalInfo(ev);}}className="status-btn"
+          title={evLocked&&k!==ev.status?"Повернути захід з архіву може лише адміністратор":undefined}
+          style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)",...(evLocked&&k!==ev.status?{opacity:.45,cursor:"not-allowed"}:{})}}>
           {v}
         </button>
       ))}
@@ -3169,15 +3199,21 @@ function App(){
           <button onClick={editChecklistAsDraft}className="btn-ghost"style={{fontSize:12}}
             title="Повне редагування списку: назви, групи, залежності, додавання — у режимі чернетки. Відмітки виконання збережуться">✏️ Редагувати список задач</button>
           <button onClick={updateChecklist}className="btn-ghost"style={{fontSize:12}}>🔄 Оновити чеклист</button>
-          <button onClick={()=>{if(confirm("Позначити захід як завершений (Архів)? Цю дію можна скасувати.")){const ev=getEv();upd({status:"done"});}}}className="btn-ghost"
+          <button onClick={()=>{if(confirm(authIsAdmin?"Позначити захід як завершений (Архів)?":ARCHIVE_CONFIRM)){upd({status:"done"});}}}className="btn-ghost"
             style={{fontSize:12,color:"#00916E",borderColor:"#00916E"}}>✓ Завершити захід</button>
         </div>
       )}
     </div>
 
+    {ev.status==="done"&&(evLocked
+      ?<div className="alert-warn"data-testid="archive-banner"style={{marginBottom:14,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:12,lineHeight:1.5}}>
+        <div style={{flex:"1 1 320px"}}>🔒 <b>Захід в архіві — режим перегляду.</b> Змінювати заявку, чеклист і статус може лише адміністратор. Вкладка «Підсумки» (журнал і фактичний бюджет) лишається відкритою.</div>
+        <button className="btn-primary"style={{fontSize:12,padding:"6px 14px",whiteSpace:"nowrap"}}onClick={e=>copyEv(cid,e,true)}>📋 Нова заявка на основі цієї</button>
+      </div>
+      :<div className="alert-info"data-testid="archive-banner-admin"style={{marginBottom:14,fontSize:12}}>🗄 Захід в архіві. Ви адміністратор — можете вносити зміни; попередня версія автоматично зберігається в аркуші «Журнал змін».</div>)}
     <div className="tabs">{tabs.map(t=><button key={t.id}className={`tab${tab===t.id?" active":""}`}onClick={()=>setTab(t.id)}>{t.l}</button>)}</div>
 
-    {tab==="form"&&<div>
+    {tab==="form"&&<fieldset className="ro-lock"disabled={evLocked}>
       <ST icon="📋">Основна інформація</ST>
       <div className="grid2">
         <F label="Назва заходу"req><Inp val={f.eventName}set={v=>uf("eventName",v)}ph="Назва"/></F>
@@ -3403,7 +3439,7 @@ function App(){
         </>;
       })()}
       <F label="Коментарі"><TA val={f.notes}set={v=>uf("notes",v)}ph="Додаткова інформація…"rows={3}/></F>
-    </div>}
+    </fieldset>}
 
     {tab==="budget"&&<div>
       <div className="grid3"style={{marginBottom:18}}>
@@ -3526,7 +3562,7 @@ function App(){
         })()}
     </div>;})()}
 
-    {tab==="checklist"&&<div>
+    {tab==="checklist"&&<fieldset className="ro-lock"disabled={evLocked}>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
         <button className="btn-ghost"style={{fontSize:12,padding:"5px 12px"}}onClick={addManualTask}>+ Додати задачу</button>
       </div>
@@ -3634,7 +3670,7 @@ function App(){
             </div>
           ));
         })()}
-    </div>}
+    </fieldset>}
 
     {tab==="gantt"&&<GanttChart ev={ev}/>}
 

@@ -487,6 +487,37 @@ function TeamSel({val,set,team,ph,filterRole}){
   </select>;
 }
 function Inp({val,set,ph,type="text",min,max}){return<input type={type}value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}min={min}max={max}/>;}
+// Дата в межах 2020–2099 у форматі YYYY-MM-DD (захист від «0002-11-21» при наборі року з клавіатури)
+const DATE_MIN="2020-01-01",DATE_MAX="2099-12-31";
+function validYmd(s){return typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&s>=DATE_MIN&&s<=DATE_MAX;}
+// Поле дати, яке НЕ зберігає проміжні значення під час набору з клавіатури.
+// Набір цифр → зберігається при виході з поля (Tab/клік поза полем/Enter). Esc — скасувати.
+// Вибір у календарі (без клавіатури) → зберігається одразу. Порожнє поле = очистити дату.
+function DateField({value,onCommit,min=DATE_MIN,max=DATE_MAX,style,title}){
+  const cur=value?String(value).slice(0,10):"";
+  const[v,setV]=React.useState(cur);
+  const sent=React.useRef(null),vRef=React.useRef(cur),typing=React.useRef(false),focused=React.useRef(false),skipBlur=React.useRef(false);
+  React.useEffect(()=>{if(!focused.current){setV(cur);vRef.current=cur;}},[cur]);
+  const ok=x=>x===""||(validYmd(x)&&x>=min&&x<=max);
+  const commit=(x,bad)=>{
+    if(!bad&&ok(x)){if(x!==cur&&x!==sent.current){sent.current=x;onCommit(x);}}
+    else{setV(cur);vRef.current=cur;}
+  };
+  return<input type="date"value={v}min={min}max={max}title={title}style={style}
+    onClick={e=>e.stopPropagation()}
+    onFocus={()=>{focused.current=true;sent.current=null;}}
+    onKeyDown={e=>{
+      if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();return;}
+      if(e.key==="Escape"){e.preventDefault();skipBlur.current=true;setV(cur);vRef.current=cur;e.currentTarget.blur();return;}
+      if(e.key!=="Tab")typing.current=true;
+    }}
+    onChange={e=>{e.stopPropagation();const x=e.target.value;setV(x);vRef.current=x;
+      if(!typing.current&&x!==""&&ok(x)&&x!==cur){sent.current=x;onCommit(x);}}}
+    onBlur={e=>{focused.current=false;const wasTyping=typing.current;typing.current=false;
+      if(skipBlur.current){skipBlur.current=false;return;}
+      if(!wasTyping&&vRef.current===cur)return;
+      commit(vRef.current,e.target.validity&&e.target.validity.badInput);}}/>;
+}
 function TA({val,set,ph,rows=2}){return<textarea value={val||""}onChange={e=>set(e.target.value)}placeholder={ph||""}rows={rows}/>;}
 function CB({checked,set,label}){return<label className="cb-row"><input type="checkbox"checked={!!checked}onChange={e=>set(e.target.checked)}/>{label}</label>;}
 function F({label,req,children,hint}){
@@ -2456,6 +2487,7 @@ function App(){
   };
   // Зміна дедлайну в чернетці: приймає рядок YYYY-MM-DD, перераховує dl-label, g і ресортує
   const draftEditDate=(idx,dateStr)=>{
+    if(dateStr&&!validYmd(dateStr))return;
     const ev=getEv();const d=ev.taskDraft||[];
     let arr=d.map((t,i)=>{
       if(i!==idx)return t;
@@ -2488,6 +2520,7 @@ function App(){
   // Додати нову задачу в чернетку через інлайн-форму
   const draftAdd=(nt)=>{
     if(!nt||!nt.t||!nt.t.trim())return;
+    if(nt.dlDate&&!validYmd(nt.dlDate)){alert("Перевірте дату дедлайну: рік має бути від 2020 до 2099.");return;}
     const ev=getEv();
     const dl=nt.dlDate?(()=>{const[y,m,dy]=nt.dlDate.split("-").map(Number);return`${String(dy).padStart(2,"0")}.${String(m).padStart(2,"0")}.${y}`;})():"—";
     // d рахуємо з дати заходу (для сортування та сумісності)
@@ -2605,11 +2638,13 @@ function App(){
     upd({checklist:cl});
   };
   const changeDoneAt=(idx,dateStr)=>{
+    if(dateStr&&!validYmd(dateStr))return;
     const ev=getEv();
     const cl=ev.checklist.map((t,i)=>i===idx?{...t,doneAt:dateStr||null}:t);
     upd({checklist:cl});
   };
   const changeTaskDate=(idx,dateStr)=>{
+    if(dateStr&&!validYmd(dateStr))return;
     const ev=getEv();
     const cl=ev.checklist.map((t,i)=>{
       if(i!==idx)return t;
@@ -3225,10 +3260,10 @@ function App(){
         <F label="Тип доступу"><Sel val={f.eventAccess}set={v=>uf("eventAccess",v)}opts={accessTypesList}/>
           {f.eventFormat==="Офлайн"&&f.eventAccess==="Лише для підтверджених учасників"&&<div className="alert-info"style={{marginTop:5,fontSize:11}}>📍 Місце повідомляється лише підтвердженим учасникам</div>}
         </F>
-        <F label="Дата початку"req hint="Якщо дата ще не фінальна або можливі варіанти — вкажіть це в полі «Коментарі» внизу форми"><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}/></F>
+        <F label="Дата початку"req hint="Якщо дата ще не фінальна або можливі варіанти — вкажіть це в полі «Коментарі» внизу форми"><Inp type="date"val={f.eventDate}set={v=>{const old=f.eventDate;uf("eventDate",v);if(!f.eventDateEnd||f.eventDateEnd===old)uf("eventDateEnd",v);}}min={DATE_MIN}max={DATE_MAX}/></F>
         <F label="Дата закінчення"hint={f.eventDate&&f.eventDateEnd&&f.eventDateEnd<f.eventDate
           ?<span style={{color:"var(--red)",fontWeight:600}}>⚠ Дата закінчення раніша за дату початку — перевірте рік</span>:null}>
-          <Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}min={f.eventDate||"2020-01-01"}max="2099-12-31"/></F>
+          <Inp type="date"val={f.eventDateEnd}set={v=>uf("eventDateEnd",v)}min={f.eventDate||DATE_MIN}max={DATE_MAX}/></F>
         <F label="Тривалість"><Sel val={f.duration}set={v=>uf("duration",v)}opts={DURATION_TYPES}/></F>
         {f.duration==="Неповний день (вказати кількість годин)"&&<F label="Кількість годин"><Inp type="number"val={f.durationHours}set={v=>uf("durationHours",v)}ph="напр. 3"min="1"max="12"/></F>}
         <div className="grid2">
@@ -3484,7 +3519,7 @@ function App(){
               </select>
               <div>
                 <div style={{fontSize:11,color:"var(--text2)",marginBottom:3}}>Дедлайн (визначає групу)</div>
-                <input type="date"value={draftNewTask.dlDate}onChange={e=>setDraftNewTask({...draftNewTask,dlDate:e.target.value})}
+                <input type="date"value={draftNewTask.dlDate}min={DATE_MIN}max={DATE_MAX}onChange={e=>setDraftNewTask({...draftNewTask,dlDate:e.target.value})}
                   style={{width:"100%",padding:"7px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--radius)",fontSize:13,fontFamily:"var(--font)"}}/>
               </div>
             </div>
@@ -3535,7 +3570,7 @@ function App(){
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:4}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Дедлайн:</span>
-                      <input type="date"value={t.dlDate?t.dlDate.slice(0,10):""}onChange={e=>draftEditDate(idx,e.target.value)}
+                      <DateField value={t.dlDate}onCommit={v=>draftEditDate(idx,v)}
                         style={{fontSize:11,padding:"3px 6px",border:"1px solid var(--border)",borderRadius:4,fontFamily:"var(--font)",color:isOd?"var(--red)":"var(--text2)"}}/>
                       {isOd&&<span style={{fontSize:9,color:"var(--red)",fontWeight:700}}>в минулому</span>}
                     </div>
@@ -3635,9 +3670,8 @@ function App(){
                     </div>}
                     {t.done&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
                       <span style={{fontSize:10,color:"var(--text3)"}}>Виконано:</span>
-                      <input type="date" value={t.doneAt||""}
-                        onChange={e=>{e.stopPropagation();changeDoneAt(idx,e.target.value);}}
-                        onClick={e=>e.stopPropagation()}
+                      <DateField value={t.doneAt||""}
+                        onCommit={v=>changeDoneAt(idx,v)}
                         style={{fontSize:10,padding:"1px 3px",border:"1px solid var(--border)",borderRadius:3,
                         background:t.doneAt&&t.dlDate&&t.doneAt>t.dlDate?"#FEF2F2":"#F0FDF4",
                         color:t.doneAt&&t.dlDate&&t.doneAt>t.dlDate?"var(--red)":"var(--green)",
@@ -3655,10 +3689,9 @@ function App(){
                       </select>
                       <span style={{color:"var(--text3)",fontSize:11,margin:"0 2px"}}>·</span>
                       {t.manualDate&&<span title="Дату змінено вручну"style={{fontSize:10,cursor:"default"}}>✏️</span>}
-                      <input type="date"
-                        value={t.dlDate?t.dlDate.slice(0,10):""}
-                        onChange={e=>{e.stopPropagation();changeTaskDate(idx,e.target.value);}}
-                        onClick={e=>e.stopPropagation()}
+                      <DateField
+                        value={t.dlDate}
+                        onCommit={v=>changeTaskDate(idx,v)}
                         style={{fontSize:11,padding:"1px 4px",border:"1px solid var(--border)",borderRadius:4,background:t.manualDate?"#EBF4FB":"var(--bg-white)",color:isOd?"var(--red)":"var(--text2)",fontFamily:"var(--font)",cursor:"pointer"}}/>
                       <button onClick={e=>{e.stopPropagation();removeTask(idx);}}
                         style={{fontSize:11,color:"var(--text3)",background:"none",border:"none",cursor:"pointer",padding:"0 2px",marginLeft:"auto",flexShrink:0,lineHeight:1}}

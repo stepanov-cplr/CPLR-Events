@@ -463,7 +463,7 @@ function clearLocalData(){try{Object.keys(localStorage).filter(k=>k.startsWith("
 
 function showToast(msg,type="info"){
   const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),2800);
+  clearTimeout(window.__toastT);window.__toastT=setTimeout(()=>t.classList.remove("show"),Math.max(2800,String(msg).length*65));
 }
 function copyText(text){
   navigator.clipboard.writeText(text).then(()=>showToast("Скопійовано!")).catch(()=>{
@@ -2400,10 +2400,46 @@ function App(){
     const copy={...src,id:newId,status:"draft",createdAt:new Date().toISOString(),createdBy:(authEmail||"").toLowerCase(),checklist:[],
       form:{...src.form,eventName:`Копія — ${src.form?.eventName||"захід"}`}};
     // Копія — нова заявка: без журналу/фактичного бюджету, чернетки задач і дати затвердження оригіналу
-    delete copy.summary;delete copy.taskDraft;delete copy.approvedAt;
+    delete copy.summary;delete copy.taskDraft;delete copy.approvedAt;delete copy.submittedAt;delete copy.submittedBy;delete copy.submitMail;
     const u=[copy,...evs];setEvs(u);saveEvs(u,newId);
     if(open){setCid(newId);setTab("form");setView("detail");showToast("Створено нову заявку-копію — внесіть дані нового заходу");}
     else showToast("Заявку скопійовано");
+  };
+  // ── Надіслати заявку на розгляд (кнопка внизу форми) ──
+  const missingRequired=f=>{f=f||{};const req=[["eventName","Назва заходу"],["eventFormat","Формат заходу"],["eventDate","Дата початку"]];
+    if(f.eventFormat!=="Онлайн")req.push(["participants","Кількість учасників"]);
+    return req.filter(([k])=>!String(f[k]==null?"":f[k]).trim()).map(([,l])=>l);};
+  const fmtSubmitted=iso=>{try{const d=new Date(iso);if(isNaN(d))return"";const p=n=>String(n).padStart(2,"0");return`${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} о ${p(d.getHours())}:${p(d.getMinutes())}`;}catch{return"";}};
+  const [submitting,setSubmitting]=useState(false);
+  // Правка заявки ПІСЛЯ await: беремо найсвіжіший список (functional setEvs), а не знімок
+  // із замикання — інакше стара копія evs затирає щойно встановлений статус та інші правки.
+  const patchEvFresh=(id,patch)=>{let next=null;
+    setEvs(prev=>{next=prev.map(e=>e.id===id?{...e,...patch}:e);return next;});
+    setTimeout(()=>{if(next)saveEvs(next,id);},0);};
+  const sendReviewMail=async(srcEv)=>{
+    const r=await triggerStatusNotification(srcEv,"review",authEmail?[authEmail]:[]);
+    const ok=!!(r&&r.ok&&r.sent>0);
+    patchEvFresh(srcEv.id,{submitMail:ok?"ok":"failed"});
+    if(ok)showToast(`✓ Заявку надіслано на розгляд. Лист отримали: ${r.sent}${authEmail?" (разом із копією вам)":""}`);
+    else if(r&&r.noRecipients)showToast("⚠ Статус «На розгляді» встановлено, але в налаштуваннях не вказано, кому надсилати лист. Повідомте адміністратора.");
+    else showToast("⚠ Статус «На розгляді» встановлено, але лист не надіслався. Натисніть «Надіслати лист ще раз».");
+    return ok;
+  };
+  const submitForReview=async()=>{
+    const ev=getEv();if(!ev||submitting)return;
+    if(lockGuard())return;
+    const miss=missingRequired(ev.form);
+    if(miss.length){showToast("Щоб надіслати, заповніть: "+miss.join(", "));return;}
+    if(!confirm(`Надіслати заявку «${ev.form.eventName}» на розгляд адміністрації?\n\nВи отримаєте копію листа. Правити заявку можна буде й після надсилання.`))return;
+    setSubmitting(true);
+    const meta={status:"review",submittedAt:new Date().toISOString(),submittedBy:authName||authEmail||""};
+    upd(meta);
+    try{await sendReviewMail({...ev,...meta});}finally{setSubmitting(false);}
+  };
+  const resendReviewMail=async()=>{
+    const ev=getEv();if(!ev||submitting)return;
+    setSubmitting(true);
+    try{await sendReviewMail(ev);}finally{setSubmitting(false);}
   };
   const sendApprovalInfo=(srcEv)=>{
     if(!config.sheetsApiUrl)return;
@@ -2776,11 +2812,14 @@ function App(){
   const saveAccessTypes=l=>{if(!authIsAdmin){showToast("Змінювати налаштування може лише адміністратор");return;}setAccessTypesList(l);localStorage.setItem("cppr_access_types",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"accessTypes",value:JSON.stringify(l)});};
   const saveDonors=l=>{if(!authIsAdmin){showToast("Змінювати налаштування може лише адміністратор");return;}setDonorsList(l);localStorage.setItem("cppr_donors",JSON.stringify(l));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"donors",value:JSON.stringify(l)});};
   const saveNotifications=n=>{if(!authIsAdmin){showToast("Змінювати налаштування може лише адміністратор");return;}setNotifications(n);localStorage.setItem("cppr_notifications",JSON.stringify(n));if(config.sheetsApiUrl)sheetsRequest(config.sheetsApiUrl,"saveSetting",{key:"notifications",value:JSON.stringify(n)});};
-  const triggerStatusNotification=(srcEv,newStatus)=>{
+  // Повертає Promise з відповіддю сервера ({ok,sent} / {skipped} / {error}) або {noRecipients:true}.
+  // extra — додаткові адреси (напр., копія автору заявки); надсилаються лише якщо є основні отримувачі.
+  const triggerStatusNotification=(srcEv,newStatus,extra)=>{
     const rule=notifications.find(n=>n.event===newStatus);
-    if(!rule)return;
-    const allRecipients=[...(rule.recipients||[]),...(rule.customEmails?rule.customEmails.split(",").map(e=>e.trim()).filter(Boolean):[])];
-    if(!allRecipients.length)return;
+    if(!rule)return Promise.resolve({noRecipients:true});
+    const base=[...(rule.recipients||[]),...(rule.customEmails?rule.customEmails.split(",").map(e=>e.trim()).filter(Boolean):[])];
+    if(!base.length)return Promise.resolve({noRecipients:true});
+    const seen={};const allRecipients=[...base,...(extra||[])].map(e=>String(e||"").trim()).filter(e=>e&&!seen[e.toLowerCase()]&&(seen[e.toLowerCase()]=1));
     // Передаємо дані заявки напряму — не залежимо від збереження в таблиці
     const evName=srcEv?.form?.eventName||"Захід ЦППР";
     const evDate=srcEv?.form?.eventDate||"";
@@ -2793,7 +2832,8 @@ function App(){
      const evParticipants=srcEv?.form?.participants||"";
      const evCoordinator=srcEv?.form?.coordinator||"";
      const evComment=srcEv?.form?.notes||"";
-     if(config.sheetsApiUrl)sheetsPost(config.sheetsApiUrl,"sendStatusNotification",{
+     if(!config.sheetsApiUrl)return Promise.resolve(null);
+     return sheetsPost(config.sheetsApiUrl,"sendStatusNotification",{
        evId:srcEv.id,status:newStatus,recipients:allRecipients,
        evName,evDate,evType,evFormat,evCity,evExpert,evHead,evCoordinator,evDonors,evParticipants,evComment
      });
@@ -2919,6 +2959,7 @@ function App(){
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
                 <Badge s={ev.status}/>
+                {ev.status==="review"&&ev.submittedAt&&<div style={{fontSize:10,color:"var(--amber)"}}title={ev.submittedBy?"Надіслав(-ла): "+ev.submittedBy:undefined}>📨 надіслано {fmtSubmitted(ev.submittedAt).split(" о ")[0]}</div>}
                 {(()=>{const b=cardBudget(ev);if(!b)return null;
                   if(b.kind==="fact")return<div style={{fontSize:11,fontWeight:700,color:"var(--green)"}}title="Сума фактичних витрат із вкладки «Підсумки»">💰 {fmtUah(b.sum)}</div>;
                   if(b.kind==="none")return<div style={{fontSize:10,fontWeight:600,color:"var(--amber)"}}title="Внесіть фактичні суми на вкладці «Підсумки»">⚠ Бюджет не внесено</div>;
@@ -3216,7 +3257,7 @@ function App(){
 
     <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {Object.entries(SL).map(([k,v])=>(
-        <button key={k}onClick={()=>{const ev=getEv();if(isLockedEv(ev)){showToast(ARCHIVE_LOCK_MSG);return;}if(k==="done"&&!authIsAdmin&&!confirm(ARCHIVE_CONFIRM))return;upd({status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);if(k==="approved")sendApprovalInfo(ev);}}className="status-btn"
+        <button key={k}onClick={()=>{const ev=getEv();if(isLockedEv(ev)){showToast(ARCHIVE_LOCK_MSG);return;}if(k==="done"&&!authIsAdmin&&!confirm(ARCHIVE_CONFIRM))return;upd(k==="review"&&ev.status!=="review"?{status:k,submittedAt:new Date().toISOString(),submittedBy:authName||authEmail||""}:{status:k});if(k==="review"||k==="approved"||k==="cancelled")triggerStatusNotification(ev,k);if(k==="approved")sendApprovalInfo(ev);}}className="status-btn"
           title={evLocked&&k!==ev.status?"Повернути захід з архіву може лише адміністратор":undefined}
           style={{borderColor:k===ev.status?SC[k]:"var(--border)",background:k===ev.status?SB[k]:"transparent",color:k===ev.status?SC[k]:"var(--text2)",fontFamily:"var(--font)",...(evLocked&&k!==ev.status?{opacity:.45,cursor:"not-allowed"}:{})}}>
           {v}
@@ -3248,6 +3289,17 @@ function App(){
       :<div className="alert-info"data-testid="archive-banner-admin"style={{marginBottom:14,fontSize:12}}>🗄 Захід в архіві. Ви адміністратор — можете вносити зміни; попередня версія автоматично зберігається в аркуші «Журнал змін».</div>)}
     <div className="tabs">{tabs.map(t=><button key={t.id}className={`tab${tab===t.id?" active":""}`}onClick={()=>setTab(t.id)}>{t.l}</button>)}</div>
 
+    {tab==="form"&&ev.status==="draft"&&<div style={{background:"#F0F4F8",border:"1px dashed #9AAABB",borderRadius:"var(--radius-lg)",padding:"8px 14px",marginBottom:14,fontSize:12,color:"var(--text2)"}}>
+      📝 <b>Чернетка</b> — адміністрація заявку ще не отримала. Коли заповните, натисніть <b>«Надіслати на розгляд»</b> внизу форми.
+    </div>}
+    {tab==="form"&&ev.status==="review"&&<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#ECFDF5",border:"1.5px solid #6EE7B7",borderRadius:"var(--radius-lg)",padding:"10px 14px",marginBottom:14,fontSize:13,color:"#065F46"}}>
+        <span style={{fontSize:18}}>✓</span>
+        <div style={{flex:1,minWidth:200}}>
+          <b>Надіслано на розгляд</b>{ev.submittedAt?` ${fmtSubmitted(ev.submittedAt)}`:""}{ev.submittedBy?` · ${ev.submittedBy}`:""}
+          <div style={{fontSize:12,color:"#047857",marginTop:2}}>Очікує рішення адміністрації. Правити заявку можна й далі — повторний лист не надсилається.</div>
+        </div>
+        {ev.submitMail==="failed"&&<button className="btn-primary"disabled={submitting}style={{fontSize:12,padding:"6px 14px"}}onClick={resendReviewMail}>{submitting?"⏳ Надсилаємо…":"📨 Надіслати лист ще раз"}</button>}
+      </div>}
     {tab==="form"&&<fieldset className="ro-lock"disabled={evLocked}>
       <ST icon="📋">Основна інформація</ST>
       <div className="grid2">
@@ -3475,6 +3527,20 @@ function App(){
       })()}
       <F label="Коментарі"><TA val={f.notes}set={v=>uf("notes",v)}ph="Додаткова інформація…"rows={3}/></F>
     </fieldset>}
+    {tab==="form"&&ev.status==="draft"&&(()=>{const miss=missingRequired(f);return<div style={{marginTop:18,background:"#EBF4FB",border:"1.5px solid #1C75BC",borderRadius:"var(--radius-lg)",padding:"16px 18px"}}>
+      <div style={{fontWeight:700,fontSize:14,color:"#252868",marginBottom:4}}>Готово? Надішліть заявку адміністрації</div>
+      <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>Заявка отримає статус «На розгляді», адміністрація отримає лист, а ви — його копію. Правити заявку можна буде й після надсилання.</div>
+      {miss.length>0&&<div style={{fontSize:12,color:"#92400E",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:6,padding:"6px 10px",marginBottom:10}}>Щоб надіслати, заповніть: <b>{miss.join(", ")}</b></div>}
+      <button className="btn-primary"disabled={submitting}onClick={submitForReview}style={{fontSize:14,padding:"10px 22px",opacity:miss.length?.6:1}}>{submitting?"⏳ Надсилаємо…":"📨 Надіслати на розгляд"}</button>
+    </div>;})()}
+    {tab==="form"&&ev.status==="review"&&<div style={{marginTop:18}}><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#ECFDF5",border:"1.5px solid #6EE7B7",borderRadius:"var(--radius-lg)",padding:"10px 14px",marginBottom:14,fontSize:13,color:"#065F46"}}>
+        <span style={{fontSize:18}}>✓</span>
+        <div style={{flex:1,minWidth:200}}>
+          <b>Надіслано на розгляд</b>{ev.submittedAt?` ${fmtSubmitted(ev.submittedAt)}`:""}{ev.submittedBy?` · ${ev.submittedBy}`:""}
+          <div style={{fontSize:12,color:"#047857",marginTop:2}}>Очікує рішення адміністрації. Правити заявку можна й далі — повторний лист не надсилається.</div>
+        </div>
+        {ev.submitMail==="failed"&&<button className="btn-primary"disabled={submitting}style={{fontSize:12,padding:"6px 14px"}}onClick={resendReviewMail}>{submitting?"⏳ Надсилаємо…":"📨 Надіслати лист ще раз"}</button>}
+      </div></div>}
 
     {tab==="budget"&&<div>
       <div className="grid3"style={{marginBottom:18}}>
